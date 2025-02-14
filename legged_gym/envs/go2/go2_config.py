@@ -3,12 +3,12 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
-        num_observations = 48 # maybe this for smooth terrain???
+        # num_observations = 48 # 48 when mesh_type = 'plane', 235 otherwise...
         num_actions = 12
 
     class terrain( LeggedRobotCfg.terrain ):
-        mesh_type = 'plane'
-        measure_heights = False # True for rough terrain only
+        mesh_type = 'trimesh'
+        measure_heights = True # True for rough terrain only
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42] # x,y,z [m]
@@ -43,7 +43,7 @@ class Go2Cfg( LeggedRobotCfg ):
         file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/urdf/go2.urdf"
         name = "go2"
         foot_name = "foot"
-        penalize_contacts_on = ["thigh", "calf"]
+        penalize_contacts_on = ["thigh", "calf"] # MESH names for collision shapes
         terminate_after_contacts_on = ["base"]
         self_collisions = 1
 
@@ -51,15 +51,16 @@ class Go2Cfg( LeggedRobotCfg ):
         soft_dof_pos_limit = 0.9
         base_height_target = 0.25
         class scales( LeggedRobotCfg.rewards.scales ):
-            pass
-            # torques = -0.0002
-            # dof_pos_limits = -10.0
+            tracking_lin_vel = 2.0
+            tracking_ang_vel = 1.0
+            torques = -0.0002
+            dof_pos_limits = -10.0
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ): # Shamelessly ripped from anymal_c
-        actor_hidden_dims = [128, 64, 32]
-        critic_hidden_dims = [128, 64, 32]
+        actor_hidden_dims = [256, 256, 64]
+        critic_hidden_dims = [256, 256, 64]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
     class algorithm( LeggedRobotCfgPPO.algorithm ):
@@ -68,5 +69,5 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
         experiment_name = 'go2'
-        load_run = -1           # load last run
-        max_iterations = 300
+        load_run = -1
+        max_iterations = 500
