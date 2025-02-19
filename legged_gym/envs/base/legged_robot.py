@@ -857,8 +857,8 @@ class LeggedRobot(BaseTask):
     
     def _reward_dof_pos_limits(self):
         # Penalize dof positions too close to the limit
-        out_of_limits = -(self.dof_pos - self.dof_pos_limits[:, 0]).clip(max=0.) # lower limit
-        out_of_limits += (self.dof_pos - self.dof_pos_limits[:, 1]).clip(min=0.)
+        out_of_limits = -(self.dof_pos - self.dof_pos_limits[:, 0]).clip(max=0.) # (dof_pos - soft lower limit) - neg. or max 0
+        out_of_limits += (self.dof_pos - self.dof_pos_limits[:, 1]).clip(min=0.) # (dof_pos - soft upper limit) - pos. or max 0
         return torch.sum(out_of_limits, dim=1)
 
     def _reward_dof_vel_limits(self):
@@ -907,7 +907,7 @@ class LeggedRobot(BaseTask):
         return torch.sum((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) -  self.cfg.rewards.max_contact_force).clip(min=0.), dim=1)
 
 
-    # ====================== NEW SHIT BELOW ======================
+    # =========================== NEW REWARD FUNCTIONS BELOW ===========================
 
     # Reward forward velocity in the robot's local frame
     def _reward_forward_vel(self):
@@ -915,20 +915,24 @@ class LeggedRobot(BaseTask):
         return torch.clamp(forward_vel, min=0.0)
 
 
-    # Reward x and y positive movement and same z (not falling into the void)
+    # Reward x and y positive movement and same z (not falling into the void)    
     def _reward_xy_progress(self):
-        xy_vel = self.base_lin_vel[:, :2]   # Get x,y velocities
-        return torch.sum(xy_vel, dim=1)     # Sum the x and y velocities
-
-    # Reward for maintaining target z height
-    def _reward_z_stability(self):
     
+        # Get x,y velocities
+        xy_vel = self.base_lin_vel[:, :2]
+        
+        # Sum the x and y velocities
+        return torch.sum(xy_vel, dim=1)
+
+    # Rewards maintaining initial cfg z-position - compares with WORLD z position (why the fuck???)
+    def _reward_z_stability(self):
+
         # Get the current z position
         z_pos = self.root_states[:, 2]
 
         # Calculate distance from target height
-        z_target = self.cfg.init_state.pos[2]  # Use initial z position as target
+        z_target = self.cfg.init_state.pos[2] # Initial base position
         z_diff = torch.abs(z_pos - z_target)
-        
+
         # Convert distance to reward (closer = higher reward)
         return torch.exp(-z_diff * 10)  # Scale factor of 10 makes the reward more sensitive to height changes

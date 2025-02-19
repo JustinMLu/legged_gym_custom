@@ -11,39 +11,45 @@ class Go2Cfg( LeggedRobotCfg ):
         measure_heights = True # True for rough terrain only
         curriculum = False
         selected = True
+        # terrain_kwargs = {
+        #     "type": "terrain_utils.random_uniform_terrain",
+        #     "min_height": -0.025,
+        #     "max_height": 0.025,
+        #     "step": 0.01,
+        #     "downsampled_scale": 0.1,
+        # }
         terrain_kwargs = {
-            "type": "terrain_utils.random_uniform_terrain",
-            "min_height": -0.025,
-            "max_height": 0.025,
-            "step": 0.01,
-            "downsampled_scale": 0.1,
+            "type": "terrain_utils.wave_terrain",
+            "num_waves": 1,
+            "amplitude": 0.75
         }
 
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.42] # x,y,z [m]
-        default_joint_angles = { # = target angles [rad] when action = 0.0
-            'FL_hip_joint': 0.1,   # [rad]
-            'RL_hip_joint': 0.1,   # [rad]
+        pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
+        default_joint_angles = {    # = target angles [rad] when action = 0.0
+            'FL_hip_joint': 0.1,    # [rad]
+
+            'RL_hip_joint': 0.1,    # [rad]
             'FR_hip_joint': -0.1 ,  # [rad]
             'RR_hip_joint': -0.1,   # [rad]
 
-            'FL_thigh_joint': 0.8,     # [rad]
+            'FL_thigh_joint': 0.8,  # [rad]
             'RL_thigh_joint': 1.,   # [rad]
-            'FR_thigh_joint': 0.8,     # [rad]
+            'FR_thigh_joint': 0.8,  # [rad]
             'RR_thigh_joint': 1.,   # [rad]
 
-            'FL_calf_joint': -1.5,   # [rad]
-            'RL_calf_joint': -1.5,    # [rad]
+            'FL_calf_joint': -1.5,  # [rad]
+            'RL_calf_joint': -1.5,  # [rad]
             'FR_calf_joint': -1.5,  # [rad]
-            'RR_calf_joint': -1.5,    # [rad]
+            'RR_calf_joint': -1.5,  # [rad]
         }
 
 
     class control( LeggedRobotCfg.control ):
         # PD Drive prameters:
-        control_type = 'P'
+        control_type = 'P'          # Position control 'P'
         stiffness = {'joint': 20.}  # [N*m/rad]
-        damping = {'joint': 0.5}     # [N*m*s/rad]
+        damping = {'joint': 0.5}    # [N*m*s/rad]
         action_scale = 0.5
         decimation = 4
 
@@ -57,8 +63,12 @@ class Go2Cfg( LeggedRobotCfg ):
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
     class rewards ( LeggedRobotCfg.rewards ):
-        soft_dof_pos_limit = 0.9
+        # From Unitree
+        soft_dof_pos_limit = 0.9 # +/- 90% of 50% of limit range
         base_height_target = 0.25
+
+        # Added by me
+        soft_dof_vel_limit = 0.8 # +/- 90% of 50% of limit range
         
         class scales( LeggedRobotCfg.rewards.scales ):
             # From Unitree
@@ -68,9 +78,10 @@ class Go2Cfg( LeggedRobotCfg ):
             # Added by me
             tracking_lin_vel = 1.0  # Reward for tracking commanded velocity
             lin_vel_z = -2.0        # Penalize vertical movement
-            ang_vel_xy = -0.5       # Penalize angular velocity in xy plane
+            ang_vel_xy = -0.2       # Penalize angular velocity in xy plane
+            # base_height = -0.5      # Penalize deviation from target height (terrain-aware)
             orientation = -2.0      # Penalize non-flat orientation
-            collision = -1.0        # Penalize collisions
+            collision = -3.0        # Penalize collisions on target parts
             feet_air_time = 1.0     # Reward for taking steps
             
             # Even newer stuff
@@ -101,4 +112,4 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         experiment_name = 'go2'
         load_run = -1
         max_iterations = 5000
-        save_interval = 250
+        save_interval = 50
