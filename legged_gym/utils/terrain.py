@@ -96,6 +96,7 @@ class Terrain:
                 terrain = self.make_terrain(choice, difficulty)
                 self.add_terrain_to_map(terrain, i, j)
 
+    # Directly adds terrain to the map
     def selected_terrain(self):
         terrain_type = self.cfg.terrain_kwargs.pop('type')
         for k in range(self.cfg.num_sub_terrains):
@@ -104,14 +105,14 @@ class Terrain:
 
             terrain = terrain_utils.SubTerrain("terrain",
                               width=self.width_per_env_pixels,
-                              length=self.width_per_env_pixels,
+                              length=self.length_per_env_pixels,
                               vertical_scale=self.cfg.vertical_scale,
                               horizontal_scale=self.cfg.horizontal_scale)
 
             eval(terrain_type)(terrain, **self.cfg.terrain_kwargs)
             self.add_terrain_to_map(terrain, i, j)
     
-    # This is where the default 'trimesh' terrain is created w/ all the pyramids and shit
+    # NOT used when selected_terrain is used (selected = True in config)
     def make_terrain(self, choice, difficulty):
         terrain = terrain_utils.SubTerrain(   "terrain",
                                 width=self.width_per_env_pixels,

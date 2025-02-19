@@ -904,3 +904,30 @@ class LeggedRobot(BaseTask):
     def _reward_feet_contact_forces(self):
         # penalize high contact forces
         return torch.sum((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) -  self.cfg.rewards.max_contact_force).clip(min=0.), dim=1)
+
+
+    # ================================ NEW SHIT BELOW ======================================================================
+
+    def _reward_forward_vel(self):
+        # Get the forward velocity in the robot's local frame
+        forward_vel = self.base_lin_vel[:, 0]  # x-axis velocity
+        # Reward positive forward velocity
+        return torch.clamp(forward_vel, min=0.0)
+
+
+    # for base PPO encouraging x and y positive movement and same z (not falling into the void)
+    def _reward_xy_progress(self):
+        # Reward for making progress in x and y directions
+        # Get the change in position since last step
+        xy_vel = self.base_lin_vel[:, :2]  # Get x,y velocities
+        return torch.sum(xy_vel, dim=1)  # Sum the x and y velocities
+
+    def _reward_z_stability(self):
+        # Reward for maintaining target z height
+        # Get the current z position
+        z_pos = self.root_states[:, 2]
+        # Calculate distance from target height
+        z_target = self.cfg.init_state.pos[2]  # Use initial z position as target
+        z_diff = torch.abs(z_pos - z_target)
+        # Convert distance to reward (closer = higher reward)
+        return torch.exp(-z_diff * 10)  # Scale factor of 10 makes the reward more sensitive to height changes

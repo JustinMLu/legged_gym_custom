@@ -37,6 +37,16 @@ class AnymalCRoughCfg( LeggedRobotCfg ):
 
     class terrain( LeggedRobotCfg.terrain ):
         mesh_type = 'trimesh'
+        # measure_heights = True # True for rough terrain only
+        # curriculum = False
+        # selected = True
+        # terrain_kwargs = {
+        #     "type": "terrain_utils.random_uniform_terrain",
+        #     "min_height": -0.075,
+        #     "max_height": 0.075,
+        #     "step": 0.01,
+        #     "downsampled_scale": 0.1,
+        # }
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.6] # x,y,z [m]
