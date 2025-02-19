@@ -68,21 +68,21 @@ class LeggedRobotCfg(BaseConfig):
     class commands:
         curriculum = False
         max_curriculum = 1.
-        num_commands = 4 # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
-        resampling_time = 10. # time before command are changed[s]
-        heading_command = True # if true: compute ang vel command from heading error
+        num_commands = 4                # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
+        resampling_time = 10.           # time before command are changed[s]
+        heading_command = True          # if true: compute ang vel command from heading error
         class ranges:
-            lin_vel_x = [-1.0, 1.0] # min max [m/s]
-            lin_vel_y = [-1.0, 1.0]   # min max [m/s]
-            ang_vel_yaw = [-1, 1]    # min max [rad/s]
+            lin_vel_x = [-1.0, 1.0]     # min max [m/s]
+            lin_vel_y = [-1.0, 1.0]     # min max [m/s]
+            ang_vel_yaw = [-1, 1]       # min max [rad/s]
             heading = [-3.14, 3.14]
 
     class init_state:
-        pos = [0.0, 0.0, 1.] # x,y,z [m]
-        rot = [0.0, 0.0, 0.0, 1.0] # x,y,z,w [quat]
-        lin_vel = [0.0, 0.0, 0.0]  # x,y,z [m/s]
-        ang_vel = [0.0, 0.0, 0.0]  # x,y,z [rad/s]
-        default_joint_angles = { # target angles when action = 0.0
+        pos = [0.0, 0.0, 1.]        # x,y,z [m]
+        rot = [0.0, 0.0, 0.0, 1.0]  # x,y,z,w [quat]
+        lin_vel = [0.0, 0.0, 0.0]   # x,y,z [m/s]
+        ang_vel = [0.0, 0.0, 0.0]   # x,y,z [rad/s]
+        default_joint_angles = {    # target angles when action = 0.0
             "joint_a": 0., 
             "joint_b": 0.}
 
@@ -91,24 +91,22 @@ class LeggedRobotCfg(BaseConfig):
         # PD Drive parameters:
         stiffness = {'joint_a': 10.0, 'joint_b': 15.}  # [N*m/rad]
         damping = {'joint_a': 1.0, 'joint_b': 1.5}     # [N*m*s/rad]
-        # action scale: target angle = actionScale * action + defaultAngle
-        action_scale = 0.5
-        # decimation: Number of control action updates @ sim DT per policy DT
-        decimation = 4
+        action_scale = 0.5                      # action scale: target angle = actionScale * action + defaultAngle
+        decimation = 4                          # decimation: Number of control action updates @ sim DT per policy DT
 
     class asset:
         file = ""
-        name = "legged_robot"  # actor name
-        foot_name = "None" # name of the feet bodies, used to index body state and contact force tensors
+        name = "legged_robot"                   # actor name
+        foot_name = "None"                      # name of the feet bodies, used to index body state and contact force tensors
         penalize_contacts_on = []
         terminate_after_contacts_on = []
         disable_gravity = False
-        collapse_fixed_joints = True # merge bodies connected by fixed joints. Specific fixed joints can be kept by adding " <... dont_collapse="true">
-        fix_base_link = False # fixe the base of the robot
-        default_dof_drive_mode = 3 # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 3 effort)
-        self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
-        replace_cylinder_with_capsule = True # replace collision cylinders with capsules, leads to faster/more stable simulation
-        flip_visual_attachments = True # Some .obj meshes must be flipped from y-up to z-up
+        collapse_fixed_joints = True            # merge bodies connected by fixed joints. Specific fixed joints can be kept by adding " <... dont_collapse="true">
+        fix_base_link = False                   # fixe the base of the robot
+        default_dof_drive_mode = 3              # see GymDofDriveModeFlags (0 is none, 1 is pos tgt, 2 is vel tgt, 3 effort)
+        self_collisions = 0                     # 1 to disable, 0 to enable...bitwise filter
+        replace_cylinder_with_capsule = True    # replace collision cylinders with capsules, leads to faster/more stable simulation
+        flip_visual_attachments = True          # Some .obj meshes must be flipped from y-up to z-up
         
         density = 0.001
         angular_damping = 0.
