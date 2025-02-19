@@ -66,13 +66,15 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_pos_limits = -10.0
             
             # Added by me
-            orientation = -2.0      # Penalize non-flat orientation
+            tracking_lin_vel = 1.0  # Reward for tracking commanded velocity
             lin_vel_z = -2.0        # Penalize vertical movement
             ang_vel_xy = -0.5       # Penalize angular velocity in xy plane
+            orientation = -2.0      # Penalize non-flat orientation
             collision = -1.0        # Penalize collisions
-            forward_vel = 10.0  # Strong reward for moving forward
-            tracking_lin_vel = 1.0  # Reward for tracking commanded velocity
-            feet_air_time = 1.0  # Reward for taking steps
+            feet_air_time = 1.0     # Reward for taking steps
+            
+            # Even newer stuff
+            forward_vel = 10.0      # Strong reward for moving forward
 
     
     class commands (LeggedRobotCfg.commands ):

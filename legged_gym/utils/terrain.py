@@ -96,7 +96,7 @@ class Terrain:
                 terrain = self.make_terrain(choice, difficulty)
                 self.add_terrain_to_map(terrain, i, j)
 
-    # Directly adds terrain to the map
+    # Incredibly stupid way of selecting singular terrain from config
     def selected_terrain(self):
         terrain_type = self.cfg.terrain_kwargs.pop('type')
         for k in range(self.cfg.num_sub_terrains):

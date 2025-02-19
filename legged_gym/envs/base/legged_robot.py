@@ -198,6 +198,7 @@ class LeggedRobot(BaseTask):
             rew = self.reward_functions[i]() * self.reward_scales[name]
             self.rew_buf += rew
             self.episode_sums[name] += rew
+        # clip rewards to positive only
         if self.cfg.rewards.only_positive_rewards:
             self.rew_buf[:] = torch.clip(self.rew_buf[:], min=0.)
         # add termination reward after clipping
@@ -298,10 +299,10 @@ class LeggedRobot(BaseTask):
                 self.dof_vel_limits[i] = props["velocity"][i].item()
                 self.torque_limits[i] = props["effort"][i].item()
                 # soft limits
-                m = (self.dof_pos_limits[i, 0] + self.dof_pos_limits[i, 1]) / 2
-                r = self.dof_pos_limits[i, 1] - self.dof_pos_limits[i, 0]
-                self.dof_pos_limits[i, 0] = m - 0.5 * r * self.cfg.rewards.soft_dof_pos_limit
-                self.dof_pos_limits[i, 1] = m + 0.5 * r * self.cfg.rewards.soft_dof_pos_limit
+                m = (self.dof_pos_limits[i, 0] + self.dof_pos_limits[i, 1]) / 2     # midpoint of limits
+                r = self.dof_pos_limits[i, 1] - self.dof_pos_limits[i, 0]           # range of limits
+                self.dof_pos_limits[i, 0] = m - (0.5 * r * self.cfg.rewards.soft_dof_pos_limit)
+                self.dof_pos_limits[i, 1] = m + (0.5 * r * self.cfg.rewards.soft_dof_pos_limit)
         return props
 
     def _process_rigid_body_props(self, props, env_id):
@@ -906,28 +907,28 @@ class LeggedRobot(BaseTask):
         return torch.sum((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) -  self.cfg.rewards.max_contact_force).clip(min=0.), dim=1)
 
 
-    # ================================ NEW SHIT BELOW ======================================================================
+    # ====================== NEW SHIT BELOW ======================
 
+    # Reward forward velocity in the robot's local frame
     def _reward_forward_vel(self):
-        # Get the forward velocity in the robot's local frame
-        forward_vel = self.base_lin_vel[:, 0]  # x-axis velocity
-        # Reward positive forward velocity
+        forward_vel = self.base_lin_vel[:, 0]   # x-axis velocity
         return torch.clamp(forward_vel, min=0.0)
 
 
-    # for base PPO encouraging x and y positive movement and same z (not falling into the void)
+    # Reward x and y positive movement and same z (not falling into the void)
     def _reward_xy_progress(self):
-        # Reward for making progress in x and y directions
-        # Get the change in position since last step
-        xy_vel = self.base_lin_vel[:, :2]  # Get x,y velocities
-        return torch.sum(xy_vel, dim=1)  # Sum the x and y velocities
+        xy_vel = self.base_lin_vel[:, :2]   # Get x,y velocities
+        return torch.sum(xy_vel, dim=1)     # Sum the x and y velocities
 
+    # Reward for maintaining target z height
     def _reward_z_stability(self):
-        # Reward for maintaining target z height
+    
         # Get the current z position
         z_pos = self.root_states[:, 2]
+
         # Calculate distance from target height
         z_target = self.cfg.init_state.pos[2]  # Use initial z position as target
         z_diff = torch.abs(z_pos - z_target)
+        
         # Convert distance to reward (closer = higher reward)
         return torch.exp(-z_diff * 10)  # Scale factor of 10 makes the reward more sensitive to height changes
