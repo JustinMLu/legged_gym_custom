@@ -914,10 +914,10 @@ class LeggedRobot(BaseTask):
         forward_vel = self.base_lin_vel[:, 0]   # x-axis velocity
         return torch.clamp(forward_vel, min=0.0)
 
-    def _reward_x_orientation(self):
+    def _reward_x_rotation(self):
         # Rotation about x-axis will result in nonzero y-component
         return torch.square(self.projected_gravity[:, 1])
     
-    def _reward_y_orientation(self):
+    def _reward_y_rotation(self):
         # Rotation about y-axis will result in nonzero x-component
         return torch.square(self.projected_gravity[:, 0])

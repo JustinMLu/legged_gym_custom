@@ -38,7 +38,11 @@ if __name__ == "__main__":
     config_file = args.config_file
     with open(f"{LEGGED_GYM_ROOT_DIR}/deploy/deploy_mujoco/configs/{config_file}", "r") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
+
+        # Path to saved PyTorch .pt policy file
         policy_path = config["policy_path"].replace("{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
+        
+        # Path to mujoco xml file (so scene.xml which includes go2.xml)
         xml_path = config["xml_path"].replace("{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
 
         simulation_duration = config["simulation_duration"]

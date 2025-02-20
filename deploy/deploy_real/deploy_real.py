@@ -26,7 +26,9 @@ class Controller:
         self.remote_controller = RemoteController()
 
         # Initialize the policy network
-        self.policy = torch.jit.load(config.policy_path)
+        # self.policy = torch.jit.load(config.policy_path)                  # TODO: Check this works, look into TorchScript
+        self.policy = torch.load(config.policy_path, map_location="cpu")
+        self.policy.to("cuda:0")
         # Initializing process variables
         self.qj = np.zeros(config.num_actions, dtype=np.float32)
         self.dqj = np.zeros(config.num_actions, dtype=np.float32)

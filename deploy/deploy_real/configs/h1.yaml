@@ -9,7 +9,7 @@ weak_motor: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 lowcmd_topic: "rt/lowcmd"
 lowstate_topic: "rt/lowstate"
 
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/pre_train/h1/motion.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/h1/motion.pt"
 
 leg_joint2motor_idx: [7, 3, 4, 5, 10, 8, 0, 1, 2, 11]
 kps: [150, 150, 150, 200, 40,  150, 150, 150, 200, 40]

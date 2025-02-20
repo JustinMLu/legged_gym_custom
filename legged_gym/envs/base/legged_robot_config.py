@@ -127,26 +127,26 @@ class LeggedRobotCfg(BaseConfig):
 
     class rewards:
         class scales:
-            termination = 0.0
+            termination = -0.0
             tracking_lin_vel = 1.0      # Rewards robot for matching commanded linear velocity in XY-plane
             tracking_ang_vel = 0.5      # Rewards robot for matching commanded yaw angular velocity
             lin_vel_z = -2.0            # Rewards robot for nonzero z-axis linear velocity (vertical)
             ang_vel_xy = -0.05          # Rewards angular velocity in roll & pitch axis
-            orientation = 0.0           # Rewards deviation from flat, upright orientation using gravity projection
+            orientation = -0.0          # Rewards deviation from flat, upright orientation using gravity projection
             torques = -0.00001          # Rewards large torque outputs (smoothness, energy efficiency)
-            dof_vel = 0.0               # Rewards large joint (DOF) velocities
+            dof_vel = -0.0              # Rewards large joint (DOF) velocities
             dof_acc = -2.5e-7           # Rewards large joint (DOF) accelerations
-            base_height = 0.0           # Rewards deviation of avg. base link height from desired target
+            base_height = -0.0          # Rewards deviation of avg. base link height from desired target
             feet_air_time =  1.0        # Rewards robot for "long steps" - if foot stays in the air for some time
             collision = -1.             # Rewards collisions on specific bodies (see penalize_contacts_on)
-            stumble = 0.0               # Rewards stumble events (i.e foot collision w/ large horizontal contact force)
+            stumble = -0.0              # Rewards stumble events (i.e foot collision w/ large horizontal contact force)
             action_rate = -0.01         # Rewards rapid changes in actions from one control step to the next
-            stand_still = 0.0           # Rewards joint deviation from default pose (when commanded vel is 0))
-            contact_forces = 0.0        # Rewards large contact forces
+            stand_still = -0.0          # Rewards joint deviation from default pose (when commanded vel is 0))
+            contact_forces = -0.0       # Rewards large contact forces
 
-            forward_vel = 0.0           # Rewards forward velocity. That's all. Just forward velocity.
-            x_rotation = 0.0            # Rewards deviation from flat orientation along ONLY x-axis
-            y_rotation = 0.0            # Rewards deviation from flat orientation along ONLY y-axis 
+            forward_vel = -0.0          # Rewards forward velocity. That's all. Just forward velocity.
+            x_rotation = -0.0           # Rewards deviation from flat orientation along ONLY x-axis
+            y_rotation = -0.0           # Rewards deviation from flat orientation along ONLY y-axis 
 
 
             
@@ -225,7 +225,7 @@ class LeggedRobotCfgPPO(BaseConfig):
         use_clipped_value_loss = True
         clip_param = 0.2
         entropy_coef = 0.01
-        num_learning_epochs = 10    # default: 5
+        num_learning_epochs = 5     # default: 5
         num_mini_batches = 4        # mini batch size = num_envs*nsteps / nminibatches
         learning_rate = 1.e-3       # 5.e-4
         schedule = 'adaptive'       # could be adaptive, fixed
