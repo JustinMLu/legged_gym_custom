@@ -6,7 +6,6 @@ The original repo has a surprisingly large amount of bugs, and as a result I've 
 This repository provides the environment used to train ANYmal (and other robots) to walk on rough terrain using NVIDIA's Isaac Gym.
 It includes all components needed for sim-to-real transfer: actuator network, friction & mass randomization, noisy observations and random pushes during training.  
 
-**Maintainer**: Me!
 **Affiliation**: ARCAD Lab, University of Michigan  
 **Contact**: lujust@umich.edu  
 
