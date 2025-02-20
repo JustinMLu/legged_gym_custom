@@ -2,7 +2,7 @@ from setuptools import find_packages
 from distutils.core import setup
 
 setup(
-    name='legged_gym',
+    name='legged_gym_custom',
     version='1.0.0',
     author='Justin Lu',
     license="BSD-3-Clause",
