@@ -95,16 +95,16 @@ class Go2Cfg( LeggedRobotCfg ):
             # feet_air_time = 1.0     # Reward for taking steps
             # forward_vel = 7.5       # Strong reward for moving forward (7.5)
 
-            # Added by me
-            tracking_lin_vel = 4.0  # Reward for tracking commanded velocity
-            tracking_ang_vel = 2.5  # Reward for tracking commanded angular velocity
-            lin_vel_z = -2.0        # Penalize vertical movement
+            # Realistic config
+            tracking_lin_vel = 2.0  # Reward for tracking commanded velocity
+            tracking_ang_vel = 1.5  # Reward for tracking commanded angular velocity
+            lin_vel_z = -0.5        # Penalize vertical movement
             ang_vel_xy = -0.2       # Penalize angular velocity in xy plane
             base_height = -0.5      # Penalize deviation from target height
             orientation = -2.0      # Penalize non-flat orientation
             collision = -5.0        # Penalize collisions on target parts
-            feet_air_time = 1.0     # Reward for taking steps
-            forward_vel = 1.0       
+            feet_air_time = 0.5     # Reward for taking steps
+            forward_vel = 0.5       
 
     
     class commands (LeggedRobotCfg.commands ):
