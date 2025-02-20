@@ -40,17 +40,18 @@ It includes all components needed for sim-to-real transfer: actuator network, fr
     -  To run headless (no rendering) add `--headless`.
     - **Important**: To improve performance, once the training starts press `v` to stop the rendering. You can then enable it later to check the progress.
     - The trained policy is saved in `issacgym_anymal/logs/<experiment_name>/<date_time>_<run_name>/model_<iteration>.pt`. Where `<experiment_name>` and `<run_name>` are defined in the train config.
+        - Example usage: ```python legged_gym/scripts/train.py --task=go2 --resume --load_run=Feb19_19-10-10_ --checkpoint=700 --headless```
+    
     -  The following command line arguments override the values set in the config files:
-     - ```--task=TASK```: Task name.
-     - ```--resume```: Resume training from a checkpoint
-     - ```--experiment_name=EXPERIMENT_NAME```: Name of the experiment to run or load.
-     - ```--run_name=RUN_NAME```: Name of the run to load during playback (I think...)
-     - ```--load_run=LOAD_RUN```: Name of the run to load during training when resume=True. If -1: will load the last run.
-     - ```--checkpoint=CHECKPOINT```:  Saved model checkpoint number. If -1: will load the last checkpoint.
-     - ```--num_envs=NUM_ENVS```:  Number of environments to create.
-     - ```--seed=SEED```:  Random seed.
-     - ```--max_iterations=MAX_ITERATIONS```:  Maximum number of training iterations.
-     - Example usage: ```python legged_gym/scripts/train.py --task=go2 --resume --load_run=Feb19_19-10-10_ --checkpoint=700 --headless```
+        - ```--task=TASK```: Task name.
+        - ```--resume```: Resume training from a checkpoint
+        - ```--experiment_name=EXPERIMENT_NAME```: Name of the experiment to run or load.
+        - ```--run_name=RUN_NAME```: Name of the run to load during playback (I think...)
+        - ```--load_run=LOAD_RUN```: Name of the run to load during training when resume=True. If -1: will load the last run.
+        - ```--checkpoint=CHECKPOINT```:  Saved model checkpoint number. If -1: will load the last checkpoint.
+        - ```--num_envs=NUM_ENVS```:  Number of environments to create.
+        - ```--seed=SEED```:  Random seed.
+        - ```--max_iterations=MAX_ITERATIONS```:  Maximum number of training iterations.
 2. Play a trained policy:  
 ```python legged_gym/scripts/play.py --task=anymal_c_flat```
     - By default, the loaded policy is the last model of the last run of the experiment folder.
