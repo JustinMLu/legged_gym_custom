@@ -116,7 +116,7 @@ class Terrain:
     def make_terrain(self, choice, difficulty):
         terrain = terrain_utils.SubTerrain(   "terrain",
                                 width=self.width_per_env_pixels,
-                                length=self.width_per_env_pixels,
+                                length=self.length_per_env_pixels,
                                 vertical_scale=self.cfg.vertical_scale,
                                 horizontal_scale=self.cfg.horizontal_scale)
         slope = difficulty * 0.4

@@ -13,11 +13,20 @@ class Go2Cfg( LeggedRobotCfg ):
         selected = True
         # terrain_kwargs = {
         #     "type": "terrain_utils.random_uniform_terrain",
-        #     "min_height": -0.025,
-        #     "max_height": 0.025,
+        #     "min_height": -0.1,
+        #     "max_height": 0.2,
+        #     "step": 0.2,
+        #     "downsampled_scale": 0.5,
+        # }
+
+        # terrain_kwargs = {
+        #     "type": "terrain_utils.random_uniform_terrain",
+        #     "min_height": -0.03,
+        #     "max_height": 0.03,
         #     "step": 0.01,
         #     "downsampled_scale": 0.1,
         # }
+
         terrain_kwargs = {
             "type": "terrain_utils.wave_terrain",
             "num_waves": 1,
@@ -76,26 +85,37 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_pos_limits = -10.0
             
             # Added by me
-            tracking_lin_vel = 1.0  # Reward for tracking commanded velocity
+            tracking_lin_vel = 4.0  # Reward for tracking commanded velocity
+            tracking_ang_vel = 2.5  # Reward for tracking commanded angular velocity
             lin_vel_z = -2.0        # Penalize vertical movement
             ang_vel_xy = -0.2       # Penalize angular velocity in xy plane
-            # base_height = -0.5      # Penalize deviation from target height (terrain-aware)
+            # base_height = -0.5    # Penalize deviation from target height (terrain-aware)
             orientation = -2.0      # Penalize non-flat orientation
-            collision = -3.0        # Penalize collisions on target parts
+            collision = -5.0        # Penalize collisions on target parts
             feet_air_time = 1.0     # Reward for taking steps
-            
             # Even newer stuff
-            forward_vel = 10.0      # Strong reward for moving forward
+            forward_vel = 7.5       # Strong reward for moving forward (7.5)
+
+            # # Added by me
+            # tracking_lin_vel = 4.0  # Reward for tracking commanded velocity
+            # tracking_ang_vel = 2.5  # Reward for tracking commanded angular velocity
+            # lin_vel_z = -2.0        # Penalize vertical movement
+            # ang_vel_xy = -0.2       # Penalize angular velocity in xy plane
+            # # base_height = -0.5    # Penalize deviation from target height
+            # orientation = -2.0      # Penalize non-flat orientation
+            # collision = -5.0        # Penalize collisions on target parts
+            # feet_air_time = 1.0     # Reward for taking steps
+            # # Even newer stuff
+            # forward_vel = 1.0       # Reward for moving forward (7.5)
 
     
     class commands (LeggedRobotCfg.commands ):
-        
         class ranges( LeggedRobotCfg.commands.ranges ):
-            pass
             # lin_vel_x = [0.5, 1.0] # min max sample ranges [m/s]
             # lin_vel_y = [0.0, 0.0]
             # ang_vel_yaw = [0.0, 0.0]
             # heading = [-0.52, 0.52] # -30 to 30 degrees
+            pass
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):

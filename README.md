@@ -1,25 +1,16 @@
-# Isaac Gym Environments for Legged Robots #
+# Custom Isaac Gym Environments for Legged Robots #
+This is a custom fork of the (now-slightly-deprecated) Isaac Gym Reinforcement Learning framework, originally used to train ANYmal and other robots.
+It originally provided all components for sim2real transfer (actuator network for ANYmal, friction & mass randomization, random pushes, noisy observations).
+
+The original repo has a surprisingly large amount of bugs, and as a result I've been slowly patching and improving it over time.
 This repository provides the environment used to train ANYmal (and other robots) to walk on rough terrain using NVIDIA's Isaac Gym.
 It includes all components needed for sim-to-real transfer: actuator network, friction & mass randomization, noisy observations and random pushes during training.  
 
-**Maintainer**: Nikita Rudin  
-**Affiliation**: Robotic Systems Lab, ETH Zurich  
-**Contact**: rudinn@ethz.ch  
+**Maintainer**: Me!
+**Affiliation**: ARCAD Lab, University of Michigan  
+**Contact**: lujust@umich.edu  
 
 ---
-
-### :bell: Announcement (09.01.2024) ###
-
-With the shift from Isaac Gym to Isaac Sim at NVIDIA, we have migrated all the environments from this work to [Isaac Lab](https://github.com/isaac-sim/IsaacLab). Following this migration, this repository will receive limited updates and support. We encourage all users to migrate to the new framework for their applications.
-
-Information about this work's locomotion-related tasks in Isaac Lab is available [here](https://isaac-sim.github.io/IsaacLab/source/features/environments.html#locomotion).
-
----
-
-### Useful Links ###
-
-Project website: https://leggedrobotics.github.io/legged_gym/   
-Paper: https://arxiv.org/abs/2109.11978
 
 ### Installation ###
 1. Create a new python virtual env with python 3.6, 3.7 or 3.8 (3.8 recommended)
@@ -51,15 +42,16 @@ Paper: https://arxiv.org/abs/2109.11978
     - **Important**: To improve performance, once the training starts press `v` to stop the rendering. You can then enable it later to check the progress.
     - The trained policy is saved in `issacgym_anymal/logs/<experiment_name>/<date_time>_<run_name>/model_<iteration>.pt`. Where `<experiment_name>` and `<run_name>` are defined in the train config.
     -  The following command line arguments override the values set in the config files:
-     - --task TASK: Task name.
-     - --resume:   Resume training from a checkpoint
-     - --experiment_name EXPERIMENT_NAME: Name of the experiment to run or load.
-     - --run_name RUN_NAME:  Name of the run.
-     - --load_run LOAD_RUN:   Name of the run to load when resume=True. If -1: will load the last run.
-     - --checkpoint CHECKPOINT:  Saved model checkpoint number. If -1: will load the last checkpoint.
-     - --num_envs NUM_ENVS:  Number of environments to create.
-     - --seed SEED:  Random seed.
-     - --max_iterations MAX_ITERATIONS:  Maximum number of training iterations.
+     - ```--task=TASK```: Task name.
+     - ```--resume```: Resume training from a checkpoint
+     - ```--experiment_name=EXPERIMENT_NAME```: Name of the experiment to run or load.
+     - ```--run_name=RUN_NAME```: Name of the run to load during playback (I think...)
+     - ```--load_run=LOAD_RUN```: Name of the run to load during training when resume=True. If -1: will load the last run.
+     - ```--checkpoint=CHECKPOINT```:  Saved model checkpoint number. If -1: will load the last checkpoint.
+     - ```--num_envs=NUM_ENVS```:  Number of environments to create.
+     - ```--seed=SEED```:  Random seed.
+     - ```--max_iterations=MAX_ITERATIONS```:  Maximum number of training iterations.
+     - Example usage: ```python legged_gym/scripts/train.py --task=go2 --resume --load_run=Feb19_19-10-10_ --checkpoint=700 --headless```
 2. Play a trained policy:  
 ```python legged_gym/scripts/play.py --task=anymal_c_flat```
     - By default, the loaded policy is the last model of the last run of the experiment folder.
@@ -103,3 +95,5 @@ The base environment `legged_robot` implements a rough terrain locomotion task. 
     self.gym.refresh_force_sensor_tensor(self.sim)
     contact = self.sensor_forces[:, :, 2] > 1.
 ```
+
+2. Terrain selection SUCKS!!! But numerous people have created solutions. I'll see if I want to tweak it for my own usage or I'll just use someone elses.

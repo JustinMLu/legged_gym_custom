@@ -823,7 +823,7 @@ class LeggedRobot(BaseTask):
         return torch.sum(torch.square(self.base_ang_vel[:, :2]), dim=1)
     
     def _reward_orientation(self):
-        # Penalize non flat base orientation
+        # Penalize non flat base orientation (so x and y)
         return torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1)
 
     def _reward_base_height(self):
@@ -909,30 +909,15 @@ class LeggedRobot(BaseTask):
 
     # =========================== NEW REWARD FUNCTIONS BELOW ===========================
 
-    # Reward forward velocity in the robot's local frame
     def _reward_forward_vel(self):
+        # Reward forward velocity
         forward_vel = self.base_lin_vel[:, 0]   # x-axis velocity
         return torch.clamp(forward_vel, min=0.0)
 
-
-    # Reward x and y positive movement and same z (not falling into the void)    
-    def _reward_xy_progress(self):
+    def _reward_x_orientation(self):
+        # Rotation about x-axis will result in nonzero y-component
+        return torch.square(self.projected_gravity[:, 1])
     
-        # Get x,y velocities
-        xy_vel = self.base_lin_vel[:, :2]
-        
-        # Sum the x and y velocities
-        return torch.sum(xy_vel, dim=1)
-
-    # Rewards maintaining initial cfg z-position - compares with WORLD z position (why the fuck???)
-    def _reward_z_stability(self):
-
-        # Get the current z position
-        z_pos = self.root_states[:, 2]
-
-        # Calculate distance from target height
-        z_target = self.cfg.init_state.pos[2] # Initial base position
-        z_diff = torch.abs(z_pos - z_target)
-
-        # Convert distance to reward (closer = higher reward)
-        return torch.exp(-z_diff * 10)  # Scale factor of 10 makes the reward more sensitive to height changes
+    def _reward_y_orientation(self):
+        # Rotation about y-axis will result in nonzero x-component
+        return torch.square(self.projected_gravity[:, 0])

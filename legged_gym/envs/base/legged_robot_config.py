@@ -144,9 +144,10 @@ class LeggedRobotCfg(BaseConfig):
             stand_still = 0.0           # Rewards joint deviation from default pose (when commanded vel is 0))
             contact_forces = 0.0        # Rewards large contact forces
 
-            forward_vel = 0.0
-            xy_progress = 0.0
-            z_stability = 0.0
+            forward_vel = 0.0           # Rewards forward velocity. That's all. Just forward velocity.
+            x_rotation = 0.0            # Rewards deviation from flat orientation along ONLY x-axis
+            y_rotation = 0.0            # Rewards deviation from flat orientation along ONLY y-axis 
+
 
             
 
