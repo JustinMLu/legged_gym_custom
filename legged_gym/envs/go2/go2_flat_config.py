@@ -7,8 +7,19 @@ class Go2FlatCfg( LeggedRobotCfg ):
         num_actions = 12
 
     class terrain( LeggedRobotCfg.terrain ):
+        static_friction = 0.8
+        dynamic_friction = 0.8
+
         mesh_type = 'plane'
         measure_heights = False # True for rough terrain only
+        curriculum = False
+        selected = False
+
+        terrain_kwargs = {
+            "type": "terrain_utils.wave_terrain",
+            "num_waves": 1,
+            "amplitude": 0.25
+        }
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
@@ -42,14 +53,14 @@ class Go2FlatCfg( LeggedRobotCfg ):
 
     class commands( LeggedRobotCfg.commands ):
         pass
-        # user_command = [0.0, 0.0, 0.0, 0.0]
+        # user_command = [0.5, 0.0, 0.0, 0.0]
 
 
     class asset( LeggedRobotCfg.asset ):
         file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/urdf/go2.urdf"
         name = "go2"
         foot_name = "foot"
-        penalize_contacts_on = ["thigh", "calf", "imu"]
+        penalize_contacts_on = ["hip", "thigh", "calf", "imu"]
         terminate_after_contacts_on = ["base"]
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
@@ -59,12 +70,18 @@ class Go2FlatCfg( LeggedRobotCfg ):
         base_height_target = 0.25
         
         class scales( LeggedRobotCfg.rewards.scales ):
-            # From Unitree
-            torques = -0.002
             dof_pos_limits = -10.0
-            orientation = -5.0
-            feet_air_time = 0.5
-            # action_rate = -0.1
+            torques = -0.0002
+
+            # Custom
+            feet_air_time = 0.55
+            ang_vel_xy = -0.05
+            base_height = -0.0001
+            orientation = -2.5
+            stand_still = -0.009
+            dof_acc = -5.5e-7
+            tracking_lin_vel = 1.1      # Rewards robot for matching commanded linear velocity in XY-plane
+            tracking_ang_vel = 0.6      # Rewards robot for matching commanded yaw angular velocity
 
            
 
@@ -81,5 +98,5 @@ class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
         run_name = ''
         experiment_name = 'go2_flat'
         load_run = -1
-        max_iterations = 10000
+        max_iterations = 600
         save_interval = 100
