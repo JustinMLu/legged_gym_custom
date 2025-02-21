@@ -66,11 +66,13 @@ class LeggedRobotCfg(BaseConfig):
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
 
     class commands:
-        curriculum = False
+        curriculum = False              # Curriculum will resample commands dynamically
         max_curriculum = 1.
         num_commands = 4                # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         resampling_time = 10.           # time before command are changed[s]
         heading_command = True          # if true: compute ang vel command from heading error
+        user_command = []              # user defined command, if not empty, it will override the default commands
+        
         class ranges:
             lin_vel_x = [-1.0, 1.0]     # min max [m/s]
             lin_vel_y = [-1.0, 1.0]     # min max [m/s]
@@ -121,7 +123,7 @@ class LeggedRobotCfg(BaseConfig):
         friction_range = [0.5, 1.25]
         randomize_base_mass = False
         added_mass_range = [-1., 1.]
-        push_robots = True
+        push_robots = False
         push_interval_s = 15
         max_push_vel_xy = 1.
 

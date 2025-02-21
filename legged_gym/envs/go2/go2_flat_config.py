@@ -30,6 +30,7 @@ class Go2FlatCfg( LeggedRobotCfg ):
         }
 
 
+        
     class control( LeggedRobotCfg.control ):
         # PD Drive prameters:
         control_type = 'P'          # Position control 'P'
@@ -37,7 +38,17 @@ class Go2FlatCfg( LeggedRobotCfg ):
         damping = {'joint': 0.5}    # [N*m*s/rad]
         action_scale = 0.25
         decimation = 4
+        class ranges:
+            lin_vel_x = [1.0, 1.0]     # min max [m/s]
+            lin_vel_y = [0.0, 0.0]     # min max [m/s]
+            ang_vel_yaw = [0.0, 0.0]   # min max [rad/s]
+            heading = [0.0, 0.0]
 
+    class commands( LeggedRobotCfg.commands ):
+        user_command = [0.0, 0.0, 0.0, 0.0] # x, y, yaw rate, heading
+
+    class noise ( LeggedRobotCfg.noise ):
+        add_noise = True
 
     class asset( LeggedRobotCfg.asset ):
         file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/urdf/go2.urdf"

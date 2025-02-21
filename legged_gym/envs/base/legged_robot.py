@@ -62,12 +62,13 @@ class LeggedRobot(BaseTask):
             device_id (int): 0, 1, ...
             headless (bool): Run without rendering if True
         """
+
         self.cfg = cfg
         self.sim_params = sim_params
         self.height_samples = None
         self.debug_viz = False
         self.init_done = False
-        self._parse_cfg(self.cfg)
+        self._parse_cfg(self.cfg)   # THERE YOU ARE YOU SLIPPERY FUCK
         super().__init__(self.cfg, sim_params, physics_engine, sim_device, headless)
 
         if not self.headless:
@@ -93,6 +94,8 @@ class LeggedRobot(BaseTask):
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
+
+        # post physics step
         self.post_physics_step()
 
         # return clipped obs, clipped states (None), rewards, dones and infos
@@ -125,6 +128,8 @@ class LeggedRobot(BaseTask):
         self.check_termination()
         self.compute_reward()
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
+
+        # RESET IDX CALLS RESAMPLE COMMANDS!!!
         self.reset_idx(env_ids)
         self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
 
@@ -157,6 +162,7 @@ class LeggedRobot(BaseTask):
         # update curriculum
         if self.cfg.terrain.curriculum:
             self._update_terrain_curriculum(env_ids)
+
         # avoid updating command curriculum at each step since the maximum command is common to all envs
         if self.cfg.commands.curriculum and (self.common_step_counter % self.max_episode_length==0):
             self.update_command_curriculum(env_ids)
@@ -165,6 +171,7 @@ class LeggedRobot(BaseTask):
         self._reset_dofs(env_ids)
         self._reset_root_states(env_ids)
 
+        # resample commands
         self._resample_commands(env_ids)
 
         # reset buffers
@@ -210,14 +217,14 @@ class LeggedRobot(BaseTask):
     def compute_observations(self):
         """ Computes observations
         """
-        self.obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,
-                                    self.base_ang_vel  * self.obs_scales.ang_vel,
-                                    self.projected_gravity,
-                                    self.commands[:, :3] * self.commands_scale,
-                                    (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,
-                                    self.dof_vel * self.obs_scales.dof_vel,
-                                    self.actions
-                                    ),dim=-1)
+        self.obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,                        # (3,)
+                                    self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
+                                    self.projected_gravity,                                             # (3,)
+                                    self.commands[:, :3] * self.commands_scale,                         # (3,)  
+                                    (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
+                                    self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
+                                    self.actions                                                        # (12,) last actions
+                                    ),dim=-1)                                                           # (48,) total without height samples
         # add perceptive inputs if not blind
         if self.cfg.terrain.measure_heights:
             heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
@@ -322,9 +329,12 @@ class LeggedRobot(BaseTask):
         """ Callback called before computing terminations, rewards, and observations
             Default behaviour: Compute ang vel command based on target and heading, compute measured terrain heights and randomly push robots
         """
-        # 
         env_ids = (self.episode_length_buf % int(self.cfg.commands.resampling_time / self.dt)==0).nonzero(as_tuple=False).flatten()
+
+        # resample commands
         self._resample_commands(env_ids)
+
+        # apply heading command if there is one
         if self.cfg.commands.heading_command:
             forward = quat_apply(self.base_quat, self.forward_vec)
             heading = torch.atan2(forward[:, 1], forward[:, 0])
@@ -341,6 +351,11 @@ class LeggedRobot(BaseTask):
         Args:
             env_ids (List[int]): Environments ids for which new commands are needed
         """
+        # Override resampling in favor of user_command
+        if self.cfg.commands.user_command is not None and len(self.cfg.commands.user_command) > 0:
+            self.commands[env_ids, :] = torch.as_tensor(self.cfg.commands.user_command, device=self.device).unsqueeze(0)
+            return
+        
         self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_x"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         if self.cfg.commands.heading_command:

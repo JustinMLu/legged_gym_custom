@@ -22,11 +22,13 @@ def get_gravity_orientation(quaternion):
 
     return gravity_orientation
 
+# ========================================================
 
 def pd_control(target_q, q, kp, target_dq, dq, kd):
     """Calculates torques from position commands"""
     return (target_q - q) * kp + (target_dq - dq) * kd
 
+# ========================================================
 
 if __name__ == "__main__":
     # get config file name from command line
@@ -54,6 +56,7 @@ if __name__ == "__main__":
 
         default_angles = np.array(config["default_angles"], dtype=np.float32)
 
+        lin_vel_scale = config["lin_vel_scale"]
         ang_vel_scale = config["ang_vel_scale"]
         dof_pos_scale = config["dof_pos_scale"]
         dof_vel_scale = config["dof_vel_scale"]
@@ -79,14 +82,24 @@ if __name__ == "__main__":
 
     # load policy
     policy = torch.jit.load(policy_path)
+    mujoco.mj_resetDataKeyframe(m, d, 0)
 
+    # Debug
+    import pdb
     with mujoco.viewer.launch_passive(m, d) as viewer:
         # Close the viewer automatically after simulation_duration wall-seconds.
         start = time.time()
         while viewer.is_running() and time.time() - start < simulation_duration:
             step_start = time.time()
-            tau = pd_control(target_dof_pos, d.qpos[7:], kps, np.zeros_like(kds), d.qvel[6:], kds)
+            # qj_pos = d.sensordata[0:12] # d.qpos[7:]
+            # qj_vel = d.sensordata[12:24] # d.qvel[6:]
+            qj_pos = d.qpos[7:]
+            qj_vel = d.qvel[6:]
+
+            # pdb.set_trace()
+            tau = pd_control(target_dof_pos, qj_pos, kps, np.zeros_like(kds), qj_vel, kds)
             d.ctrl[:] = tau
+            
             # mj_step can be replaced with code that also evaluates
             # a policy and applies a control signal before stepping the physics.
             mujoco.mj_step(m, d)
@@ -96,10 +109,15 @@ if __name__ == "__main__":
                 # Apply control signal here.
 
                 # create observation
-                qj = d.qpos[7:]
-                dqj = d.qvel[6:]
+                qj = qj_pos
+                dqj = qj_vel
                 quat = d.qpos[3:7]
                 omega = d.qvel[3:6]
+                vel_world = d.qvel[:3]
+                rot_vec = np.zeros(9)
+                mujoco.mju_quat2Mat(rot_vec, quat)
+                rot_mat = rot_vec.reshape(3, 3)
+                vel_body = rot_mat.T @ vel_world
 
                 qj = (qj - default_angles) * dof_pos_scale
                 dqj = dqj * dof_vel_scale
@@ -112,18 +130,31 @@ if __name__ == "__main__":
                 sin_phase = np.sin(2 * np.pi * phase)
                 cos_phase = np.cos(2 * np.pi * phase)
 
-                obs[:3] = omega
-                obs[3:6] = gravity_orientation
-                obs[6:9] = cmd * cmd_scale
-                obs[9 : 9 + num_actions] = qj
-                obs[9 + num_actions : 9 + 2 * num_actions] = dqj
-                obs[9 + 2 * num_actions : 9 + 3 * num_actions] = action
-                obs[9 + 3 * num_actions : 9 + 3 * num_actions + 2] = np.array([sin_phase, cos_phase])
+                # obs[:3] = omega
+                # obs[3:6] = gravity_orientation
+                # obs[6:9] = cmd * cmd_scale
+                # obs[9 : 9 + num_actions] = qj
+                # obs[9 + num_actions : 9 + 2 * num_actions] = dqj
+                # obs[9 + 2 * num_actions : 9 + 3 * num_actions] = action
+                # obs[9 + 3 * num_actions : 9 + 3 * num_actions + 2] = np.array([sin_phase, cos_phase])
+
+                obs[:3] = vel_body
+                obs[3:6] = omega
+                obs[6:9] = gravity_orientation
+                obs[9:12] = cmd * cmd_scale
+                obs[12 : 12 + num_actions] = qj
+                obs[12 + num_actions : 12 + 2 * num_actions] = dqj
+                obs[12 + 2 * num_actions : 12 + 3 * num_actions] = action
+                np.set_printoptions(precision=4, suppress=True)                
+                # print(obs)
+                
                 obs_tensor = torch.from_numpy(obs).unsqueeze(0)
+                
                 # policy inference
                 action = policy(obs_tensor).detach().numpy().squeeze()
                 # transform action to target_dof_pos
                 target_dof_pos = action * action_scale + default_angles
+                # target_dof_pos = default_angles
 
             # Pick up changes to the physics state, apply perturbations, update options from GUI.
             viewer.sync()
