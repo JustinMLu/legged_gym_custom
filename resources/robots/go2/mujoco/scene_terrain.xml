@@ -43,10 +43,10 @@
         <geom pos="3.0 4.0 1.425" type="box" size="0.1 0.75 0.075" quat="1.0 0.0 0.0 0.0" />
 
         <!-- Heightfields -->
-        <geom type="hfield" hfield="perlin_hfield" pos="1.5 0.0 -0.1" quat="1.0 0.0 0.0 0.0" />
-        <geom type="hfield" hfield="perlin_hfield" pos="3.5 0.0 -0.1" quat="1.0 0.0 0.0 0.0" />
-        <geom type="hfield" hfield="perlin_hfield" pos="5.5 0.0 -0.1" quat="1.0 0.0 0.0 0.0" />
-        <geom type="hfield" hfield="perlin_hfield" pos="7.5 0.0 -0.1" quat="1.0 0.0 0.0 0.0" />
+        <geom type="hfield" hfield="perlin_hfield" pos="1.5 0.0 -0.11" quat="1.0 0.0 0.0 0.0" />
+        <geom type="hfield" hfield="perlin_hfield" pos="3.5 0.0 -0.11" quat="1.0 0.0 0.0 0.0" />
+        <geom type="hfield" hfield="perlin_hfield" pos="5.5 0.0 -0.11" quat="1.0 0.0 0.0 0.0" />
+        <geom type="hfield" hfield="perlin_hfield" pos="7.5 0.0 -0.11" quat="1.0 0.0 0.0 0.0" />
         <geom type="hfield" hfield="image_hfield" pos="-1.5 2.0 0.0" 
               quat="0.7074 0.0 0.0 -0.7068" />
     </worldbody>

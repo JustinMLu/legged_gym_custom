@@ -13,20 +13,20 @@ class Go2FlatCfg( LeggedRobotCfg ):
         mesh_type = 'plane'
         measure_heights = False # True for rough terrain only
         curriculum = False
-        selected = False
+        selected = True
 
         terrain_kwargs = {
             "type": "terrain_utils.wave_terrain",
             "num_waves": 1,
             "amplitude": 0.25
         }
-        # terrain_kwargs = {
-        #     "type": "terrain_utils.random_uniform_terrain",
-        #     "min_height": -0.03,
-        #     "max_height": 0.03,
-        #     "step": 0.01,
-        #     "downsampled_scale": 0.1,
-        # }
+        terrain_kwargs = {
+            "type": "terrain_utils.random_uniform_terrain",
+            "min_height": -0.03,
+            "max_height": 0.03,
+            "step": 0.01,
+            "downsampled_scale": 0.1,
+        }
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
@@ -80,7 +80,7 @@ class Go2FlatCfg( LeggedRobotCfg ):
             dof_pos_limits = -10.0
             torques = -0.0002
 
-            # # Custom
+            # # BAMBOT!!!
             # feet_air_time = 0.5
             # ang_vel_xy = -0.05
             # base_height = -0.0001
@@ -91,17 +91,15 @@ class Go2FlatCfg( LeggedRobotCfg ):
             # tracking_ang_vel = 0.6      # Rewards robot for matching commanded yaw angular velocity
 
 
-            # Custom
-            tracking_lin_vel = 1.1      # Rewards robot for matching commanded linear velocity in XY-plane
-            tracking_ang_vel = 0.6      # Rewards robot for matching commanded yaw angular velocity
+            forward_vel = 0.001
             feet_air_time = 0.5
-            forward_vel = 0.05
-            ###################
             ang_vel_xy = -0.05
-            stand_still = -0.009
             base_height = -0.0001
             orientation = -2.5
+            stand_still = -0.009
             dof_acc = -5.5e-7
+            tracking_lin_vel = 1.1      # Rewards robot for matching commanded linear velocity in XY-plane
+            tracking_ang_vel = 0.6      # Rewards robot for matching commanded yaw angular velocity
            
 
 class Go2FlatCfgPPO( LeggedRobotCfgPPO ):

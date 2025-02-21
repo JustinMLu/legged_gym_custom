@@ -1,5 +1,5 @@
 # Default config
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/bambi13.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/bambi13_shove.pt"
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene.xml"
 
 # Total simulation time
