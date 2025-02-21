@@ -7,8 +7,8 @@ class Go2FlatCfg( LeggedRobotCfg ):
         num_actions = 12
 
     class terrain( LeggedRobotCfg.terrain ):
-        static_friction = 0.8
-        dynamic_friction = 0.8
+        static_friction = 1.0
+        dynamic_friction = 1.0
 
         mesh_type = 'plane'
         measure_heights = False # True for rough terrain only
@@ -98,5 +98,5 @@ class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
         run_name = ''
         experiment_name = 'go2_flat'
         load_run = -1
-        max_iterations = 600
-        save_interval = 100
+        max_iterations = 10000
+        save_interval = 500

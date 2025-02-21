@@ -40,7 +40,9 @@ It includes all components needed for sim-to-real transfer: actuator network, fr
     -  To run headless (no rendering) add `--headless`.
     - **Important**: To improve performance, once the training starts press `v` to stop the rendering. You can then enable it later to check the progress.
     - The trained policy is saved in `issacgym_anymal/logs/<experiment_name>/<date_time>_<run_name>/model_<iteration>.pt`. Where `<experiment_name>` and `<run_name>` are defined in the train config.
-        - Example usage: ```python legged_gym/scripts/train.py --task=go2 --resume --load_run=Feb19_19-10-10_ --checkpoint=700 --headless```
+        - Example usage: 
+            - ```python legged_gym/scripts/train.py --task=go2 --resume --load_run=Feb19_19-10-10_ --checkpoint=700 --headless```
+            - ```python scripts/play.py --task=go2 --load_run=Feb19_sprinting_dog --checkpoint=700```
     
     -  The following command line arguments override the values set in the config files:
         - ```--task=TASK```: Task name.
