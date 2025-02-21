@@ -51,8 +51,8 @@ if __name__ == "__main__":
         simulation_dt = config["simulation_dt"]
         control_decimation = config["control_decimation"]
 
-        kps = np.array(config["kps"], dtype=np.float32)
-        kds = np.array(config["kds"], dtype=np.float32)
+        kp_gains = np.array(config["kp_gains"], dtype=np.float32)
+        kd_gains = np.array(config["kd_gains"], dtype=np.float32)
 
         default_angles = np.array(config["default_angles"], dtype=np.float32)
 
@@ -96,8 +96,8 @@ if __name__ == "__main__":
             qj_pos = d.qpos[7:]
             qj_vel = d.qvel[6:]
 
-            # pdb.set_trace()
-            tau = pd_control(target_dof_pos, qj_pos, kps, np.zeros_like(kds), qj_vel, kds)
+            # Torque PDF control
+            tau = pd_control(target_dof_pos, qj_pos, kp_gains, np.zeros_like(kd_gains), qj_vel, kd_gains)
             d.ctrl[:] = tau
             
             # mj_step can be replaced with code that also evaluates
@@ -130,6 +130,7 @@ if __name__ == "__main__":
                 sin_phase = np.sin(2 * np.pi * phase)
                 cos_phase = np.cos(2 * np.pi * phase)
 
+                # # Originally for g1
                 # obs[:3] = omega
                 # obs[3:6] = gravity_orientation
                 # obs[6:9] = cmd * cmd_scale
@@ -145,16 +146,14 @@ if __name__ == "__main__":
                 obs[12 : 12 + num_actions] = qj
                 obs[12 + num_actions : 12 + 2 * num_actions] = dqj
                 obs[12 + 2 * num_actions : 12 + 3 * num_actions] = action
-                np.set_printoptions(precision=4, suppress=True)                
+                              
                 # print(obs)
-                
                 obs_tensor = torch.from_numpy(obs).unsqueeze(0)
                 
                 # policy inference
                 action = policy(obs_tensor).detach().numpy().squeeze()
                 # transform action to target_dof_pos
                 target_dof_pos = action * action_scale + default_angles
-                # target_dof_pos = default_angles
 
             # Pick up changes to the physics state, apply perturbations, update options from GUI.
             viewer.sync()

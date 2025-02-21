@@ -9,8 +9,8 @@ simulation_dt: 0.002
 # Controller update frequency (meets the requirement of simulation_dt * controll_decimation=0.02; 50Hz)
 control_decimation: 10
 
-kps: [100, 100, 100, 150, 40, 40, 100, 100, 100, 150, 40, 40]
-kds: [2, 2, 2, 4, 2, 2, 2, 2, 2, 4, 2, 2]
+kp_gains: [100, 100, 100, 150, 40, 40, 100, 100, 100, 150, 40, 40]
+kd_gains: [2, 2, 2, 4, 2, 2, 2, 2, 2, 4, 2, 2]
 
 default_angles: [-0.1,  0.0,  0.0,  10.3, -0.2, 0.0, 
                   -0.1,  0.0,  0.0,  0.3, -0.2, 0.0]

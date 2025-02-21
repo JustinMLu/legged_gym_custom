@@ -10,7 +10,7 @@ class Go2FlatCfg( LeggedRobotCfg ):
         static_friction = 1.0
         dynamic_friction = 1.0
 
-        mesh_type = 'plane'
+        mesh_type = 'trimesh'
         measure_heights = False # True for rough terrain only
         curriculum = False
         selected = True
@@ -91,12 +91,11 @@ class Go2FlatCfg( LeggedRobotCfg ):
             # tracking_ang_vel = 0.6      # Rewards robot for matching commanded yaw angular velocity
 
 
-            forward_vel = 0.001
             feet_air_time = 0.5
             ang_vel_xy = -0.05
             base_height = -0.0001
             orientation = -2.5
-            stand_still = -0.009
+            stand_still = -0.02
             dof_acc = -5.5e-7
             tracking_lin_vel = 1.1      # Rewards robot for matching commanded linear velocity in XY-plane
             tracking_ang_vel = 0.6      # Rewards robot for matching commanded yaw angular velocity
