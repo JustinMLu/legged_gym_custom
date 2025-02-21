@@ -20,6 +20,13 @@ class Go2FlatCfg( LeggedRobotCfg ):
             "num_waves": 1,
             "amplitude": 0.25
         }
+        # terrain_kwargs = {
+        #     "type": "terrain_utils.random_uniform_terrain",
+        #     "min_height": -0.03,
+        #     "max_height": 0.03,
+        #     "step": 0.01,
+        #     "downsampled_scale": 0.1,
+        # }
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
@@ -53,7 +60,7 @@ class Go2FlatCfg( LeggedRobotCfg ):
 
     class commands( LeggedRobotCfg.commands ):
         pass
-        # user_command = [0.5, 0.0, 0.0, 0.0]
+        # user_command = [0.0, 0.0, 0.0, 0.0]
 
 
     class asset( LeggedRobotCfg.asset ):
@@ -74,7 +81,7 @@ class Go2FlatCfg( LeggedRobotCfg ):
             torques = -0.0002
 
             # Custom
-            feet_air_time = 0.55
+            feet_air_time = 0.5
             ang_vel_xy = -0.05
             base_height = -0.0001
             orientation = -2.5
@@ -98,5 +105,5 @@ class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
         run_name = ''
         experiment_name = 'go2_flat'
         load_run = -1
-        max_iterations = 10000
-        save_interval = 500
+        max_iterations = 600
+        save_interval = 100
