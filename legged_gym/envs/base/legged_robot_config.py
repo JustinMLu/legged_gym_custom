@@ -71,8 +71,12 @@ class LeggedRobotCfg(BaseConfig):
         num_commands = 4                # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         resampling_time = 10.           # time before command are changed[s]
         heading_command = True          # if true: compute ang vel command from heading error
-        user_command = []              # user defined command, if not empty, it will override the default commands
         
+                                        # if not empty: will override resampling logic
+        user_command = []               # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]             
+        
+        
+
         class ranges:
             lin_vel_x = [-1.0, 1.0]     # min max [m/s]
             lin_vel_y = [-1.0, 1.0]     # min max [m/s]
@@ -160,7 +164,7 @@ class LeggedRobotCfg(BaseConfig):
         soft_dof_vel_limit = 1.
         soft_torque_limit = 1.
         base_height_target = 1.
-        max_contact_force = 100. # forces above this value are penalized
+        max_contact_force = 100.        # forces above this value are penalized
 
     class normalization:
         class obs_scales:

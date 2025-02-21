@@ -37,7 +37,6 @@ class Go2Cfg( LeggedRobotCfg ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
         default_joint_angles = {    # = target angles [rad] when action = 0.0
             'FL_hip_joint': 0.1,    # [rad]
-
             'RL_hip_joint': 0.1,    # [rad]
             'FR_hip_joint': -0.1 ,  # [rad]
             'RR_hip_joint': -0.1,   # [rad]
@@ -61,11 +60,6 @@ class Go2Cfg( LeggedRobotCfg ):
         damping = {'joint': 0.5}    # [N*m*s/rad]
         action_scale = 0.25
         decimation = 4
-        class ranges:
-            lin_vel_x = [1.0, 1.0]     # min max [m/s]
-            lin_vel_y = [0.0, 0.0]     # min max [m/s]
-            ang_vel_yaw = [0.0, 0.0]   # min max [rad/s]
-            heading = [0.0, 0.0]
 
     class commands( LeggedRobotCfg.commands ):
         user_command = [1.0, 0.0, 0.0, 0.0] # x, y, yaw rate, heading
@@ -76,7 +70,7 @@ class Go2Cfg( LeggedRobotCfg ):
         name = "go2"
         foot_name = "foot"
         penalize_contacts_on = ["thigh", "calf", "imu"]
-        terminate_after_contacts_on = ["base"]
+        terminate_after_contacts_on = ["base", "hip"]
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
     class rewards ( LeggedRobotCfg.rewards ):

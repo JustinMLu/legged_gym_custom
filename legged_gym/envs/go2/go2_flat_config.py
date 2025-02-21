@@ -38,17 +38,12 @@ class Go2FlatCfg( LeggedRobotCfg ):
         damping = {'joint': 0.5}    # [N*m*s/rad]
         action_scale = 0.25
         decimation = 4
-        class ranges:
-            lin_vel_x = [1.0, 1.0]     # min max [m/s]
-            lin_vel_y = [0.0, 0.0]     # min max [m/s]
-            ang_vel_yaw = [0.0, 0.0]   # min max [rad/s]
-            heading = [0.0, 0.0]
+
 
     class commands( LeggedRobotCfg.commands ):
-        user_command = [0.0, 0.0, 0.0, 0.0] # x, y, yaw rate, heading
+        pass
+        # user_command = [0.0, 0.0, 0.0, 0.0]
 
-    class noise ( LeggedRobotCfg.noise ):
-        add_noise = True
 
     class asset( LeggedRobotCfg.asset ):
         file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/urdf/go2.urdf"
@@ -65,10 +60,12 @@ class Go2FlatCfg( LeggedRobotCfg ):
         
         class scales( LeggedRobotCfg.rewards.scales ):
             # From Unitree
-            torques = -0.0002
+            torques = -0.002
             dof_pos_limits = -10.0
             orientation = -5.0
             feet_air_time = 0.5
+            # action_rate = -0.1
+
            
 
 class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
@@ -84,5 +81,5 @@ class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
         run_name = ''
         experiment_name = 'go2_flat'
         load_run = -1
-        max_iterations = 500
-        save_interval = 50
+        max_iterations = 10000
+        save_interval = 100
