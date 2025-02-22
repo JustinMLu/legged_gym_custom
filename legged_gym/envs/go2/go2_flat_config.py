@@ -15,15 +15,15 @@ class Go2FlatCfg( LeggedRobotCfg ):
         curriculum = False
         selected = True
 
-        terrain_kwargs = {
-            "type": "terrain_utils.wave_terrain",
-            "num_waves": 1,
-            "amplitude": 0.25
-        }
+        # terrain_kwargs = {
+        #     "type": "terrain_utils.wave_terrain",
+        #     "num_waves": 1,
+        #     "amplitude": 0.25
+        # }
         terrain_kwargs = {
             "type": "terrain_utils.random_uniform_terrain",
-            "min_height": -0.03,
-            "max_height": 0.03,
+            "min_height": -0.025,
+            "max_height": 0.025,
             "step": 0.01,
             "downsampled_scale": 0.1,
         }
@@ -81,25 +81,14 @@ class Go2FlatCfg( LeggedRobotCfg ):
             torques = -0.0002
 
             # # BAMBOT!!!
-            # feet_air_time = 0.5
-            # ang_vel_xy = -0.05
-            # base_height = -0.0001
-            # orientation = -2.5
-            # stand_still = -0.009
-            # dof_acc = -5.5e-7
-            # tracking_lin_vel = 1.1      # Rewards robot for matching commanded linear velocity in XY-plane
-            # tracking_ang_vel = 0.6      # Rewards robot for matching commanded yaw angular velocity
-
-
             feet_air_time = 0.5
             ang_vel_xy = -0.05
             base_height = -0.0001
             orientation = -2.5
-            stand_still = -0.02
+            stand_still = -0.009
             dof_acc = -5.5e-7
             tracking_lin_vel = 1.1      # Rewards robot for matching commanded linear velocity in XY-plane
             tracking_ang_vel = 0.6      # Rewards robot for matching commanded yaw angular velocity
-           
 
 class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
@@ -114,5 +103,5 @@ class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
         run_name = ''
         experiment_name = 'go2_flat'
         load_run = -1
-        max_iterations = 600
+        max_iterations = 1500
         save_interval = 100
