@@ -10,23 +10,23 @@ class Go2FlatCfg( LeggedRobotCfg ):
         static_friction = 1.0
         dynamic_friction = 1.0
 
-        mesh_type = 'trimesh'
+        mesh_type = 'plane'
         measure_heights = False # True for rough terrain only
         curriculum = False
-        selected = True
+        selected = False
 
-        # terrain_kwargs = {
-        #     "type": "terrain_utils.wave_terrain",
-        #     "num_waves": 1,
-        #     "amplitude": 0.25
-        # }
         terrain_kwargs = {
-            "type": "terrain_utils.random_uniform_terrain",
-            "min_height": -0.025,
-            "max_height": 0.025,
-            "step": 0.01,
-            "downsampled_scale": 0.1,
+            "type": "terrain_utils.wave_terrain",
+            "num_waves": 1,
+            "amplitude": 0.25
         }
+        # terrain_kwargs = {
+        #     "type": "terrain_utils.random_uniform_terrain",
+        #     "min_height": -0.03,
+        #     "max_height": 0.03,
+        #     "step": 0.01,
+        #     "downsampled_scale": 0.1,
+        # }
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
@@ -71,16 +71,6 @@ class Go2FlatCfg( LeggedRobotCfg ):
         terminate_after_contacts_on = ["base"]
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
-    class domain_rand:
-        randomize_friction = True
-        friction_range = [0.5, 1.25]
-        randomize_base_mass = False
-        added_mass_range = [-1., 1.]
-        push_robots = True
-        push_interval_s = 20
-        max_push_vel_xy = 2.5
-
-
     class rewards ( LeggedRobotCfg.rewards ):
         # From Unitree
         soft_dof_pos_limit = 0.9 # +/- 90% of 50% of limit range
@@ -90,7 +80,7 @@ class Go2FlatCfg( LeggedRobotCfg ):
             dof_pos_limits = -10.0
             torques = -0.0002
 
-            # # BAMBOT!!!
+            # Custom
             feet_air_time = 0.5
             ang_vel_xy = -0.05
             base_height = -0.0001
@@ -100,10 +90,12 @@ class Go2FlatCfg( LeggedRobotCfg ):
             tracking_lin_vel = 1.1      # Rewards robot for matching commanded linear velocity in XY-plane
             tracking_ang_vel = 0.6      # Rewards robot for matching commanded yaw angular velocity
 
+           
+
 class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
-        actor_hidden_dims = [512, 256, 128]
-        critic_hidden_dims = [512, 256, 128]
+        actor_hidden_dims = [128, 64, 32]
+        critic_hidden_dims = [128, 64, 32]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
     class algorithm( LeggedRobotCfgPPO.algorithm ):
@@ -113,5 +105,5 @@ class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
         run_name = ''
         experiment_name = 'go2_flat'
         load_run = -1
-        max_iterations = 150000
-        save_interval = 1000
+        max_iterations = 600
+        save_interval = 100

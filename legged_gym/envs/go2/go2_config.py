@@ -1,36 +1,31 @@
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
-class Go2Cfg( LeggedRobotCfg ):
+class Go2FlatCfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
-        # num_observations = 48 # 48 when mesh_type = 'plane', 235 otherwise...
+        num_observations = 48 # 48 when mesh_type = 'plane', 235 otherwise...
         num_actions = 12
 
     class terrain( LeggedRobotCfg.terrain ):
+        static_friction = 1.0
+        dynamic_friction = 1.0
+
         mesh_type = 'trimesh'
-        measure_heights = True # True for rough terrain only
+        measure_heights = False # True for rough terrain only
         curriculum = False
         selected = True
-        # terrain_kwargs = {
-        #     "type": "terrain_utils.random_uniform_terrain",
-        #     "min_height": -0.1,
-        #     "max_height": 0.2,
-        #     "step": 0.2,
-        #     "downsampled_scale": 0.5,
-        # }
 
         # terrain_kwargs = {
-        #     "type": "terrain_utils.random_uniform_terrain",
-        #     "min_height": -0.03,
-        #     "max_height": 0.03,
-        #     "step": 0.01,
-        #     "downsampled_scale": 0.1,
+        #     "type": "terrain_utils.wave_terrain",
+        #     "num_waves": 1,
+        #     "amplitude": 0.25
         # }
-
         terrain_kwargs = {
-            "type": "terrain_utils.wave_terrain",
-            "num_waves": 1,
-            "amplitude": 0.75
+            "type": "terrain_utils.random_uniform_terrain",
+            "min_height": -0.025,
+            "max_height": 0.025,
+            "step": 0.01,
+            "downsampled_scale": 0.1,
         }
 
     class init_state( LeggedRobotCfg.init_state ):
@@ -38,7 +33,7 @@ class Go2Cfg( LeggedRobotCfg ):
         default_joint_angles = {    # = target angles [rad] when action = 0.0
             'FL_hip_joint': 0.1,    # [rad]
             'RL_hip_joint': 0.1,    # [rad]
-            'FR_hip_joint': -0.1 ,  # [rad]
+            'FR_hip_joint': -0.1,   # [rad]
             'RR_hip_joint': -0.1,   # [rad]
 
             'FL_thigh_joint': 0.8,  # [rad]
@@ -53,6 +48,7 @@ class Go2Cfg( LeggedRobotCfg ):
         }
 
 
+        
     class control( LeggedRobotCfg.control ):
         # PD Drive prameters:
         control_type = 'P'          # Position control 'P'
@@ -61,17 +57,30 @@ class Go2Cfg( LeggedRobotCfg ):
         action_scale = 0.25
         decimation = 4
 
-    class commands( LeggedRobotCfg.commands ):
-        user_command = [1.0, 0.0, 0.0, 0.0] # x, y, yaw rate, heading
 
+    class commands( LeggedRobotCfg.commands ):
+        pass
+        # user_command = [0.0, 0.0, 0.0, 0.0]
 
     class asset( LeggedRobotCfg.asset ):
         file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/urdf/go2.urdf"
         name = "go2"
         foot_name = "foot"
-        penalize_contacts_on = ["thigh", "calf", "imu"]
-        terminate_after_contacts_on = ["base", "hip"]
+        penalize_contacts_on = ["hip", "thigh", "calf", "imu"]
+        terminate_after_contacts_on = ["base"]
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
+
+    class domain_rand:
+        randomize_friction = True
+        friction_range = [0.75, 1.25]
+
+        randomize_base_mass = True
+        added_mass_range = [-1.2, 1.2]
+        
+        push_robots = True
+        push_interval_s = 15
+        max_push_vel_xy = 2.0
+
 
     class rewards ( LeggedRobotCfg.rewards ):
         # From Unitree
@@ -79,24 +88,20 @@ class Go2Cfg( LeggedRobotCfg ):
         base_height_target = 0.25
         
         class scales( LeggedRobotCfg.rewards.scales ):
-            # From Unitree
-            torques = -0.0002
             dof_pos_limits = -10.0
-            orientation = -5.0
-            
-            # # Sprinting config
-            # tracking_lin_vel = 4.0  # Reward for tracking commanded velocity
-            # tracking_ang_vel = 2.5  # Reward for tracking commanded angular velocity
-            # lin_vel_z = -2.0        # Penalize vertical movement
-            # ang_vel_xy = -0.2       # Penalize angular velocity in xy plane
-            # # base_height = -0.5    # Penalize deviation from target height (terrain-aware)
-            # orientation = -2.0      # Penalize non-flat orientation
-            # collision = -5.0        # Penalize collisions on target parts
-            # feet_air_time = 1.0     # Reward for taking steps
-            # forward_vel = 7.5       # Strong reward for moving forward (7.5)      
+            torques = -0.0002
 
+            # Custom
+            feet_air_time = 0.5
+            ang_vel_xy = -0.05
+            base_height = -0.0001
+            orientation = -2.5
+            stand_still = -0.009
+            dof_acc = -5.5e-7
+            tracking_lin_vel = 1.1      # Rewards robot for matching commanded linear velocity in XY-plane
+            tracking_ang_vel = 0.6      # Rewards robot for matching commanded yaw angular velocity
 
-class Go2CfgPPO( LeggedRobotCfgPPO ):
+class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
         actor_hidden_dims = [512, 256, 128]
         critic_hidden_dims = [512, 256, 128]
@@ -107,7 +112,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
 
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
-        experiment_name = 'go2'
+        experiment_name = 'go2_flat'
         load_run = -1
-        max_iterations = 5000
-        save_interval = 50
+        max_iterations = 150000
+        save_interval = 1000
