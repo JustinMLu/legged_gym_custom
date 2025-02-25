@@ -1,6 +1,6 @@
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
-class Go2FlatCfg( LeggedRobotCfg ):
+class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
         num_observations = 48 # 48 when mesh_type = 'plane', 235 otherwise...
@@ -12,21 +12,21 @@ class Go2FlatCfg( LeggedRobotCfg ):
 
         mesh_type = 'trimesh'
         measure_heights = False # True for rough terrain only
-        curriculum = False
-        selected = True
+        curriculum = True
+        selected = False
 
         # terrain_kwargs = {
         #     "type": "terrain_utils.wave_terrain",
-        #     "num_waves": 1,
-        #     "amplitude": 0.25
+        #     "num_waves": 2,
+        #     "amplitude": 0.5
         # }
-        terrain_kwargs = {
-            "type": "terrain_utils.random_uniform_terrain",
-            "min_height": -0.025,
-            "max_height": 0.025,
-            "step": 0.01,
-            "downsampled_scale": 0.1,
-        }
+        # terrain_kwargs = {
+        #     "type": "terrain_utils.random_uniform_terrain",
+        #     "min_height": -0.025,
+        #     "max_height": 0.025,
+        #     "step": 0.01,
+        #     "downsampled_scale": 0.1,
+        # }
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
@@ -70,6 +70,8 @@ class Go2FlatCfg( LeggedRobotCfg ):
         terminate_after_contacts_on = ["base"]
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
+
+    # THIS SHOULD HELP MUJOCO TERRAIN NAVIGATION
     class domain_rand:
         randomize_friction = True
         friction_range = [0.75, 1.25]
@@ -98,10 +100,10 @@ class Go2FlatCfg( LeggedRobotCfg ):
             orientation = -2.5
             stand_still = -0.009
             dof_acc = -5.5e-7
-            tracking_lin_vel = 1.1      # Rewards robot for matching commanded linear velocity in XY-plane
-            tracking_ang_vel = 0.6      # Rewards robot for matching commanded yaw angular velocity
+            tracking_lin_vel = 1.1      # Rewards matching commanded linear velocity in XY-plane
+            tracking_ang_vel = 0.6      # Rewards matching commanded yaw angular velocity
 
-class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
+class Go2CfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
         actor_hidden_dims = [512, 256, 128]
         critic_hidden_dims = [512, 256, 128]
