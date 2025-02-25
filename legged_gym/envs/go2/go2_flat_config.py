@@ -71,6 +71,16 @@ class Go2FlatCfg( LeggedRobotCfg ):
         terminate_after_contacts_on = ["base"]
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
+    class domain_rand:
+        randomize_friction = True
+        friction_range = [0.5, 1.25]
+        randomize_base_mass = False
+        added_mass_range = [-1., 1.]
+        push_robots = True
+        push_interval_s = 20
+        max_push_vel_xy = 2.5
+
+
     class rewards ( LeggedRobotCfg.rewards ):
         # From Unitree
         soft_dof_pos_limit = 0.9 # +/- 90% of 50% of limit range
@@ -92,8 +102,8 @@ class Go2FlatCfg( LeggedRobotCfg ):
 
 class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
-        actor_hidden_dims = [128, 64, 32]
-        critic_hidden_dims = [128, 64, 32]
+        actor_hidden_dims = [512, 256, 128]
+        critic_hidden_dims = [512, 256, 128]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
     class algorithm( LeggedRobotCfgPPO.algorithm ):
@@ -103,5 +113,5 @@ class Go2FlatCfgPPO( LeggedRobotCfgPPO ):
         run_name = ''
         experiment_name = 'go2_flat'
         load_run = -1
-        max_iterations = 1500
-        save_interval = 100
+        max_iterations = 150000
+        save_interval = 1000
