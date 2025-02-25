@@ -190,6 +190,8 @@ class LeggedRobot(BaseTask):
     def compute_observations(self):
         """ Computes observations
         """
+
+        # construct observations
         self.obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,                        # (3,)
                                     self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
                                     self.projected_gravity,                                             # (3,)
@@ -198,10 +200,13 @@ class LeggedRobot(BaseTask):
                                     self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
                                     self.actions                                                        # (12,) last actions
                                     ),dim=-1)                                                           # total: (48,)
-        # add perceptive inputs if not blind
+        
+        # add perceptive inputs (height map) if not blind
         if self.cfg.terrain.measure_heights:
+            # ((z_base - 0.5) - z_terrain), clipped to [-1, 1]
             heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
             self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
+        
         # add noise if needed
         if self.add_noise:
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
@@ -313,8 +318,11 @@ class LeggedRobot(BaseTask):
             heading = torch.atan2(forward[:, 1], forward[:, 0])
             self.commands[:, 2] = torch.clip(0.5*wrap_to_pi(self.commands[:, 3] - heading), -1., 1.)
 
+        # update measured heights if needed
         if self.cfg.terrain.measure_heights:
             self.measured_heights = self._get_heights()
+
+        # bully robots
         if self.cfg.domain_rand.push_robots and  (self.common_step_counter % self.cfg.domain_rand.push_interval == 0):
             self._push_robots()
 

@@ -1,5 +1,5 @@
 # Default config
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/bambi19_rough.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/bambi12.pt"
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_terrain.xml"
 
 # Total simulation time (seconds)
@@ -41,4 +41,4 @@ num_actions: 12    # 12 for go2
 num_obs: 48        # 48 without heightfield ('plane'), 235 with heightfield ('trimesh')
 
 # Robot command ([forward, lateral, yaw])
-command: [0.2, 0.0, 0.0]
+command: [0.75, 0.0, 0.0]

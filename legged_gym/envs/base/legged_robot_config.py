@@ -42,8 +42,8 @@ class LeggedRobotCfg(BaseConfig):
 
     class terrain:
         mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
-        horizontal_scale = 0.1 # [m]
-        vertical_scale = 0.005 # [m]
+        horizontal_scale = 0.1 # [m] --> meters per grid cell
+        vertical_scale = 0.005 # [m] --> meters per grid value
         border_size = 25 # [m]
         curriculum = True
         static_friction = 1.0
