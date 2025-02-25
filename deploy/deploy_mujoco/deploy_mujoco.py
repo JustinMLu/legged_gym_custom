@@ -10,7 +10,11 @@ import pdb
 
 # ========================================================
 def get_gravity_orientation(quaternion):
-    """BRO WHAT FORMULA IS THIS?"""
+    """ Returns gravity orientation in the frame specified by the quaternion.
+        So if the quaternion is the orientation of the base with respect to the 
+        world frame, then gravity_orientation will be the MuJoCo gravity vector 
+        ([0, 0, -1]) projected onto the base frame.
+    """
     qw = quaternion[0]
     qx = quaternion[1]
     qy = quaternion[2]
