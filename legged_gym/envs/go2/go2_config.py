@@ -12,21 +12,21 @@ class Go2Cfg( LeggedRobotCfg ):
 
         mesh_type = 'trimesh'
         measure_heights = False # True for rough terrain only
-        curriculum = True
-        selected = False
+        curriculum = False
+        selected = True
 
         # terrain_kwargs = {
         #     "type": "terrain_utils.wave_terrain",
         #     "num_waves": 2,
         #     "amplitude": 0.5
         # }
-        # terrain_kwargs = {
-        #     "type": "terrain_utils.random_uniform_terrain",
-        #     "min_height": -0.025,
-        #     "max_height": 0.025,
-        #     "step": 0.01,
-        #     "downsampled_scale": 0.1,
-        # }
+        terrain_kwargs = {
+            "type": "terrain_utils.random_uniform_terrain",
+            "min_height": -0.025,
+            "max_height": 0.025,
+            "step": 0.01,
+            "downsampled_scale": 0.1,
+        }
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
@@ -76,12 +76,12 @@ class Go2Cfg( LeggedRobotCfg ):
         randomize_friction = True
         friction_range = [0.75, 1.25]
 
-        randomize_base_mass = True
+        randomize_base_mass = False
         added_mass_range = [-1.2, 1.2]
         
         push_robots = True
-        push_interval_s = 15
-        max_push_vel_xy = 2.0
+        push_interval_s = 30
+        max_push_vel_xy = 4.0
 
 
     class rewards ( LeggedRobotCfg.rewards ):
@@ -113,8 +113,8 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'goobot'
+        run_name = 'bambot'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 150000
-        save_interval = 1000
+        max_iterations = 1000
+        save_interval = 100

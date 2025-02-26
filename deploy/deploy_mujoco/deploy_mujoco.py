@@ -151,16 +151,13 @@ if __name__ == "__main__":
                 base_lin_vel = base_rot_mat.T @ lin_vel     # linear vel. in the body frame
                 # ===================================
 
-                # Match observation format of Isaac Gym
-                lin_vel = lin_vel * lin_vel_scale
-                ang_vel = ang_vel * ang_vel_scale
+                # Get projected gravity
                 projected_gravity = get_gravity_orientation(base_rot_quat)
                 
                 qj = (qj - default_angles) * dof_pos_scale
                 dqj = dqj * dof_vel_scale
-
-                obs[:3] = base_lin_vel
-                obs[3:6] = ang_vel
+                obs[:3] = base_lin_vel * lin_vel_scale
+                obs[3:6] = ang_vel * ang_vel_scale
                 obs[6:9] = projected_gravity
                 obs[9:12] = cmd * cmd_scale                 # overflow unless multiplied here
                 obs[12 : 12+num_actions] = qj

@@ -11,22 +11,35 @@
 
     <asset>
         <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072" />
+        
         <texture type="2d" name="groundplane" builtin="checker" mark="edge" 
                  rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" 
                  width="300" height="300" />
+
         <material name="groundplane" texture="groundplane" texuniform="true" 
                   texrepeat="5 5" reflectance="0.2" />
         
-        <!-- <hfield name="perlin_hfield" size="1.0 0.75 0.2 0.2" file="../height_field.png" /> -->
-        
-        <hfield name="perlin_hfield" size="10.0 7.5 1.25 1.25" file="../height_field.png" />
 
-        <hfield name="image_hfield" size="1.0 1.0 0.02 0.1" file="../unitree_hfield.png" />
+        <!--    ======= HEIGHTFIELD INFO =======
+                size="X Y Z_top Z_bottom":
+                X and Y are half-extents in horizontal plane,
+                Z_top is the max height above 0 (after normalization),
+                Z_bottom is the thickness extending below 0.    -->
+
+        <hfield name="perlin_hfield" size="10.0 10.0 1.5 0.75" file="../height_field.png" />
+        <hfield name="image_hfield" size="10.0 10.0 0.2 1.0" file="../unitree_hfield.png" />
+        
+        <!-- <hfield name="perlin_hfield" size="1.0 0.75 0.2 0.2" file="../height_field.png" /> -->
+        <!-- <hfield name="image_hfield" size="1.0 1.0 0.02 0.1" file="../unitree_hfield.png" /> -->
+        
     </asset>
 
     <worldbody>
         <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
-        <geom name="floor" type="hfield" hfield="perlin_hfield" pos="0.0 0.0 -1.0" />
+        
+        <geom name="floor" type="hfield" hfield="perlin_hfield" pos="0.0 0.0 -1.0"/>
+
+        <!-- <geom name="floor" type="hfield" hfield="image_hfield" pos="0.0 0.0 -1.0" friction = "1.0 0.005 0.0001"/> -->
 
     </worldbody>
 </mujoco>

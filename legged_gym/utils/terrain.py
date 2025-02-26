@@ -88,16 +88,23 @@ class Terrain:
             self.add_terrain_to_map(terrain, i, j)
         
     def curiculum(self):
+        """ Generate a curriculum of terrains with varying difficulty and choice.
+            Proportions can be set in the config file to control the distribution of terrains.
+
+            - Rows represent difficulty         (ex. for 5 rows: 0.0, 0.2, 0.4, 0.6, 0.8)
+            - Columns represent terrain choice  (TODO: Explain this better)
+        """
         for j in range(self.cfg.num_cols):
             for i in range(self.cfg.num_rows):
-                difficulty = i / self.cfg.num_rows
+                difficulty = i / self.cfg.num_rows      # Rows represent difficulty
                 choice = j / self.cfg.num_cols + 0.001
 
                 terrain = self.make_terrain(choice, difficulty)
                 self.add_terrain_to_map(terrain, i, j)
 
-    # Incredibly stupid way of selecting singular terrain from config
     def selected_terrain(self):
+        """ Incredibly stupid way of selecting singular terrain from config.
+        """
         terrain_type = self.cfg.terrain_kwargs.pop('type')
         for k in range(self.cfg.num_sub_terrains):
             # Env coordinates in the world
@@ -114,6 +121,9 @@ class Terrain:
     
     # NOT used when selected_terrain is used (selected = True in config)
     def make_terrain(self, choice, difficulty):
+        """ Generate a terrain based on the choice and difficulty.
+            TODO: Explain this better.
+        """
         terrain = terrain_utils.SubTerrain(   "terrain",
                                 width=self.width_per_env_pixels,
                                 length=self.length_per_env_pixels,
@@ -126,26 +136,33 @@ class Terrain:
         stone_distance = 0.05 if difficulty==0 else 0.1
         gap_size = 1. * difficulty
         pit_depth = 1. * difficulty
+        
         if choice < self.proportions[0]:
             if choice < self.proportions[0]/ 2:
                 slope *= -1
             terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
+        
         elif choice < self.proportions[1]:
             terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005, downsampled_scale=0.2)
+        
         elif choice < self.proportions[3]:
             if choice<self.proportions[2]:
                 step_height *= -1
             terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=3.)
+        
         elif choice < self.proportions[4]:
             num_rectangles = 20
             rectangle_min_size = 1.
             rectangle_max_size = 2.
             terrain_utils.discrete_obstacles_terrain(terrain, discrete_obstacles_height, rectangle_min_size, rectangle_max_size, num_rectangles, platform_size=3.)
+        
         elif choice < self.proportions[5]:
             terrain_utils.stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=stone_distance, max_height=0., platform_size=4.)
+        
         elif choice < self.proportions[6]:
             gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
+        
         else:
             pit_terrain(terrain, depth=pit_depth, platform_size=4.)
         
