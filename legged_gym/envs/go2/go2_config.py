@@ -105,16 +105,16 @@ class Go2Cfg( LeggedRobotCfg ):
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
-        actor_hidden_dims = [512, 256, 128]
-        critic_hidden_dims = [512, 256, 128]
+        actor_hidden_dims = [128, 64, 32]
+        critic_hidden_dims = [128, 64, 32]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = ''
-        experiment_name = 'go2_flat'
+        run_name = 'goobot'
+        experiment_name = 'go2'
         load_run = -1
         max_iterations = 150000
         save_interval = 1000
