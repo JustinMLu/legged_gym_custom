@@ -12,21 +12,41 @@ class Go2Cfg( LeggedRobotCfg ):
 
         mesh_type = 'trimesh'
         measure_heights = False # True for rough terrain only
-        curriculum = False
-        selected = True
+        curriculum = True
+        selected = False
 
         # terrain_kwargs = {
         #     "type": "terrain_utils.wave_terrain",
-        #     "num_waves": 2,
+        #     "num_waves": 1,
         #     "amplitude": 0.5
         # }
-        terrain_kwargs = {
-            "type": "terrain_utils.random_uniform_terrain",
-            "min_height": -0.025,
-            "max_height": 0.025,
-            "step": 0.01,
-            "downsampled_scale": 0.1,
-        }
+        # terrain_kwargs = {
+        #     "type": "terrain_utils.random_uniform_terrain",
+        #     "min_height": -0.08*2,
+        #     "max_height": 0.08*2,
+        #     "step": 0.005*2,
+        #     "downsampled_scale": 0.2*2,
+        # }
+
+        # types: [smooth slope, rough slope, stairs up, stairs down, discrete, random uniform, wave]
+        terrain_proportions = [0.0, 0.25, 0.20, 0.20, 0.05, 0.10, 0.20]
+
+    class domain_rand:      
+        randomize_friction = True
+        friction_range = [0.3, 1.0] # try not going over 1.0
+
+        randomize_base_mass = True
+        added_mass_range = [-2.0, 2.0]
+        
+        push_robots = True
+        push_interval_s = 30
+        max_push_vel_xy = 2.0
+    
+
+    class commands( LeggedRobotCfg.commands ):
+        pass
+        # user_command = [0.0, 0.0, 0.0, 0.0]
+
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
@@ -48,7 +68,6 @@ class Go2Cfg( LeggedRobotCfg ):
         }
 
 
-        
     class control( LeggedRobotCfg.control ):
         # PD Drive prameters:
         control_type = 'P'          # Position control 'P'
@@ -58,10 +77,6 @@ class Go2Cfg( LeggedRobotCfg ):
         decimation = 4
 
 
-    class commands( LeggedRobotCfg.commands ):
-        pass
-        # user_command = [0.0, 0.0, 0.0, 0.0]
-
     class asset( LeggedRobotCfg.asset ):
         file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/urdf/go2.urdf"
         name = "go2"
@@ -69,19 +84,6 @@ class Go2Cfg( LeggedRobotCfg ):
         penalize_contacts_on = ["hip", "thigh", "calf", "imu"]
         terminate_after_contacts_on = ["base"]
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
-
-
-    # THIS SHOULD HELP MUJOCO TERRAIN NAVIGATION
-    class domain_rand:
-        randomize_friction = True
-        friction_range = [0.75, 1.25]
-
-        randomize_base_mass = False
-        added_mass_range = [-1.2, 1.2]
-        
-        push_robots = True
-        push_interval_s = 30
-        max_push_vel_xy = 4.0
 
 
     class rewards ( LeggedRobotCfg.rewards ):
@@ -103,14 +105,15 @@ class Go2Cfg( LeggedRobotCfg ):
             tracking_lin_vel = 1.1      # Rewards matching commanded linear velocity in XY-plane
             tracking_ang_vel = 0.6      # Rewards matching commanded yaw angular velocity
 
+
 class Go2CfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
-        actor_hidden_dims = [128, 64, 32]
-        critic_hidden_dims = [128, 64, 32]
+        actor_hidden_dims = [128*2, 64*2, 32*2]
+        critic_hidden_dims = [128*2, 64*2, 32*2]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
     class algorithm( LeggedRobotCfgPPO.algorithm ):
-        entropy_coef = 0.01
+        entropy_coef = 0.001
 
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = 'bambot'

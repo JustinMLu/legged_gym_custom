@@ -37,41 +37,20 @@ class Controller:
         self.cmd = np.array([0.0, 0, 0])
         self.counter = 0
 
-        if config.msg_type == "hg":
-            # g1 and h1_2 use the hg msg type
-            self.low_cmd = unitree_hg_msg_dds__LowCmd_()
-            self.low_state = unitree_hg_msg_dds__LowState_()
-            self.mode_pr_ = MotorMode.PR
-            self.mode_machine_ = 0
 
-            self.lowcmd_publisher_ = ChannelPublisher(config.lowcmd_topic, LowCmdHG)
-            self.lowcmd_publisher_.Init()
+        self.low_cmd = unitree_go_msg_dds__LowCmd_()
+        self.low_state = unitree_go_msg_dds__LowState_()
 
-            self.lowstate_subscriber = ChannelSubscriber(config.lowstate_topic, LowStateHG)
-            self.lowstate_subscriber.Init(self.LowStateHgHandler, 10)
+        self.lowcmd_publisher_ = ChannelPublisher(config.lowcmd_topic, LowCmdGo)
+        self.lowcmd_publisher_.Init()
 
-        elif config.msg_type == "go":
-            # h1 uses the go msg type
-            self.low_cmd = unitree_go_msg_dds__LowCmd_()
-            self.low_state = unitree_go_msg_dds__LowState_()
-
-            self.lowcmd_publisher_ = ChannelPublisher(config.lowcmd_topic, LowCmdGo)
-            self.lowcmd_publisher_.Init()
-
-            self.lowstate_subscriber = ChannelSubscriber(config.lowstate_topic, LowStateGo)
-            self.lowstate_subscriber.Init(self.LowStateGoHandler, 10)
-
-        else:
-            raise ValueError("Invalid msg_type")
+        self.lowstate_subscriber = ChannelSubscriber(config.lowstate_topic, LowStateGo)
+        self.lowstate_subscriber.Init(self.LowStateGoHandler, 10)
 
         # wait for the subscriber to receive data
         self.wait_for_low_state()
-
-        # Initialize the command msg
-        if config.msg_type == "hg":
-            init_cmd_hg(self.low_cmd, self.mode_machine_, self.mode_pr_)
-        elif config.msg_type == "go":
-            init_cmd_go(self.low_cmd, weak_motor=self.config.weak_motor)
+        
+        init_cmd_go(self.low_cmd, weak_motor=self.config.weak_motor)
 
     def LowStateHgHandler(self, msg: LowStateHG):
         self.low_state = msg
@@ -102,13 +81,14 @@ class Controller:
     def move_to_default_pos(self):
         print("Moving to default pos.")
         # move time 2s
-        total_time = 2
+        total_time = 4
         num_step = int(total_time / self.config.control_dt)
         
-        dof_idx = self.config.leg_joint2motor_idx + self.config.arm_waist_joint2motor_idx
-        kps = self.config.kps + self.config.arm_waist_kps
-        kds = self.config.kds + self.config.arm_waist_kds
-        default_pos = np.concatenate((self.config.default_angles, self.config.arm_waist_target), axis=0)
+        dof_idx = self.config.leg_joint2motor_idx
+        kps = self.config.kps
+        kds = self.config.kds
+        default_pos = self.config.default_angles # already np array
+        # default_pos = np.concatenate((self.config.default_angles, self.config.arm_waist_target), axis=0)
         dof_size = len(dof_idx)
         
         # record the current pos
@@ -141,13 +121,14 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].kp = self.config.kps[i]
                 self.low_cmd.motor_cmd[motor_idx].kd = self.config.kds[i]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
-            for i in range(len(self.config.arm_waist_joint2motor_idx)):
-                motor_idx = self.config.arm_waist_joint2motor_idx[i]
-                self.low_cmd.motor_cmd[motor_idx].q = self.config.arm_waist_target[i]
-                self.low_cmd.motor_cmd[motor_idx].qd = 0
-                self.low_cmd.motor_cmd[motor_idx].kp = self.config.arm_waist_kps[i]
-                self.low_cmd.motor_cmd[motor_idx].kd = self.config.arm_waist_kds[i]
-                self.low_cmd.motor_cmd[motor_idx].tau = 0
+
+            # for i in range(len(self.config.arm_waist_joint2motor_idx)):
+            #     motor_idx = self.config.arm_waist_joint2motor_idx[i]
+            #     self.low_cmd.motor_cmd[motor_idx].q = self.config.arm_waist_target[i]
+            #     self.low_cmd.motor_cmd[motor_idx].qd = 0
+            #     self.low_cmd.motor_cmd[motor_idx].kp = self.config.arm_waist_kps[i]
+            #     self.low_cmd.motor_cmd[motor_idx].kd = self.config.arm_waist_kds[i]
+            #     self.low_cmd.motor_cmd[motor_idx].tau = 0
             self.send_cmd(self.low_cmd)
             time.sleep(self.config.control_dt)
 
@@ -162,12 +143,12 @@ class Controller:
         quat = self.low_state.imu_state.quaternion
         ang_vel = np.array([self.low_state.imu_state.gyroscope], dtype=np.float32)
 
-        if self.config.imu_type == "torso":
-            # h1 and h1_2 imu is on the torso
-            # imu data needs to be transformed to the pelvis frame
-            waist_yaw = self.low_state.motor_state[self.config.arm_waist_joint2motor_idx[0]].q
-            waist_yaw_omega = self.low_state.motor_state[self.config.arm_waist_joint2motor_idx[0]].dq
-            quat, ang_vel = transform_imu_data(waist_yaw=waist_yaw, waist_yaw_omega=waist_yaw_omega, imu_quat=quat, imu_omega=ang_vel)
+        # if self.config.imu_type == "torso":
+        #     # h1 and h1_2 imu is on the torso
+        #     # imu data needs to be transformed to the pelvis frame
+        #     waist_yaw = self.low_state.motor_state[self.config.arm_waist_joint2motor_idx[0]].q
+        #     waist_yaw_omega = self.low_state.motor_state[self.config.arm_waist_joint2motor_idx[0]].dq
+        #     quat, ang_vel = transform_imu_data(waist_yaw=waist_yaw, waist_yaw_omega=waist_yaw_omega, imu_quat=quat, imu_omega=ang_vel)
 
         # create observation
         gravity_orientation = get_gravity_orientation(quat)
@@ -175,6 +156,7 @@ class Controller:
         dqj_obs = self.dqj.copy()
         qj_obs = (qj_obs - self.config.default_angles) * self.config.dof_pos_scale
         dqj_obs = dqj_obs * self.config.dof_vel_scale
+        
         ang_vel = ang_vel * self.config.ang_vel_scale
         period = 0.8
         count = self.counter * self.config.control_dt

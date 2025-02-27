@@ -89,17 +89,16 @@ class Terrain:
         
     def curiculum(self):
         """ Generate a curriculum of terrains with varying difficulty and choice.
-            Proportions can be set in the config file to control the distribution of terrains.
-
-            - Rows represent difficulty         (ex. for 5 rows: 0.0, 0.2, 0.4, 0.6, 0.8)
-            - Columns represent terrain choice  (TODO: Explain this better)
+            Proportions can be set in the config file to control the amount of each terrain.
+            - Rows represent difficulty
+            - Columns represent terrain choice 
         """
         for j in range(self.cfg.num_cols):
             for i in range(self.cfg.num_rows):
                 difficulty = i / self.cfg.num_rows      # Rows represent difficulty
                 choice = j / self.cfg.num_cols + 0.001
 
-                terrain = self.make_terrain(choice, difficulty)
+                terrain = self.make_terrain(choice, difficulty / 3.0) # less difficulty :)
                 self.add_terrain_to_map(terrain, i, j)
 
     def selected_terrain(self):
@@ -158,13 +157,17 @@ class Terrain:
             terrain_utils.discrete_obstacles_terrain(terrain, discrete_obstacles_height, rectangle_min_size, rectangle_max_size, num_rectangles, platform_size=3.)
         
         elif choice < self.proportions[5]:
-            terrain_utils.stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=stone_distance, max_height=0., platform_size=4.)
+            # terrain_utils.stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=stone_distance, max_height=0., platform_size=4.)
+            terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=0.5)
         
         elif choice < self.proportions[6]:
-            gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
+            # gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.16, max_height=0.16, step=0.01, downsampled_scale=0.4)
         
         else:
-            pit_terrain(terrain, depth=pit_depth, platform_size=4.)
+            # pit_terrain(terrain, depth=pit_depth, platform_size=4.)
+            terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=0.5)
+
         
         return terrain
 

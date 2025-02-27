@@ -62,9 +62,8 @@ It includes all components needed for sim-to-real transfer: actuator network, fr
 ---
 
 #### 💾 Export Network
-
 Play exports the Actor network, saving it in `logs/{experiment_name}/exported/policies`:
-- Standard networks (MLP) are exported as `policy_1.pt`.
+- Standard networks (MLP) are exported as `EXPORTED.pt`.
 - RNN networks are exported as `policy_lstm_1.pt`.
 
 ---
