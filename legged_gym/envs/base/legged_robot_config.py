@@ -168,6 +168,7 @@ class LeggedRobotCfg(BaseConfig):
 
     class normalization:
         class obs_scales:
+            lin_accel = 1.0 # NEW
             lin_vel = 2.0
             ang_vel = 0.25
             dof_pos = 1.0
@@ -180,6 +181,7 @@ class LeggedRobotCfg(BaseConfig):
         add_noise = True
         noise_level = 1.0 # scales other values
         class noise_scales:
+            lin_accel = 0.1 # NEW
             dof_pos = 0.01
             dof_vel = 1.5
             lin_vel = 0.1

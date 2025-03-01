@@ -16,7 +16,7 @@ def get_gravity_orientation(quaternion):
 
     return gravity_orientation
 
-
+# trasnform imu data to pelvis frame (from waist) --> HUMANOIDS ONLY
 def transform_imu_data(waist_yaw, waist_yaw_omega, imu_quat, imu_omega):
     RzWaist = R.from_euler("z", waist_yaw).as_matrix()
     R_torso = R.from_quat([imu_quat[1], imu_quat[2], imu_quat[3], imu_quat[0]]).as_matrix()

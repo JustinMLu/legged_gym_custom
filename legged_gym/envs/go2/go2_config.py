@@ -11,7 +11,7 @@ class Go2Cfg( LeggedRobotCfg ):
         dynamic_friction = 1.0
 
         mesh_type = 'trimesh'
-        measure_heights = False # True for rough terrain only
+        measure_heights = False # Enable heightmap in obs
         curriculum = True
         selected = False
 
@@ -28,24 +28,24 @@ class Go2Cfg( LeggedRobotCfg ):
         #     "downsampled_scale": 0.2*2,
         # }
 
-        # types: [smooth slope, rough slope, stairs up, stairs down, discrete, random uniform, wave]
-        terrain_proportions = [0.0, 0.25, 0.20, 0.20, 0.05, 0.10, 0.20]
+        # types: [smooth slope, rough slope, stairs up, stairs down, discrete, rocky bump, bumpy wave]
+        terrain_proportions = [0.0, 0.16, 0.16, 0.16, 0.16, 0.16, 0.16]
 
     class domain_rand:      
         randomize_friction = True
-        friction_range = [0.3, 1.0] # try not going over 1.0
+        friction_range = [0.4, 1.2]
 
         randomize_base_mass = True
-        added_mass_range = [-2.0, 2.0]
+        added_mass_range = [-1.1, 1.1]
         
         push_robots = True
         push_interval_s = 30
         max_push_vel_xy = 2.0
     
-
-    class commands( LeggedRobotCfg.commands ):
-        pass
-        # user_command = [0.0, 0.0, 0.0, 0.0]
+    # # ============ NEVER USE WHEN TRAINING ============
+    # class commands( LeggedRobotCfg.commands ):
+    #     user_command = [1.0, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
+    # # ============ NEVER USE WHEN TRAINING ============
 
 
     class init_state( LeggedRobotCfg.init_state ):
@@ -96,14 +96,14 @@ class Go2Cfg( LeggedRobotCfg ):
             torques = -0.0002
 
             # Custom
-            feet_air_time = 0.5
+            feet_air_time = 0.6
             ang_vel_xy = -0.05
             base_height = -0.0001
             orientation = -2.5
             stand_still = -0.009
             dof_acc = -5.5e-7
-            tracking_lin_vel = 1.1      # Rewards matching commanded linear velocity in XY-plane
-            tracking_ang_vel = 0.6      # Rewards matching commanded yaw angular velocity
+            tracking_lin_vel = 1.1     # Rewards matching commanded linear velocity in XY-plane
+            tracking_ang_vel = 0.6     # Rewards matching commanded yaw angular velocity
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -113,11 +113,11 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
     class algorithm( LeggedRobotCfgPPO.algorithm ):
-        entropy_coef = 0.001
+        entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'bambot'
+        run_name = 'bambot-accel-lobotomized'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 1000
-        save_interval = 100
+        max_iterations = 1400
+        save_interval = 50

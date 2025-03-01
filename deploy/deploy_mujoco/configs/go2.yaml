@@ -1,6 +1,6 @@
 # Default config
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/bambi24_entropy.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_mountain.xml"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/bambi29_accel.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_terrain.xml"
 
 # Total simulation time (seconds)
 simulation_duration: 200.0
@@ -30,6 +30,7 @@ default_angles: [
       0, 0.9, -1.8]
 
 # Match normalization class in Isaac Gym cfg
+lin_accel_scale: 1.0 # NEW
 lin_vel_scale: 2.0
 ang_vel_scale: 0.25
 dof_pos_scale: 1.0
@@ -38,7 +39,7 @@ action_scale: 0.25
 cmd_scale: [2.0, 2.0, 0.25]
 
 num_actions: 12    # 12 for go2
-num_obs: 48        # 48 without heightfield ('plane'), 235 with heightfield ('trimesh')
+num_obs: 48        
 
 # Robot command ([forward, lateral, yaw])
-command: [0.8, 0.07, 0.07]
+command: [1.5, 0.0, 0.0]

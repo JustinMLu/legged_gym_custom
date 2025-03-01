@@ -149,6 +149,7 @@ class Terrain:
             if choice<self.proportions[2]:
                 step_height *= -1
             terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=3.)
+            
         
         elif choice < self.proportions[4]:
             num_rectangles = 20
@@ -157,16 +158,18 @@ class Terrain:
             terrain_utils.discrete_obstacles_terrain(terrain, discrete_obstacles_height, rectangle_min_size, rectangle_max_size, num_rectangles, platform_size=3.)
         
         elif choice < self.proportions[5]:
-            # terrain_utils.stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=stone_distance, max_height=0., platform_size=4.)
-            terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=0.5)
+            # ORIGINAL: terrain_utils.stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=stone_distance, max_height=0., platform_size=4.)
+            terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=0.75)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005, downsampled_scale=0.2)
         
         elif choice < self.proportions[6]:
-            # gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.16, max_height=0.16, step=0.01, downsampled_scale=0.4)
+            # ORIGINAL: gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
+            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1, platform_size=3.)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.12, max_height=0.12, step=0.01, downsampled_scale=0.35)
         
         else:
-            # pit_terrain(terrain, depth=pit_depth, platform_size=4.)
-            terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=0.5)
+            # ORIGINAL: pit_terrain(terrain, depth=pit_depth, platform_size=4.)
+            terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=0.75)
 
         
         return terrain
