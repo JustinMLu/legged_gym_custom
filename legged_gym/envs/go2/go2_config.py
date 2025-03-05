@@ -42,11 +42,6 @@ class Go2Cfg( LeggedRobotCfg ):
         push_interval_s = 30
         max_push_vel_xy = 2.0
     
-    # # ============ NEVER USE WHEN TRAINING ============
-    # class commands( LeggedRobotCfg.commands ):
-    #     user_command = [1.0, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
-    # # ============ NEVER USE WHEN TRAINING ============
-
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
@@ -86,7 +81,25 @@ class Go2Cfg( LeggedRobotCfg ):
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
 
-    class rewards ( LeggedRobotCfg.rewards ):
+    # # ============ NEVER USE WHEN TRAINING ============
+    # class commands( LeggedRobotCfg.commands ):
+    #     user_command = [1.0, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
+    # # ============ NEVER USE WHEN TRAINING ============
+
+
+    class normalization( LeggedRobotCfg.normalization ):
+        class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
+            lin_accel = 1.0 # (NEW)
+    
+
+    class noise( LeggedRobotCfg.noise):
+        add_noise = True
+        noise_level = 1.0
+        class noise_scales( LeggedRobotCfg.noise.noise_scales):
+            lin_accel = 0.1 # (NEW)
+
+
+    class rewards( LeggedRobotCfg.rewards ):
         # From Unitree
         soft_dof_pos_limit = 0.9 # +/- 90% of 50% of limit range
         base_height_target = 0.25
@@ -108,15 +121,15 @@ class Go2Cfg( LeggedRobotCfg ):
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
-        actor_hidden_dims = [128*2, 64*2, 32*2]
-        critic_hidden_dims = [128*2, 64*2, 32*2]
+        actor_hidden_dims = [128*4, 64*4, 32*4]
+        critic_hidden_dims = [128*4, 64*4, 32*4]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'bambot-accel-lobotomized'
+        run_name = 'bambot-new-gait'
         experiment_name = 'go2'
         load_run = -1
         max_iterations = 1400

@@ -8,22 +8,22 @@ import torch
 import yaml
 import pdb
 
-# TODO: UNIT TEST THIS FUNCTION, KIND OF A BLACK BOX RN
-def init_height_points(self):
-    measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
-    measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
+# # TODO: UNIT TEST THIS FUNCTION, KIND OF A BLACK BOX RN
+# def init_height_points(self):
+#     measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
+#     measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
 
-    y = torch.tensor(measured_points_y)
-    x = torch.tensor(measured_points_x)
+#     y = torch.tensor(measured_points_y)
+#     x = torch.tensor(measured_points_x)
 
-    grid_x, grid_y = torch.meshgrid(x, y)
+#     grid_x, grid_y = torch.meshgrid(x, y)
 
-    num_height_points = torch.meshgrid(x, y)
-    points = torch.zeros(num_height_points, 3)
+#     num_height_points = torch.meshgrid(x, y)
+#     points = torch.zeros(num_height_points, 3)
 
-    points[:, :, 0] = grid_x.flatten()
-    points[:, :, 1] = grid_y.flatten()
-    return points
+#     points[:, :, 0] = grid_x.flatten()
+#     points[:, :, 1] = grid_y.flatten()
+#     return points
 
 
 # ========================================================
@@ -166,6 +166,9 @@ if __name__ == "__main__":
                 obs[12 : 12+num_actions] = (qj - default_angles) * dof_pos_scale
                 obs[12+num_actions : 12+2*num_actions] = dqj * dof_vel_scale
                 obs[12+2*num_actions : 12+3*num_actions] = actions
+
+                # hip penalty
+                # history sliding window of (so 10-20 past observations)
 
                 # ORIGINAL OBS
                 # obs[:3] = base_lin_vel * lin_vel_scale

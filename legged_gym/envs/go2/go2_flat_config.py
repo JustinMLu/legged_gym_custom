@@ -28,6 +28,7 @@ class Go2FlatCfg( LeggedRobotCfg ):
         #     "downsampled_scale": 0.1,
         # }
 
+
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
         default_joint_angles = {    # = target angles [rad] when action = 0.0
@@ -48,7 +49,6 @@ class Go2FlatCfg( LeggedRobotCfg ):
         }
 
 
-        
     class control( LeggedRobotCfg.control ):
         # PD Drive prameters:
         control_type = 'P'          # Position control 'P'
@@ -58,11 +58,6 @@ class Go2FlatCfg( LeggedRobotCfg ):
         decimation = 4
 
 
-    class commands( LeggedRobotCfg.commands ):
-        pass
-        # user_command = [0.0, 0.0, 0.0, 0.0]
-
-
     class asset( LeggedRobotCfg.asset ):
         file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/urdf/go2.urdf"
         name = "go2"
@@ -70,6 +65,25 @@ class Go2FlatCfg( LeggedRobotCfg ):
         penalize_contacts_on = ["hip", "thigh", "calf", "imu"]
         terminate_after_contacts_on = ["base"]
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
+    
+    
+    # # ============ NEVER USE WHEN TRAINING ============
+    # class commands( LeggedRobotCfg.commands ):
+    #     user_command = [1.0, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
+    # # ============ NEVER USE WHEN TRAINING ============
+
+
+    class normalization:
+        class obs_scales:
+            lin_accel = 1.0 # (NEW)
+    
+
+    class noise:
+        add_noise = True
+        noise_level = 1.0
+        class noise_scales:
+            lin_accel = 0.1 # (NEW)
+
 
     class rewards ( LeggedRobotCfg.rewards ):
         # From Unitree

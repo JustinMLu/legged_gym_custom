@@ -20,7 +20,7 @@ from legged_gym.utils.terrain import Terrain
 from legged_gym.utils.math import quat_apply_yaw, wrap_to_pi, torch_rand_sqrt_float
 from legged_gym.utils.helpers import class_to_dict
 from .legged_robot_config import LeggedRobotCfg
-
+    
 class LeggedRobot(BaseTask):
     def __init__(self, cfg: LeggedRobotCfg, sim_params, physics_engine, sim_device, headless):
         """ Parses the provided config file,
@@ -113,7 +113,7 @@ class LeggedRobot(BaseTask):
         self.last_actions[:] = self.actions[:]            # Update prev. actions
         self.last_dof_vel[:] = self.dof_vel[:]            # Update prev. dof velocity
         self.last_root_vel[:] = self.root_states[:, 7:13] # Update prev. root velocity
-        self.last_base_lin_vel[:] = self.base_lin_vel[:]  # Update prev. base linear velocity
+        self.last_base_lin_vel[:] = self.base_lin_vel[:]  # Update prev. base linear velocity (NEW)
 
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
             self._draw_debug_vis()
@@ -192,28 +192,16 @@ class LeggedRobot(BaseTask):
             self.episode_sums["termination"] += rew
     
     def compute_observations(self):
-        """ Computes observations
+        """ Computes observations for the robot.
         """
-        
-        # ============ Linear Acceleration Ver. ================
-        self.obs_buf = torch.cat((((self.base_lin_vel - self.last_base_lin_vel) / self.dt) * self.obs_scales.lin_accel,
+        self.obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,                        # (3,)
                                     self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
                                     self.projected_gravity,                                             # (3,)
                                     self.commands[:, :3] * self.commands_scale,                         # (3,)  
                                     (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
                                     self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
                                     self.actions                                                        # (12,) last actions
-                                    ),dim=-1)                                                            # total: (48,)
-        
-        # ================ Original Observation ================
-        # self.obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,                        # (3,)
-        #                             self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
-        #                             self.projected_gravity,                                             # (3,)
-        #                             self.commands[:, :3] * self.commands_scale,                         # (3,)  
-        #                             (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
-        #                             self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
-        #                             self.actions                                                        # (12,) last actions
-        #                             ),dim=-1)                                                           # total: (48,)
+                                    ),dim=-1)                                                           # total: (48,)
         
         # add perceptive inputs (height map) if not blind
         # heights defined as [(z_base - 0.5) - z_terrain], clipped to [-1, 1]
@@ -480,13 +468,12 @@ class LeggedRobot(BaseTask):
         Returns:
             [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
         """
-
-        # LINEAR ACCELERATION VERSION
+        # Build noise vector - matches the observation structure
         noise_vec = torch.zeros_like(self.obs_buf[0])
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         noise_level = self.cfg.noise.noise_level
-        noise_vec[:3] = noise_scales.lin_accel * noise_level * self.obs_scales.lin_accel
+        noise_vec[:3] = noise_scales.lin_vel * noise_level * self.obs_scales.lin_vel
         noise_vec[3:6] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
         noise_vec[6:9] = noise_scales.gravity * noise_level
         noise_vec[9:12] = 0. # commands
@@ -494,20 +481,7 @@ class LeggedRobot(BaseTask):
         noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[36:48] = 0. # previous actions
 
-        # ORIGINAL VERSION
-        # noise_vec = torch.zeros_like(self.obs_buf[0])
-        # self.add_noise = self.cfg.noise.add_noise
-        # noise_scales = self.cfg.noise.noise_scales
-        # noise_level = self.cfg.noise.noise_level
-        # noise_vec[:3] = noise_scales.lin_vel * noise_level * self.obs_scales.lin_vel
-        # noise_vec[3:6] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
-        # noise_vec[6:9] = noise_scales.gravity * noise_level
-        # noise_vec[9:12] = 0. # commands
-        # noise_vec[12:24] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
-        # noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
-        # noise_vec[36:48] = 0. # previous actions
-
-        # add heightmap noise
+        # Add heightmap noise (if heightmap used)
         if self.cfg.terrain.measure_heights:
             noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
         return noise_vec
@@ -551,7 +525,7 @@ class LeggedRobot(BaseTask):
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
         self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
-        self.last_base_lin_vel = self.base_lin_vel.clone() # Newly added - used for linear acceleration
+        self.last_base_lin_vel = self.base_lin_vel.clone() # Init prev. linear velocity (NEW)
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
         if self.cfg.terrain.measure_heights:
