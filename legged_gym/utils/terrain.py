@@ -135,6 +135,7 @@ class Terrain:
         stone_distance = 0.05 if difficulty==0 else 0.1
         gap_size = 1. * difficulty
         pit_depth = 1. * difficulty
+        amplitude = 0.25 + 0.75 * difficulty
         
         if choice < self.proportions[0]:
             if choice < self.proportions[0]/ 2:
@@ -143,14 +144,13 @@ class Terrain:
         
         elif choice < self.proportions[1]:
             terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005, downsampled_scale=0.2)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.04, max_height=0.04, step=0.01, downsampled_scale=0.15)
         
         elif choice < self.proportions[3]:
             if choice<self.proportions[2]:
                 step_height *= -1
             terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=3.)
             
-        
         elif choice < self.proportions[4]:
             num_rectangles = 20
             rectangle_min_size = 1.
@@ -159,17 +159,16 @@ class Terrain:
         
         elif choice < self.proportions[5]:
             # ORIGINAL: terrain_utils.stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=stone_distance, max_height=0., platform_size=4.)
-            terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=0.75)
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005, downsampled_scale=0.2)
+            terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=amplitude)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.04, max_height=0.04, step=0.01, downsampled_scale=0.15)
         
         elif choice < self.proportions[6]:
             # ORIGINAL: gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
-            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1, platform_size=3.)
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.12, max_height=0.12, step=0.01, downsampled_scale=0.35)
+            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1.25, platform_size=3.)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.12, max_height=0.12, step=0.01, downsampled_scale=0.25)
         
         else:
-            # ORIGINAL: pit_terrain(terrain, depth=pit_depth, platform_size=4.)
-            terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=0.75)
+            pit_terrain(terrain, depth=pit_depth, platform_size=4.)
 
         
         return terrain

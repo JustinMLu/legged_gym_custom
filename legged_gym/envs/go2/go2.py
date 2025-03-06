@@ -10,6 +10,7 @@ class Go2Robot(LeggedRobot):
     def __init__(self, cfg, sim_params, physics_engine, sim_device, headless):
         super().__init__(cfg, sim_params, physics_engine, sim_device, headless)
 
+
     def _create_envs(self):
         super()._create_envs()
         
@@ -26,31 +27,6 @@ class Go2Robot(LeggedRobot):
         self.calf_indices = torch.zeros(len(calf_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i, name in enumerate(calf_names):
             self.calf_indices[i] = self.dof_names.index(name)
-    
-
-    def compute_observations(self):
-        """ Computes observations for the robot. Overloaded to use 
-            linear acceleration instead of linear velocity as an observation.
-        """
-        # ============ Linear Acceleration Ver. ================
-        self.obs_buf = torch.cat((((self.base_lin_vel - self.last_base_lin_vel) / self.dt) * self.obs_scales.lin_accel,
-                                    self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
-                                    self.projected_gravity,                                             # (3,)
-                                    self.commands[:, :3] * self.commands_scale,                         # (3,)  
-                                    (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
-                                    self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
-                                    self.actions                                                        # (12,) last actions
-                                    ),dim=-1)                                                            # total: (48,)
-        
-
-        # add perceptive inputs (height map) if not blind
-        if self.cfg.terrain.measure_heights:
-            heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
-            self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
-
-        # add noise if needed
-        if self.add_noise:
-            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
 
 
     def _get_noise_scale_vec(self, cfg):
@@ -75,6 +51,9 @@ class Go2Robot(LeggedRobot):
         noise_vec[12:24] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
         noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[36:48] = 0. # previous actions
+
+        # Include phase stuff here; it's zero but we need to keep the same size
+        noise_vec[48:52] = 0.0
         
         # Add heightmap noise (if heightmap used)
         if self.cfg.terrain.measure_heights:
@@ -82,24 +61,91 @@ class Go2Robot(LeggedRobot):
         return noise_vec
 
 
-    # def _init_foot(self):
-    #     self.feet_num = len(self.feet_indices)
-    #     print("FEET INDICES: ", self.feet_indices)
-    #     print("NUMBER OF FEET: ", self.feet_num)
-    #     rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)
+    def _init_foot(self):
+        self.feet_num = len(self.feet_indices)
+        rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)
         
-    #     self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_state)
-    #     self.rigid_body_states_view = self.rigid_body_states.view(self.num_envs, -1, 13)
-    #     self.feet_state = self.rigid_body_states_view[:, self.feet_indices, :]
+        self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_state)
+        self.rigid_body_states_view = self.rigid_body_states.view(self.num_envs, -1, 13)
+        self.feet_state = self.rigid_body_states_view[:, self.feet_indices, :]
         
-    #     self.feet_pos = self.feet_state[:, :, :3]
-    #     print("FEET POSITIONS: ", self.feet_pos)
-    #     self.feet_vel = self.feet_state[:, :, 7:10]
-    #     print("FEET VELOCITIES: ", self.feet_vel)
+        self.feet_pos = self.feet_state[:, :, :3]
+        self.feet_vel = self.feet_state[:, :, 7:10]
+
 
     def _init_buffers(self):
         super()._init_buffers()
-        # self._init_foot()
+        self._init_foot()
+
+
+    def update_feet_states(self):
+        self.gym.refresh_rigid_body_state_tensor(self.sim)
+        self.feet_states = self.rigid_body_states_view[:, self.feet_indices, :]
+        self.feet_pos = self.feet_states[:, :, :3]
+        self.feet_vel = self.feet_states[:, :, 7:10]
+    
+
+    def _post_physics_step_callback(self):
+        
+        # Update feet states, positions, velociites
+        self.update_feet_states()
+
+        period = 1.2 # Complete cycle duration (seconds)
+        offset = 0.6 # Phase offset (seconds)
+
+        self.phase = (self.episode_length_buf * self.dt) % period / period 
+
+        self.phase_fr = self.phase
+        self.phase_bl = self.phase
+        self.phase_fl = (self.phase + offset) % 1 
+        self.phase_br = (self.phase + offset) % 1
+
+        return super()._post_physics_step_callback()
+    
+
+    def compute_observations(self):
+        """ Computes observations for the robot. Overloaded to use 
+            linear acceleration instead of linear velocity as an observation.
+        """
+        # Calculate sine and cosine of phases for smooth transitions
+        sin_phase_fr = torch.sin(2 * np.pi * self.phase_fr).unsqueeze(1)
+        cos_phase_fr = torch.cos(2 * np.pi * self.phase_fr).unsqueeze(1)
+        sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl).unsqueeze(1)
+        cos_phase_fl = torch.cos(2 * np.pi * self.phase_fl).unsqueeze(1)
+        
+        # Combine into phase features (using sin/cos provides continuity at cycle boundaries)
+        phase_features = torch.cat([sin_phase_fr, cos_phase_fr, sin_phase_fl, cos_phase_fl], dim=1)
+
+        # Construct observations
+        # base_obs = torch.cat((((self.base_lin_vel - self.last_base_lin_vel) / self.dt) * self.obs_scales.lin_accel,
+        #                             self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
+        #                             self.projected_gravity,                                             # (3,)
+        #                             self.commands[:, :3] * self.commands_scale,                         # (3,)  
+        #                             (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
+        #                             self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
+        #                             self.actions                                                        # (12,) last actions
+        #                             ),dim=-1)                                                            # total: (48,)
+        
+        base_obs = torch.cat((      self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
+                                    self.projected_gravity,                                             # (3,)
+                                    self.commands[:, :3] * self.commands_scale,                         # (3,)  
+                                    (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
+                                    self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
+                                    self.actions                                                        # (12,) last actions
+                                    ),dim=-1)                                                            # total: (45,)
+        
+        # Add phase info to observations
+        self.obs_buf = torch.cat([base_obs, phase_features], dim=1) # total: (49,)
+
+        # add perceptive inputs (height map) if not blind
+        if self.cfg.terrain.measure_heights:
+            heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
+            self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
+
+        # add noise if needed
+        if self.add_noise:
+            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
+
 
     # =========================== NEW REWARD FUNCTIONS ===========================
     def _reward_delta_torques(self): # Extreme Parkour -1.0e-7
@@ -116,3 +162,74 @@ class Go2Robot(LeggedRobot):
         """
         dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
         return dof_error
+    
+    def _reward_contact_phase_match(self):
+        """ Reward proper foot contact based on gait phase.
+            For a trot gait:
+            - FR and BL feet should contact when phase < 0.5
+            - FL and BR feet should contact when phase >= 0.5
+        """
+
+        # Define when each foot should be in stance (contacting ground)
+        fr_bl_stance = self.phase_fr < 0.5  # Front-right and back-left in stance for first half
+        fl_br_stance = self.phase_fl < 0.5  # Front-left and back-right in stance for first half
+        
+        # Check actual foot contacts (measured from contact forces)
+        # Threshold force (1.0) determines what counts as "contact"
+        fr_contact = self.contact_forces[:, self.feet_indices[0], 2] > 1.0
+        fl_contact = self.contact_forces[:, self.feet_indices[1], 2] > 1.0
+        rr_contact = self.contact_forces[:, self.feet_indices[2], 2] > 1.0
+        rl_contact = self.contact_forces[:, self.feet_indices[3], 2] > 1.0
+        
+        # Reward matching contacts (true when contact matches expected stance)
+        # Using ~ (not) for XOR operation: reward when both true or both false
+        reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+        reward += torch.where(~(fr_contact ^ fr_bl_stance), 0.25, 0.0)  # FR
+        reward += torch.where(~(fl_contact ^ fl_br_stance), 0.25, 0.0)  # FL
+        reward += torch.where(~(rr_contact ^ fr_bl_stance), 0.25, 0.0)  # RR (same phase as FR)
+        reward += torch.where(~(rl_contact ^ fl_br_stance), 0.25, 0.0)  # RL (same phase as FL)
+
+        return reward
+
+    # This reward kind of sucks
+    def _reward_foot_swing_height(self):
+        """Reward appropriate foot height during swing phase.
+        Works on any terrain by only considering feet not in contact.
+        """
+        # Target height for feet during swing
+        target_height = 0.10
+        
+        # Detect feet in contact (use 3D force magnitude for more robust detection)
+        contact = torch.norm(self.contact_forces[:, self.feet_indices, :3], dim=2) > 1.
+        
+        # Calculate error for feet not in contact (in swing phase)
+        # The z-coordinate of the foot directly gives its height in world space
+        pos_error = torch.square(self.feet_pos[:, :, 2] - target_height) * ~contact
+        
+        # Return negative sum of errors
+        return -torch.sum(pos_error, dim=1)
+    
+    def _reward_proper_gait_liftoff(self):
+        """Reward feet for being in the air during their proper swing phase."""
+        # Determine which feet should be in swing phase based on gait phase
+        fr_bl_swing = self.phase_fr >= 0.5 
+        fl_br_swing = self.phase_fl >= 0.5 
+        
+        # Create mask for expected swing phases for each foot [FR, FL, RR, RL]
+        should_swing = torch.stack([
+            fr_bl_swing,     # FR
+            fl_br_swing,     # FL
+            fr_bl_swing,     # RR (same as FR for trot)
+            fl_br_swing      # RL (same as FL for trot)
+        ], dim=1)
+        
+        # Detect feet in contact
+        contact = torch.norm(self.contact_forces[:, self.feet_indices, :3], dim=2) > 1.
+        
+        # Calculate the binary reward: no contact during designated swing phase
+        correct_swing = should_swing & (~contact)
+        
+        # Sum rewards across all feet
+        reward = torch.sum(correct_swing.float(), dim=1)
+        
+        return reward

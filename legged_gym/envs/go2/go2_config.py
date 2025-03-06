@@ -3,16 +3,16 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
-        num_observations = 48 # 48 when mesh_type = 'plane', 235 otherwise...
+        num_observations = 49
         num_actions = 12
 
     class terrain( LeggedRobotCfg.terrain ):
         static_friction = 1.0
         dynamic_friction = 1.0
 
-        mesh_type = 'plane'
+        mesh_type = 'trimesh'
         measure_heights = False # Enable heightmap in obs
-        curriculum = False
+        curriculum = True
         selected = False
 
         # terrain_kwargs = {
@@ -20,20 +20,20 @@ class Go2Cfg( LeggedRobotCfg ):
         #     "num_waves": 1,
         #     "amplitude": 0.5
         # }
-        # terrain_kwargs = {
-        #     "type": "terrain_utils.random_uniform_terrain",
-        #     "min_height": -0.08*2,
-        #     "max_height": 0.08*2,
-        #     "step": 0.005*2,
-        #     "downsampled_scale": 0.2*2,
-        # }
+        terrain_kwargs = {
+            "type": "terrain_utils.random_uniform_terrain",
+            "min_height": -0.08,
+            "max_height": 0.08,
+            "step": 0.01,
+            "downsampled_scale": 0.15,
+        }
 
         # types: [smooth slope, rough slope, stairs up, stairs down, discrete, rocky bump, bumpy wave]
-        terrain_proportions = [0.0, 0.16, 0.16, 0.16, 0.16, 0.16, 0.16]
+        terrain_proportions = [0.07, 0.07, 0.18, 0.18, 0.14, 0.18, 0.18]
 
     class domain_rand:      
         randomize_friction = True
-        friction_range = [0.4, 1.2]
+        friction_range = [0.3, 1.2]
 
         randomize_base_mass = True
         added_mass_range = [-1.1, 1.1]
@@ -102,38 +102,44 @@ class Go2Cfg( LeggedRobotCfg ):
     class rewards( LeggedRobotCfg.rewards ):
         # From Unitree
         soft_dof_pos_limit = 0.9 # +/- 90% of 50% of limit range
-        base_height_target = 0.25
+        base_height_target = 0.25 # 0.25 original
         
         class scales( LeggedRobotCfg.rewards.scales ):
 
             # Custom
-            feet_air_time = 0.5
-            ang_vel_xy = -0.05
-            base_height = -0.0001
-            orientation = -2.5
-            stand_still = -0.009
-            dof_acc = -5.5e-7
-            
-            tracking_lin_vel = 1.5
-            tracking_ang_vel = 1.0
-
-            delta_torques = -1.0e-7 # New
-            hip_pos = -0.5 # New
-            dof_error = -0.04 # New
-
-            # Extreme Parkour
-            # lin_vel_z = -1.0
-            # ang_vel_xy = -0.05
-            # orientation = -1.0
-            # torques = -0.00001
-            # dof_acc = -2.5e-7
-            # action_rate = -0.1
-            # collision = -10.0
-            # stumble = -1.0
+            # tracking_lin_vel = 1.5
+            # tracking_ang_vel = 1.0
             # feet_air_time = 0.5
+            # ang_vel_xy = -0.05
+            # base_height = -0.0001
+            # orientation = -2.5
+            # stand_still = -0.009
+            # dof_acc = -5.5e-7
             # delta_torques = -1.0e-7 # New
             # hip_pos = -0.5 # New
             # dof_error = -0.04 # New
+            # contact_phase_match = 0.6 # New
+            # foot_swing_height = 0.5 # New
+
+
+            # Extreme Parkour
+            tracking_lin_vel = 1.5
+            tracking_ang_vel = 1.0
+            lin_vel_z = -1.0
+            ang_vel_xy = -0.05
+            orientation = -1.0
+            torques = -0.00001
+            dof_acc = -2.5e-7
+            action_rate = -0.1
+            collision = -10.0
+            stumble = -1.0
+            delta_torques = -1.0e-7 # New
+            hip_pos = -0.5 # New
+            dof_error = -0.04 # New
+            feet_air_time = 0.5
+            contact_phase_match = 0.5
+            # foot_swing_height = 0.5
+            # proper_gait_liftoff = 0.5
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -149,5 +155,5 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         run_name = 'bambi-parkour'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 500
-        save_interval = 50
+        max_iterations = 10000
+        save_interval = 100

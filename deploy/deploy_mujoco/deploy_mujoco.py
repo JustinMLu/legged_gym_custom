@@ -8,23 +8,6 @@ import torch
 import yaml
 import pdb
 
-# # TODO: UNIT TEST THIS FUNCTION, KIND OF A BLACK BOX RN
-# def init_height_points(self):
-#     measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
-#     measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
-
-#     y = torch.tensor(measured_points_y)
-#     x = torch.tensor(measured_points_x)
-
-#     grid_x, grid_y = torch.meshgrid(x, y)
-
-#     num_height_points = torch.meshgrid(x, y)
-#     points = torch.zeros(num_height_points, 3)
-
-#     points[:, :, 0] = grid_x.flatten()
-#     points[:, :, 1] = grid_y.flatten()
-#     return points
-
 
 # ========================================================
 def get_gravity_orientation(quaternion):
@@ -151,24 +134,29 @@ if __name__ == "__main__":
                 base_lin_accel = base_rot_mat.T @ lin_accel # linear accel. in the body frame
                 # ===================================
 
-                # Get sensor data for accelerometer
-                accel_sensor_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SENSOR, "imu_acc")
-                sensor_lin_accel = d.sensordata[accel_sensor_id:accel_sensor_id+3]
-
                 # Get projected gravity
                 projected_gravity = get_gravity_orientation(base_rot_quat)
                 
-                # Create observation (matched with what network expects)
-                obs[:3] = sensor_lin_accel * lin_accel_scale
-                obs[3:6] = ang_vel * ang_vel_scale
-                obs[6:9] = projected_gravity
-                obs[9:12] = cmd * cmd_scale 
-                obs[12 : 12+num_actions] = (qj - default_angles) * dof_pos_scale
-                obs[12+num_actions : 12+2*num_actions] = dqj * dof_vel_scale
-                obs[12+2*num_actions : 12+3*num_actions] = actions
+                # Get sensor data for accelerometer (linear accel)
+                # accel_sensor_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SENSOR, "imu_acc")
+                # sensor_lin_accel = d.sensordata[accel_sensor_id:accel_sensor_id+3]
 
-                # hip penalty
-                # history sliding window of (so 10-20 past observations)
+                
+                # Create observation (matched with what network expects)
+                # obs[:3] = sensor_lin_accel * lin_accel_scale
+                # obs[3:6] = ang_vel * ang_vel_scale
+                # obs[6:9] = projected_gravity
+                # obs[9:12] = cmd * cmd_scale 
+                # obs[12 : 12+num_actions] = (qj - default_angles) * dof_pos_scale
+                # obs[12+num_actions : 12+2*num_actions] = dqj * dof_vel_scale
+                # obs[12+2*num_actions : 12+3*num_actions] = actions
+
+                obs[:3] = ang_vel * ang_vel_scale
+                obs[3:6] = projected_gravity
+                obs[6:9] = cmd * cmd_scale 
+                obs[9 : 9+num_actions] = (qj - default_angles) * dof_pos_scale
+                obs[9+num_actions : 9+2*num_actions] = dqj * dof_vel_scale
+                obs[9+2*num_actions : 9+3*num_actions] = actions
 
                 # ORIGINAL OBS
                 # obs[:3] = base_lin_vel * lin_vel_scale
