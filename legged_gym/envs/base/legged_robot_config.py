@@ -134,29 +134,22 @@ class LeggedRobotCfg(BaseConfig):
     class rewards:
         class scales:
             termination = -0.0
-            tracking_lin_vel = 1.0      # Rewards robot for matching commanded linear velocity in XY-plane
-            tracking_ang_vel = 0.5      # Rewards robot for matching commanded yaw angular velocity
-            lin_vel_z = -2.0            # Rewards robot for nonzero z-axis linear velocity (vertical)
-            ang_vel_xy = -0.05          # Rewards angular velocity in roll & pitch axis
-            orientation = -0.0          # Rewards deviation from flat, upright orientation using gravity projection
-            torques = -0.00001          # Rewards large torque outputs (smoothness, energy efficiency)
-            dof_vel = -0.0              # Rewards large joint (DOF) velocities
-            dof_acc = -2.5e-7           # Rewards large joint (DOF) accelerations
-            base_height = -0.0          # Rewards deviation of avg. base link height from desired target
-            feet_air_time =  1.0        # Rewards robot for "long steps" - if foot stays in the air for some time
-            collision = -1.             # Rewards collisions on specific bodies (see penalize_contacts_on)
-            stumble = -0.0              # Rewards stumble events (i.e foot collision w/ large horizontal contact force)
-            action_rate = -0.01         # Rewards rapid changes in actions from one control step to the next
-            stand_still = -0.0          # Rewards joint deviation from default pose (when commanded vel is 0))
-            contact_forces = -0.0       # Rewards large contact forces
-
-            forward_vel = -0.0          # Rewards forward velocity. That's all. Just forward velocity.
-            x_rotation = -0.0           # Rewards deviation from flat orientation along ONLY x-axis
-            y_rotation = -0.0           # Rewards deviation from flat orientation along ONLY y-axis 
-
-
-            
-
+            tracking_lin_vel = 1.0      
+            tracking_ang_vel = 0.5 
+            lin_vel_z = -2.0            
+            ang_vel_xy = -0.05           
+            orientation = -0.0           
+            torques = -0.00001          
+            dof_vel = -0.0               
+            dof_acc = -2.5e-7             
+            base_height = -0.0           
+            feet_air_time = 1.0       
+            collision = -1.0             
+            stumble = -0.0               
+            action_rate = -0.01           
+            stand_still = -0.0           
+            contact_forces = -0.0        
+        
         # NOTE: variables below are used to compute the reward
         only_positive_rewards = True
         tracking_sigma = 0.25           # tracking reward = exp(-error^2/sigma)
@@ -164,7 +157,7 @@ class LeggedRobotCfg(BaseConfig):
         soft_dof_vel_limit = 1.
         soft_torque_limit = 1.
         base_height_target = 1.
-        max_contact_force = 100.        # forces above this value are penalized
+        max_contact_force = 100.         # forces above this value are penalized
 
     class normalization:
         class obs_scales:

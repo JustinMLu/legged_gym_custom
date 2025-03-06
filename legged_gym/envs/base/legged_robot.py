@@ -114,6 +114,7 @@ class LeggedRobot(BaseTask):
         self.last_dof_vel[:] = self.dof_vel[:]            # Update prev. dof velocity
         self.last_root_vel[:] = self.root_states[:, 7:13] # Update prev. root velocity
         self.last_base_lin_vel[:] = self.base_lin_vel[:]  # Update prev. base linear velocity (NEW)
+        self.last_torques[:] = self.torques[:]            # Update prev. torques (NEW)
 
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
             self._draw_debug_vis()
@@ -151,6 +152,10 @@ class LeggedRobot(BaseTask):
         # reset buffers
         self.last_actions[env_ids] = 0.
         self.last_dof_vel[env_ids] = 0.
+        self.last_root_vel[env_ids] = 0.
+        self.last_base_lin_vel[env_ids] = 0. # (NEW)
+        self.last_torques[env_ids] = 0. # (NEW)
+        
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
@@ -520,12 +525,13 @@ class LeggedRobot(BaseTask):
         self.last_actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
         self.last_root_vel = torch.zeros_like(self.root_states[:, 7:13])
+        self.last_torques = torch.zeros_like(self.torques) # (NEW)
         self.commands = torch.zeros(self.num_envs, self.cfg.commands.num_commands, dtype=torch.float, device=self.device, requires_grad=False) # x vel, y vel, yaw vel, heading
         self.commands_scale = torch.tensor([self.obs_scales.lin_vel, self.obs_scales.lin_vel, self.obs_scales.ang_vel], device=self.device, requires_grad=False,)
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
         self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
-        self.last_base_lin_vel = self.base_lin_vel.clone() # Init prev. linear velocity (NEW)
+        self.last_base_lin_vel = self.base_lin_vel.clone() # (NEW)
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
         if self.cfg.terrain.measure_heights:
@@ -836,17 +842,17 @@ class LeggedRobot(BaseTask):
         return heights.view(self.num_envs, -1) * self.terrain.cfg.vertical_scale
 
     #------------ reward functions----------------
-    def _reward_lin_vel_z(self):
+    def _reward_lin_vel_z(self): # Extreme Parkour -1.0
         """ Penalize z axis base linear velocity
         """
         return torch.square(self.base_lin_vel[:, 2])
     
-    def _reward_ang_vel_xy(self):
+    def _reward_ang_vel_xy(self): # Extreme Parkour -0.05
         """ Penalize xy axes base angular velocity
         """
         return torch.sum(torch.square(self.base_ang_vel[:, :2]), dim=1)
     
-    def _reward_orientation(self):
+    def _reward_orientation(self): # Extreme Parkour -1.0
         """ Penalize non flat base orientation (so x and y)
         """
         return torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1)
@@ -857,7 +863,7 @@ class LeggedRobot(BaseTask):
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
         return torch.square(base_height - self.cfg.rewards.base_height_target)
     
-    def _reward_torques(self):
+    def _reward_torques(self): # Extreme Parkour -0.00001
         """ Penalize torques
         """
         return torch.sum(torch.square(self.torques), dim=1)
@@ -867,17 +873,17 @@ class LeggedRobot(BaseTask):
         """
         return torch.sum(torch.square(self.dof_vel), dim=1)
     
-    def _reward_dof_acc(self):
+    def _reward_dof_acc(self): # Extreme Parkour -2.5e-7
         """ Penalize dof accelerations
         """
         return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt), dim=1)
     
-    def _reward_action_rate(self):
+    def _reward_action_rate(self): # Extreme Parkour -0.1
         """ Penalize changes in actions
         """
         return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
     
-    def _reward_collision(self):
+    def _reward_collision(self): # Extreme Parkour -10.0
         """ Penalize collisions on selected bodies
         """
         return torch.sum(1.*(torch.norm(self.contact_forces[:, self.penalised_contact_indices, :], dim=-1) > 0.1), dim=1)
@@ -928,7 +934,7 @@ class LeggedRobot(BaseTask):
         self.feet_air_time *= ~contact_filt
         return rew_airTime
     
-    def _reward_stumble(self):
+    def _reward_stumble(self): # Extreme Parkour -1.0
         """ Penalize feet hitting vertical surfaces
         """
         return torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
@@ -944,22 +950,21 @@ class LeggedRobot(BaseTask):
         """
         return torch.sum((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) -  self.cfg.rewards.max_contact_force).clip(min=0.), dim=1)
 
-    # =========================== NEW REWARD FUNCTIONS BELOW ===========================
-
-    def _reward_forward_vel(self):
-        """ Reward forward velocity
-        """
-        forward_vel = self.base_lin_vel[:, 0]   # x-axis velocity
-        return torch.clamp(forward_vel, min=0.0)
-
-    def _reward_x_rotation(self):
-        """ Reward rotation about x-axis
-        """
-        # Rotation about x-axis will result in nonzero y-component
-        return torch.square(self.projected_gravity[:, 1])
+    # # =========================== NEW REWARD FUNCTIONS BELOW ===========================
+    # def _reward_delta_torques(self): # Extreme Parkour -1.0e-7
+    #     """ Penalize changes in torques
+    #     """
+    #     return torch.sum(torch.square(self.torques - self.last_torques), dim=1)
     
-    def _reward_y_rotation(self):
-        """ Reward rotation about y-axis
-        """
-        # Rotation about y-axis will result in nonzero x-component
-        return torch.square(self.projected_gravity[:, 0])
+    # def _reward_hip_pos(self): # Extreme Parkour -0.5
+    #     """ Penalize DOF hip positions away from default"""
+    #     return torch.sum(torch.square(self.dof_pos[:, self.hip_indices] - self.default_dof_pos[:, self.hip_indices]), dim=1)
+    
+    # def _reward_dof_error(self): # Extreme Parkour -0.04
+    #     """ Penalize DOF positions away from default
+    #     """
+    #     dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
+    #     return dof_error
+
+    
+

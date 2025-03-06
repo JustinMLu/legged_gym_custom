@@ -10,9 +10,9 @@ class Go2Cfg( LeggedRobotCfg ):
         static_friction = 1.0
         dynamic_friction = 1.0
 
-        mesh_type = 'trimesh'
+        mesh_type = 'plane'
         measure_heights = False # Enable heightmap in obs
-        curriculum = True
+        curriculum = False
         selected = False
 
         # terrain_kwargs = {
@@ -76,7 +76,7 @@ class Go2Cfg( LeggedRobotCfg ):
         file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/urdf/go2.urdf"
         name = "go2"
         foot_name = "foot"
-        penalize_contacts_on = ["hip", "thigh", "calf", "imu"]
+        penalize_contacts_on = ["thigh", "calf", "imu"]
         terminate_after_contacts_on = ["base"]
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
@@ -105,18 +105,35 @@ class Go2Cfg( LeggedRobotCfg ):
         base_height_target = 0.25
         
         class scales( LeggedRobotCfg.rewards.scales ):
-            dof_pos_limits = -10.0
-            torques = -0.0002
 
             # Custom
-            feet_air_time = 0.6
+            feet_air_time = 0.5
             ang_vel_xy = -0.05
             base_height = -0.0001
             orientation = -2.5
             stand_still = -0.009
             dof_acc = -5.5e-7
-            tracking_lin_vel = 1.1     # Rewards matching commanded linear velocity in XY-plane
-            tracking_ang_vel = 0.6     # Rewards matching commanded yaw angular velocity
+            
+            tracking_lin_vel = 1.5
+            tracking_ang_vel = 1.0
+
+            delta_torques = -1.0e-7 # New
+            hip_pos = -0.5 # New
+            dof_error = -0.04 # New
+
+            # Extreme Parkour
+            # lin_vel_z = -1.0
+            # ang_vel_xy = -0.05
+            # orientation = -1.0
+            # torques = -0.00001
+            # dof_acc = -2.5e-7
+            # action_rate = -0.1
+            # collision = -10.0
+            # stumble = -1.0
+            # feet_air_time = 0.5
+            # delta_torques = -1.0e-7 # New
+            # hip_pos = -0.5 # New
+            # dof_error = -0.04 # New
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -129,8 +146,8 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'bambot-new-gait'
+        run_name = 'bambi-parkour'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 1400
+        max_iterations = 500
         save_interval = 50
