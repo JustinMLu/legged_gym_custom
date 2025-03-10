@@ -39,7 +39,7 @@ class Go2Cfg( LeggedRobotCfg ):
         added_mass_range = [-1.1, 1.1]
         
         push_robots = True
-        push_interval_s = 30
+        push_interval_s = 15
         max_push_vel_xy = 2.0
     
 
@@ -83,7 +83,7 @@ class Go2Cfg( LeggedRobotCfg ):
 
     # # ============ NEVER USE WHEN TRAINING ============
     # class commands( LeggedRobotCfg.commands ):
-    #     user_command = [1.0, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
+    #     user_command = [0.0, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
     # # ============ NEVER USE WHEN TRAINING ============
 
 
@@ -139,7 +139,6 @@ class Go2Cfg( LeggedRobotCfg ):
             feet_air_time = 0.5
             contact_phase_match = 0.5
             # foot_swing_height = 0.5
-            # proper_gait_liftoff = 0.5
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):

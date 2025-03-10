@@ -76,13 +76,12 @@ if __name__ == "__main__":
     target_dof_pos = default_angles.copy()
     obs = np.zeros(num_obs, dtype=np.float32)
 
-    counter = 0
-
-    # Load robot model
     """
     https://mujoco.readthedocs.io/en/stable/APIreference/APItypes.html#mjmodel
     https://mujoco.readthedocs.io/en/stable/APIreference/APItypes.html#mjdata
     """
+
+    # Load robot model
     m = mujoco.MjModel.from_xml_path(xml_path)
     d = mujoco.MjData(m)
     m.opt.timestep = simulation_dt
@@ -91,16 +90,19 @@ if __name__ == "__main__":
     policy = torch.jit.load(policy_path)
     mujoco.mj_resetDataKeyframe(m, d, 0)
 
+    # Initialize phase-related variables
+    sim_time = 0.0
+    period = 1.2  # Complete cycle duration (seconds) - match from Go2Robot
+    offset = 0.6  # Phase offset (seconds) - match from Go2Robot
+
     # Start simulation
+    counter = 0
     with mujoco.viewer.launch_passive(m, d) as viewer:
         start = time.time()
 
         # Close the viewer automatically after simulation_duration wall-seconds.
         while viewer.is_running() and (time.time() - start < simulation_duration or run_forever):
             step_start = time.time()
-
-            # qj_pos = d.sensordata[0:12] # d.qpos[7:]
-            # qj_vel = d.sensordata[12:24] # d.qvel[6:]
 
             # Get current q
             qj_pos = d.qpos[7:] # 19 --> 12
@@ -113,6 +115,9 @@ if __name__ == "__main__":
             # mj_step can be replaced with code that also evaluates
             # a policy and applies a control signal before stepping the physics.
             mujoco.mj_step(m, d)
+
+            # Update simulation time
+            sim_time += simulation_dt
 
             # Apply control signal every (control_decimation) steps
             counter += 1
@@ -141,24 +146,28 @@ if __name__ == "__main__":
                 # accel_sensor_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SENSOR, "imu_acc")
                 # sensor_lin_accel = d.sensordata[accel_sensor_id:accel_sensor_id+3]
 
-                
-                # Create observation (matched with what network expects)
-                # obs[:3] = sensor_lin_accel * lin_accel_scale
-                # obs[3:6] = ang_vel * ang_vel_scale
-                # obs[6:9] = projected_gravity
-                # obs[9:12] = cmd * cmd_scale 
-                # obs[12 : 12+num_actions] = (qj - default_angles) * dof_pos_scale
-                # obs[12+num_actions : 12+2*num_actions] = dqj * dof_vel_scale
-                # obs[12+2*num_actions : 12+3*num_actions] = actions
+                phase = (sim_time % period) / period
+                phase_fr = phase
+                phase_bl = phase
+                phase_fl = (phase + offset) % 1
+                phase_br = (phase + offset) % 1
+                sin_phase_fr = np.sin(2 * np.pi * phase_fr)
+                cos_phase_fr = np.cos(2 * np.pi * phase_fr)
+                sin_phase_fl = np.sin(2 * np.pi * phase_fl)
+                cos_phase_fl = np.cos(2 * np.pi * phase_fl)
+                phase_features = np.array([sin_phase_fr, cos_phase_fr, sin_phase_fl, cos_phase_fl], dtype=np.float32)
 
+
+                # Create observation
                 obs[:3] = ang_vel * ang_vel_scale
                 obs[3:6] = projected_gravity
                 obs[6:9] = cmd * cmd_scale 
                 obs[9 : 9+num_actions] = (qj - default_angles) * dof_pos_scale
                 obs[9+num_actions : 9+2*num_actions] = dqj * dof_vel_scale
                 obs[9+2*num_actions : 9+3*num_actions] = actions
+                obs[9+3*num_actions:9+3*num_actions+4] = phase_features
 
-                # ORIGINAL OBS
+                # ================== ORIGINAL OBS ==================
                 # obs[:3] = base_lin_vel * lin_vel_scale
                 # obs[3:6] = ang_vel * ang_vel_scale
                 # obs[6:9] = projected_gravity
@@ -166,6 +175,7 @@ if __name__ == "__main__":
                 # obs[12 : 12+num_actions] = qj
                 # obs[12+num_actions : 12+2*num_actions] = dqj
                 # obs[12+2*num_actions : 12+3*num_actions] = actions
+                # ==================================================
 
                 # Convert to tensor
                 obs_tensor = torch.from_numpy(obs).unsqueeze(0)

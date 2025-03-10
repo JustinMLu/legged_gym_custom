@@ -1,6 +1,6 @@
 # Default config
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/rudolf2_45k.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_slope.xml"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/EXPORTED.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml"
 
 # Total simulation time (seconds)
 simulation_duration: 200.0
