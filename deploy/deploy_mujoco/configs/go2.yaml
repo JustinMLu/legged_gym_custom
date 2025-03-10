@@ -1,5 +1,5 @@
 # Default config
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/rudolf_1.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/rudolf_2_full.pt"
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_terrain.xml"
 
 # Total simulation time (seconds)
@@ -48,4 +48,4 @@ num_actions: 12    # 12 for go2
 num_obs: 53        
 
 # Robot command ([forward, lateral, yaw])
-command: [1.0, 0.0, 0.0]
+command: [.75, .0, .0]
