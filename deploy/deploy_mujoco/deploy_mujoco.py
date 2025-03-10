@@ -91,106 +91,123 @@ if __name__ == "__main__":
     mujoco.mj_resetDataKeyframe(m, d, 0)
 
     # Initialize phase-related variables
-    sim_time = 0.0
-    period = 1.2  # Complete cycle duration (seconds) - match from Go2Robot
-    offset = 0.6  # Phase offset (seconds) - match from Go2Robot
+    sim_time_s = 0.0
+    period = 0.66  # MATCH WITH GO2ROBOT
 
     # Start simulation
     counter = 0
-    with mujoco.viewer.launch_passive(m, d) as viewer:
-        start = time.time()
 
-        # Close the viewer automatically after simulation_duration wall-seconds.
-        while viewer.is_running() and (time.time() - start < simulation_duration or run_forever):
-            step_start = time.time()
+    # Init viewer
+    viewer = mujoco.viewer.launch_passive(m, d)
+    viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+    viewer.cam.trackbodyid = 0
+    
+    start = time.time()
 
-            # Get current q
-            qj_pos = d.qpos[7:] # 19 --> 12
-            qj_vel = d.qvel[6:] # 18 --> 12
+    # Close the viewer automatically after simulation_duration wall-seconds.
+    while viewer.is_running() and (time.time() - start < simulation_duration or run_forever):
+        step_start = time.time()
 
-            # Joint torque PD control
-            tau = get_pd_control(target_dof_pos, qj_pos, kp_gains, np.zeros_like(kd_gains), qj_vel, kd_gains)
-            d.ctrl[:] = tau
+        # Get current q
+        qj_pos = d.qpos[7:] # 19 --> 12
+        qj_vel = d.qvel[6:] # 18 --> 12
+
+        # Joint torque PD control
+        tau = get_pd_control(target_dof_pos, qj_pos, kp_gains, np.zeros_like(kd_gains), qj_vel, kd_gains)
+        d.ctrl[:] = tau
+        
+        # mj_step can be replaced with code that also evaluates
+        # a policy and applies a control signal before stepping the physics.
+        mujoco.mj_step(m, d)
+
+        # Update simulation time
+        sim_time_s += simulation_dt
+
+        # Apply control signal every (control_decimation) steps
+        counter += 1
+        if counter % control_decimation == 0:
+
+            # Create observation
+            qj = qj_pos
+            dqj = qj_vel
+            lin_vel = d.qvel[:3]                        # linear vel. in the world frame
+            ang_vel = d.qvel[3:6]                       # angular vel. in the world frame
+            lin_accel = d.qacc[:3]                      # linear accel. in the world frame
+
+            # ========== rotation math ==========
+            base_rot_quat = d.qpos[3:7]                 # rotation of base in quaternion
+            temp = np.zeros(9)   
+            mujoco.mju_quat2Mat(temp, base_rot_quat)
+            base_rot_mat = temp.reshape(3, 3)           # rotation of base in matrix form
+            base_lin_vel = base_rot_mat.T @ lin_vel     # linear vel. in the body frame
+            base_lin_accel = base_rot_mat.T @ lin_accel # linear accel. in the body frame
+            # ===================================
+
+            # Get projected gravity
+            projected_gravity = get_gravity_orientation(base_rot_quat)
             
-            # mj_step can be replaced with code that also evaluates
-            # a policy and applies a control signal before stepping the physics.
-            mujoco.mj_step(m, d)
+            # Get sensor data for accelerometer (linear accel)
+            # accel_sensor_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SENSOR, "imu_acc")
+            # sensor_lin_accel = d.sensordata[accel_sensor_id:accel_sensor_id+3]
+            
+            # MATCH WITH GO2ROBOT
+            phase = (sim_time_s % period) / period
+            phase_fr = phase
+            phase_bl = phase
+            phase_fl = (phase + 0.5) % 1
+            phase_br = (phase + 0.5) % 1
 
-            # Update simulation time
-            sim_time += simulation_dt
+            sin_phase_fl = np.sin(2 * np.pi * phase_fl)
+            cos_phase_fl = np.cos(2 * np.pi * phase_fl)
+            sin_phase_fr = np.sin(2 * np.pi * phase_fr)
+            cos_phase_fr = np.cos(2 * np.pi * phase_fr)
+            sin_phase_bl = np.sin(2 * np.pi * phase_bl)
+            cos_phase_bl = np.cos(2 * np.pi * phase_bl)
+            sin_phase_br = np.sin(2 * np.pi * phase_br)
+            cos_phase_br = np.cos(2 * np.pi * phase_br)
 
-            # Apply control signal every (control_decimation) steps
-            counter += 1
-            if counter % control_decimation == 0:
-
-                # Create observation
-                qj = qj_pos
-                dqj = qj_vel
-                lin_vel = d.qvel[:3]                        # linear vel. in the world frame
-                ang_vel = d.qvel[3:6]                       # angular vel. in the world frame
-                lin_accel = d.qacc[:3]                      # linear accel. in the world frame
-
-                # ========== rotation math ==========
-                base_rot_quat = d.qpos[3:7]                 # rotation of base in quaternion
-                temp = np.zeros(9)   
-                mujoco.mju_quat2Mat(temp, base_rot_quat)
-                base_rot_mat = temp.reshape(3, 3)           # rotation of base in matrix form
-                base_lin_vel = base_rot_mat.T @ lin_vel     # linear vel. in the body frame
-                base_lin_accel = base_rot_mat.T @ lin_accel # linear accel. in the body frame
-                # ===================================
-
-                # Get projected gravity
-                projected_gravity = get_gravity_orientation(base_rot_quat)
-                
-                # Get sensor data for accelerometer (linear accel)
-                # accel_sensor_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SENSOR, "imu_acc")
-                # sensor_lin_accel = d.sensordata[accel_sensor_id:accel_sensor_id+3]
-
-                phase = (sim_time % period) / period
-                phase_fr = phase
-                phase_bl = phase
-                phase_fl = (phase + offset) % 1
-                phase_br = (phase + offset) % 1
-                sin_phase_fr = np.sin(2 * np.pi * phase_fr)
-                cos_phase_fr = np.cos(2 * np.pi * phase_fr)
-                sin_phase_fl = np.sin(2 * np.pi * phase_fl)
-                cos_phase_fl = np.cos(2 * np.pi * phase_fl)
-                phase_features = np.array([sin_phase_fr, cos_phase_fr, sin_phase_fl, cos_phase_fl], dtype=np.float32)
+            # MATCH WITH GO2ROBOT
+            phase_features = np.array([
+                sin_phase_fr, cos_phase_fr, 
+                sin_phase_fl, cos_phase_fl,
+                sin_phase_bl, cos_phase_bl,
+                sin_phase_br, cos_phase_br
+            ], dtype=np.float32)
 
 
-                # Create observation
-                obs[:3] = ang_vel * ang_vel_scale
-                obs[3:6] = projected_gravity
-                obs[6:9] = cmd * cmd_scale 
-                obs[9 : 9+num_actions] = (qj - default_angles) * dof_pos_scale
-                obs[9+num_actions : 9+2*num_actions] = dqj * dof_vel_scale
-                obs[9+2*num_actions : 9+3*num_actions] = actions
-                obs[9+3*num_actions:9+3*num_actions+4] = phase_features
+            # Create observation
+            obs[:3] = ang_vel * ang_vel_scale
+            obs[3:6] = projected_gravity
+            obs[6:9] = cmd * cmd_scale 
+            obs[9 : 9+num_actions] = (qj - default_angles) * dof_pos_scale
+            obs[9+num_actions : 9+2*num_actions] = dqj * dof_vel_scale
+            obs[9+2*num_actions : 9+3*num_actions] = actions
+            obs[9+3*num_actions:9+3*num_actions+8] = phase_features
 
-                # ================== ORIGINAL OBS ==================
-                # obs[:3] = base_lin_vel * lin_vel_scale
-                # obs[3:6] = ang_vel * ang_vel_scale
-                # obs[6:9] = projected_gravity
-                # obs[9:12] = cmd * cmd_scale 
-                # obs[12 : 12+num_actions] = qj
-                # obs[12+num_actions : 12+2*num_actions] = dqj
-                # obs[12+2*num_actions : 12+3*num_actions] = actions
-                # ==================================================
+            # ================== ORIGINAL OBS ==================
+            # obs[:3] = base_lin_vel * lin_vel_scale
+            # obs[3:6] = ang_vel * ang_vel_scale
+            # obs[6:9] = projected_gravity
+            # obs[9:12] = cmd * cmd_scale 
+            # obs[12 : 12+num_actions] = qj
+            # obs[12+num_actions : 12+2*num_actions] = dqj
+            # obs[12+2*num_actions : 12+3*num_actions] = actions
+            # ==================================================
 
-                # Convert to tensor
-                obs_tensor = torch.from_numpy(obs).unsqueeze(0)
-                
-                # Get actions from policy
-                actions = policy(obs_tensor).detach().numpy().squeeze()
+            # Convert to tensor
+            obs_tensor = torch.from_numpy(obs).unsqueeze(0)
+            
+            # Get actions from policy
+            actions = policy(obs_tensor).detach().numpy().squeeze()
 
-                # Transform action to target_dof_pos
-                target_dof_pos = actions * action_scale + default_angles
+            # Transform action to target_dof_pos
+            target_dof_pos = actions * action_scale + default_angles
 
 
-            # Pick up changes to the physics state, apply perturbations, update options from GUI.
-            viewer.sync()
+        # Pick up changes to the physics state, apply perturbations, update options from GUI.
+        viewer.sync()
 
-            # Rudimentary time keeping, will drift relative to wall clock.
-            time_until_next_step = m.opt.timestep - (time.time() - step_start)
-            if time_until_next_step > 0:
-                time.sleep(time_until_next_step)
+        # Rudimentary time keeping, will drift relative to wall clock.
+        time_until_next_step = m.opt.timestep - (time.time() - step_start)
+        if time_until_next_step > 0:
+            time.sleep(time_until_next_step)
