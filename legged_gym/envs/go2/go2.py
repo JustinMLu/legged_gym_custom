@@ -88,14 +88,18 @@ class Go2Robot(LeggedRobot):
         # Update feet states, positions, velociites
         self.update_feet_states()
 
+        # TODO PUT ALL PHASE VARIABLES IN CONFIG!!!
         period = 0.66 # Complete cycle duration (seconds)
+        fr_offset = 0.0
+        bl_offset = 0.0
+        fl_offset = 0.5
+        br_offset = 0.5
 
         self.phase = (self.episode_length_buf * self.dt) % period / period 
-
-        self.phase_fr = self.phase % 1
-        self.phase_bl = (self.phase) % 1
-        self.phase_fl = (self.phase + 0.5) % 1 
-        self.phase_br = (self.phase + 0.5) % 1
+        self.phase_fr = (self.phase + fr_offset) % 1
+        self.phase_bl = (self.phase + bl_offset) % 1
+        self.phase_fl = (self.phase + fl_offset) % 1
+        self.phase_br = (self.phase + br_offset) % 1
 
         return super()._post_physics_step_callback()
     
@@ -172,7 +176,8 @@ class Go2Robot(LeggedRobot):
             - FL and BR feet should contact when phase >= 0.5
         """
 
-        # "Duty factor" (% of each legs cycle on the ground)
+        # "Duty factor" (% of each legs cycle on the ground) 
+        # TODO PUT THIS IN CONFIG!!!
         stance_threshold = 0.5
 
         fl_stance = self.phase_fl < stance_threshold
