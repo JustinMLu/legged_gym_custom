@@ -86,11 +86,13 @@ class Go2Cfg( LeggedRobotCfg ):
     # # ============ NEVER USE WHEN TRAINING ============
     # class commands( LeggedRobotCfg.commands ):
     #     user_command = [0.75, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
-    # # ============ NEVER USE WHEN TRAINING ============
+    # # =================================================
 
-    class commands ( LeggedRobotCfg.commands ):
-        curriculum = True
-        max_curriculum = 10.0
+    # # ============== COMMAND CURRICULUM ===============
+    # class commands ( LeggedRobotCfg.commands ):
+    #     curriculum = True
+    #     max_curriculum = 1.5
+    # # =================================================
 
     class normalization( LeggedRobotCfg.normalization ):
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
