@@ -176,7 +176,6 @@ class Terrain:
         # Else random flat
         else:
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.01, max_height=0.01, step=0.005, downsampled_scale=0.05)
-    
         
         return terrain
 
