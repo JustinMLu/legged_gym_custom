@@ -64,21 +64,21 @@ if __name__ == "__main__":
         simulation_dt = config["simulation_dt"]
         control_decimation = config["control_decimation"]
         
-        # PD gains
+        # Motor-related
         kp_gains = np.array(config["kp_gains"], dtype=np.float32) 
         kd_gains = np.array(config["kd_gains"], dtype=np.float32)
         default_angles = np.array(config["default_angles"], dtype=np.float32)
         
         # Scales
-        lin_accel_scale = config["lin_accel_scale"] # NEW
-        lin_vel_scale = config["lin_vel_scale"]
+        lin_accel_scale = config["lin_accel_scale"] # No longer used
+        lin_vel_scale = config["lin_vel_scale"] # No longer used
         ang_vel_scale = config["ang_vel_scale"]
         dof_pos_scale = config["dof_pos_scale"]
         dof_vel_scale = config["dof_vel_scale"]
         action_scale = config["action_scale"]
         cmd_scale = np.array(config["cmd_scale"], dtype=np.float32)
         
-        # Actions & Observation
+        # Actions & Obs & Cmd
         num_actions = config["num_actions"]
         num_obs = config["num_obs"]
         cmd = np.array(config["command"], dtype=np.float32)
@@ -168,7 +168,7 @@ if __name__ == "__main__":
             # accel_sensor_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SENSOR, "imu_acc")
             # sensor_lin_accel = d.sensordata[accel_sensor_id:accel_sensor_id+3]
             
-            # Prepare phase features (***MUST MATCH***)
+            # Prepare phase features (*MATCH*)
             phase = (sim_time_s % period) / period
             phase_fr = (phase + fr_offset) % 1
             phase_bl = (phase + bl_offset) % 1
@@ -184,7 +184,7 @@ if __name__ == "__main__":
             sin_phase_br = np.sin(2 * np.pi * phase_br)
             cos_phase_br = np.cos(2 * np.pi * phase_br)
 
-            # Construct phase features vector (***MUST MATCH ISAAC OBSERVATION***)
+            # Construct phase features vector (*MATCH*)
             phase_features = np.array([
                 sin_phase_fr, cos_phase_fr, 
                 sin_phase_fl, cos_phase_fl,

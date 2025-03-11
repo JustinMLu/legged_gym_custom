@@ -8,8 +8,6 @@ class Config:
         with open(file_path, "r") as f:
             config = yaml.load(f, Loader=yaml.FullLoader)
 
-            self.control_dt = config["control_dt"]
-
             self.msg_type = config["msg_type"]
             self.imu_type = config["imu_type"]
 
@@ -20,25 +18,35 @@ class Config:
             self.lowcmd_topic = config["lowcmd_topic"]
             self.lowstate_topic = config["lowstate_topic"]
 
+            # Paths
             self.policy_path = config["policy_path"].replace("{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
+            
+            # Timing
+            self.control_dt = config["control_dt"]
 
+            # Motor-related
             self.leg_joint2motor_idx = config["leg_joint2motor_idx"]
             self.kps = config["kps"]
             self.kds = config["kds"]
             self.default_angles = np.array(config["default_angles"], dtype=np.float32)
 
-            self.arm_waist_joint2motor_idx = config["arm_waist_joint2motor_idx"]
-            self.arm_waist_kps = config["arm_waist_kps"]
-            self.arm_waist_kds = config["arm_waist_kds"]
-            self.arm_waist_target = np.array(config["arm_waist_target"], dtype=np.float32)
 
-            self.lin_vel_scale = config["lin_vel_scale"]
+            # Scales
+            # self.lin_vel_scale = config["lin_vel_scale"] # No longer used
             self.ang_vel_scale = config["ang_vel_scale"]
             self.dof_pos_scale = config["dof_pos_scale"]
             self.dof_vel_scale = config["dof_vel_scale"]
             self.action_scale = config["action_scale"]
             self.cmd_scale = np.array(config["cmd_scale"], dtype=np.float32)
-            self.max_cmd = np.array(config["max_cmd"], dtype=np.float32)
-
+            
+            # Actions & Obs & Cmd
             self.num_actions = config["num_actions"]
             self.num_obs = config["num_obs"]
+            self.max_cmd = np.array(config["max_cmd"], dtype=np.float32)
+
+            # Phase
+            self.period = config["period"]
+            self.fr_offset = config["fr_offset"]
+            self.bl_offset = config["bl_offset"]
+            self.fl_offset = config["fl_offset"]
+            self.br_offset = config["br_offset"]
