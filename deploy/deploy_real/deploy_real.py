@@ -102,7 +102,7 @@ class Controller:
     def move_to_default_pos(self):
         print("===== MOVING TO DEFAULT POSITION... =====")
         # move time 2s
-        total_time = 4
+        total_time = 5
         num_step = int(total_time / self.config.control_dt) # 0.02 for go2 (0.005 sim dt * 4 ctrl decimation)
         
         dof_idx = self.config.leg_joint2motor_idx
@@ -124,8 +124,10 @@ class Controller:
                 target_pos = default_pos[j]
                 self.low_cmd.motor_cmd[motor_idx].q = init_dof_pos[j] * (1 - alpha) + target_pos * alpha
                 self.low_cmd.motor_cmd[motor_idx].qd = 0
-                self.low_cmd.motor_cmd[motor_idx].kp = kps[j] # Kp obtained from cfg
-                self.low_cmd.motor_cmd[motor_idx].kd = kds[j] # Kd obtained from cfg
+                self.low_cmd.motor_cmd[motor_idx].kp = kps[j]
+                self.low_cmd.motor_cmd[motor_idx].kd = kds[j]
+                # self.low_cmd.motor_cmd[motor_idx].kp = 20.0 # TODO REMOVE HARDCODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                # self.low_cmd.motor_cmd[motor_idx].kd = 0.5  # TODO REMOVE HARDCODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
             self.send_cmd(self.low_cmd)
             time.sleep(self.config.control_dt) # should be correct
@@ -259,8 +261,7 @@ if __name__ == "__main__":
     # Enter the default position state, press the A key to continue executing
     controller.default_pos_state()
 
-    # DEBUG
-
+    print("Running...")
     while True:
         try:
             controller.run() # UNCOMMENT LATER

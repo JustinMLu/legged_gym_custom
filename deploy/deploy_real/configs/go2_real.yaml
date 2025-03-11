@@ -8,13 +8,23 @@ lowstate_topic: "rt/lowstate"
 policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/rudolf_2_52k_cc.pt"
 control_dt: 0.02  # control decimation * simulation_dt = 4 * 0.005 = 0.02 
 
-leg_joint2motor_idx: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
-kps: [20, 20, 20,
-      20, 20, 20,
-      20, 20, 20,
-      20, 20, 20]
+# LEG 2 JOINT MOTOR INDEX: fixes the order of the motors in the observation
+# Ex. Isaac and Mujoco are L R L R, but IRL the joint order is R L R L 
 
+#                   hip, thigh, calf
+leg_joint2motor_idx: [3, 4, 5,   # FL
+                      0, 1, 2,   # FR
+                      9, 10, 11, # BL
+                      6, 7, 8]   # BR
+
+#     hip, thigh, calf
+kps: [40.0, 40.0, 40.0,
+      40.0, 40.0, 40.0,
+      40.0, 40.0, 40.0,
+      40.0, 40.0, 40.0]
+
+#     hip, thigh, calf
 kds: [1.0, 1.0, 1.0,
       1.0, 1.0, 1.0,
       1.0, 1.0, 1.0,
@@ -45,4 +55,4 @@ fl_offset: 0.5
 br_offset: 0.5
 
 # Cmd format: [forward, lateral, yaw]
-max_cmd: [0.0 , 0.0, 0.0]
+max_cmd: [0.8, 0.5, 1.57]

@@ -13,10 +13,10 @@ simulation_dt: 0.005
 control_decimation: 4
 
 # Match PD gains in Isaac Gym cfg
-kp_gains: [20, 20, 20,
-      20, 20, 20,
-      20, 20, 20,
-      20, 20, 20]
+kp_gains: [40, 40, 40,
+      40, 40, 40,
+      40, 40, 40,
+      40, 40, 40]
 
 # # ======= ORIGINAL DAMPING =======
 # kd_gains: [0.5, 0.5, 0.5,
@@ -26,12 +26,12 @@ kp_gains: [20, 20, 20,
 # # ================================
 
 
-# ======= 2X DAMPING TEST! =======
+# ======= Damping (orig. 0.5) =======
 kd_gains: [1.0, 1.0, 1.0,
       1.0, 1.0, 1.0,
       1.0, 1.0, 1.0,
       1.0, 1.0, 1.0]
-# ================================
+# ===================================
 
 default_angles: [
       0.1, 0.8, -1.5,   # FL
@@ -61,4 +61,4 @@ fl_offset: 0.5
 br_offset: 0.5
 
 # Cmd format: [forward, lateral, yaw]
-command: [0.75, .0, .0]
+command: [.0, .0, 1.5]
