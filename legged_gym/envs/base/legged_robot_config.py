@@ -161,8 +161,8 @@ class LeggedRobotCfg(BaseConfig):
 
     class normalization:
         class obs_scales:
-            lin_accel = 1.0 # Not used
-            lin_vel = 2.0   # Not used
+            lin_accel = 1.0 # Deprecated
+            lin_vel = 2.0   # Deprecated
             ang_vel = 0.25
             dof_pos = 1.0
             dof_vel = 0.05
@@ -174,11 +174,11 @@ class LeggedRobotCfg(BaseConfig):
         add_noise = True
         noise_level = 1.0 # scales other values
         class noise_scales:
-            lin_accel = 0.1 # Not used
-            lin_vel = 0.1   # Not used
+            lin_accel = 0.1 # Deprecated
+            lin_vel = 0.1   # Deprecated
+            ang_vel = 0.2
             dof_pos = 0.01
             dof_vel = 1.5
-            ang_vel = 0.2
             gravity = 0.05
             height_measurements = 0.1
 

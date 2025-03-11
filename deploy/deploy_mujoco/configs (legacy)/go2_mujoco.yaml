@@ -12,26 +12,17 @@ simulation_dt: 0.005
 # Controller update frequency (meets the requirement of simulation_dt * control_decimation=0.02; 50Hz)
 control_decimation: 4
 
-# Match PD gains in Isaac Gym cfg
-kp_gains: [40, 40, 40,
-      40, 40, 40,
-      40, 40, 40,
-      40, 40, 40]
+#     hip, thigh, calf
+kps: [40.0, 40.0, 40.0,
+      40.0, 40.0, 40.0,
+      40.0, 40.0, 40.0,
+      40.0, 40.0, 40.0]
 
-# # ======= ORIGINAL DAMPING =======
-# kd_gains: [0.5, 0.5, 0.5,
-#       0.5, 0.5, 0.5,
-#       0.5, 0.5, 0.5,
-#       0.5, 0.5, 0.5]
-# # ================================
-
-
-# ======= Damping (orig. 0.5) =======
-kd_gains: [1.0, 1.0, 1.0,
+#     hip, thigh, calf
+kds: [1.0, 1.0, 1.0,
       1.0, 1.0, 1.0,
       1.0, 1.0, 1.0,
       1.0, 1.0, 1.0]
-# ===================================
 
 default_angles: [
       0.1, 0.8, -1.5,   # FL
@@ -41,8 +32,8 @@ default_angles: [
 
 
 # Scales: match normalization class in Isaac cfg
-lin_accel_scale: 1.0 # No longer used
-lin_vel_scale: 2.0 # No longer used
+lin_accel_scale: 1.0 # Deprecated
+lin_vel_scale: 2.0 # Deprecated
 ang_vel_scale: 0.25
 dof_pos_scale: 1.0
 dof_vel_scale: 0.05

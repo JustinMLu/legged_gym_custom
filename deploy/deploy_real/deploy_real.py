@@ -205,7 +205,7 @@ class Controller:
 
         self.obs[:3] = ang_vel * self.config.ang_vel_scale
         self.obs[3:6] = projected_gravity
-        self.obs[6:9] = self.cmd * self.config.cmd_scale * self.config.max_cmd # scale to controller
+        self.obs[6:9] = self.cmd * self.config.cmd_scale * self.config.rc_scale # scale to controller
         self.obs[9 : 9+num_actions] = (qj_obs - self.config.default_angles) * self.config.dof_pos_scale 
         self.obs[9+num_actions : 9+2*num_actions] = dqj_obs * self.config.dof_vel_scale
         self.obs[9+2*num_actions : 9+3*num_actions] = self.actions
@@ -240,11 +240,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("net", type=str, help="network interface", default="eno1")
-    parser.add_argument("config", type=str, help="config file name in the configs folder", default="go2_real.yaml")
+    parser.add_argument("config", type=str, help="config file name in the configs folder", default="go2.yaml")
     args = parser.parse_args()
 
-    # Load config
-    config_path = f"{LEGGED_GYM_ROOT_DIR}/deploy/deploy_real/configs/{args.config}"
+    # Load config from path
+    config_path = f"{LEGGED_GYM_ROOT_DIR}/deploy/unified_configs/{args.config}"
     config = Config(config_path)
 
     # Initialize DDS communication

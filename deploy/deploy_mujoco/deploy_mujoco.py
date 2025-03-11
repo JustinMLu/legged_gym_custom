@@ -51,7 +51,7 @@ if __name__ == "__main__":
     config_file = args.config_file
 
     # Load config file
-    with open(f"{LEGGED_GYM_ROOT_DIR}/deploy/deploy_mujoco/configs/{config_file}", "r") as f:
+    with open(f"{LEGGED_GYM_ROOT_DIR}/deploy/unified_configs/{config_file}", "r") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
         # Paths
@@ -65,8 +65,8 @@ if __name__ == "__main__":
         control_decimation = config["control_decimation"]
         
         # Motor-related
-        kp_gains = np.array(config["kp_gains"], dtype=np.float32) 
-        kd_gains = np.array(config["kd_gains"], dtype=np.float32)
+        kps = np.array(config["kps"], dtype=np.float32) 
+        kds = np.array(config["kds"], dtype=np.float32)
         default_angles = np.array(config["default_angles"], dtype=np.float32)
         
         # Scales
@@ -131,7 +131,7 @@ if __name__ == "__main__":
         qj_vel = d.qvel[6:] # 18 --> 12
 
         # Joint torque PD control
-        tau = get_pd_control(target_dof_pos, qj_pos, kp_gains, np.zeros_like(kd_gains), qj_vel, kd_gains)
+        tau = get_pd_control(target_dof_pos, qj_pos, kps, np.zeros_like(kds), qj_vel, kds)
         d.ctrl[:] = tau
         
         # mj_step can be replaced with code that also evaluates

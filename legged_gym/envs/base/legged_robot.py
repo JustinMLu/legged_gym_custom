@@ -951,21 +951,6 @@ class LeggedRobot(BaseTask):
         """
         return torch.sum((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) -  self.cfg.rewards.max_contact_force).clip(min=0.), dim=1)
 
-    # # =========================== NEW REWARD FUNCTIONS BELOW ===========================
-    # def _reward_delta_torques(self): # Extreme Parkour -1.0e-7
-    #     """ Penalize changes in torques
-    #     """
-    #     return torch.sum(torch.square(self.torques - self.last_torques), dim=1)
-    
-    # def _reward_hip_pos(self): # Extreme Parkour -0.5
-    #     """ Penalize DOF hip positions away from default"""
-    #     return torch.sum(torch.square(self.dof_pos[:, self.hip_indices] - self.default_dof_pos[:, self.hip_indices]), dim=1)
-    
-    # def _reward_dof_error(self): # Extreme Parkour -0.04
-    #     """ Penalize DOF positions away from default
-    #     """
-    #     dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
-    #     return dof_error
 
     
 

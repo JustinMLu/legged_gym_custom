@@ -42,7 +42,7 @@ class Config:
             # Actions & Obs & Cmd
             self.num_actions = config["num_actions"]
             self.num_obs = config["num_obs"]
-            self.max_cmd = np.array(config["max_cmd"], dtype=np.float32)
+            self.rc_scale = np.array(config["rc_scale"], dtype=np.float32)
 
             # Phase
             self.period = config["period"]

@@ -6,6 +6,7 @@ class Go2Cfg( LeggedRobotCfg ):
         num_observations = 53
         num_actions = 12
 
+
     class terrain( LeggedRobotCfg.terrain ):
         static_friction = 1.0
         dynamic_friction = 1.0
@@ -20,16 +21,18 @@ class Go2Cfg( LeggedRobotCfg ):
         #     "num_waves": 1,
         #     "amplitude": 0.5
         # }
-        terrain_kwargs = {
-            "type": "terrain_utils.random_uniform_terrain",
-            "min_height": -0.08,
-            "max_height": 0.08,
-            "step": 0.01,
-            "downsampled_scale": 0.25,
-        }
+
+        # terrain_kwargs = {
+        #     "type": "terrain_utils.random_uniform_terrain",
+        #     "min_height": -0.08,
+        #     "max_height": 0.08,
+        #     "step": 0.01,
+        #     "downsampled_scale": 0.25,
+        # }
 
         # types: [smoothSlope, roughSlope, stairsUp, stairsDown, discrete, bumpyWave, bumpyHole], else flat
         terrain_proportions = [0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]
+
 
     class domain_rand:      
         randomize_friction = True
@@ -64,10 +67,10 @@ class Go2Cfg( LeggedRobotCfg ):
 
 
     class control( LeggedRobotCfg.control ):
-        # PD Drive prameters:
+        # PD Drive parameters:
         control_type = 'P'          # Position control 'P'
-        stiffness = {'joint': 20.}  # [N*m/rad]
-        damping = {'joint': 0.5}    # [N*m*s/rad]
+        stiffness = {'joint': 40.}  # [N*m/rad]
+        damping = {'joint': 1.}     # [N*m*s/rad]
         action_scale = 0.25
         decimation = 4
 
@@ -87,32 +90,45 @@ class Go2Cfg( LeggedRobotCfg ):
     # # =================================================
 
 
-    # ============== COMMAND CURRICULUM ===============
-    class commands ( LeggedRobotCfg.commands ):
-        curriculum = True
-        max_curriculum = 2.0
-    # =================================================
+    # # ============== COMMAND CURRICULUM ===============
+    # class commands ( LeggedRobotCfg.commands ):
+    #     curriculum = True
+    #     max_curriculum = 5.0
+    # # =================================================
+
 
     class normalization( LeggedRobotCfg.normalization ):
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
-            lin_accel = 1.0 # (NEW)
-    
+            lin_accel = 1.0 # Deprecated
+            lin_vel = 2.0   # Deprecated
+            ang_vel = 0.25
+            dof_pos = 1.0
+            dof_vel = 0.05
+            height_measurements = 5.0
+        clip_observations = 100.
+        clip_actions = 100.
+
 
     class noise( LeggedRobotCfg.noise):
         add_noise = True
         noise_level = 1.0
+
         class noise_scales( LeggedRobotCfg.noise.noise_scales):
-            lin_accel = 0.1 # (NEW)
+            lin_accel = 0.1 # Deprecated
+            lin_vel = 0.1   # Deprecated
+            ang_vel = 0.2
+            dof_pos = 0.01
+            dof_vel = 1.5
+            gravity = 0.05
+            height_measurements = 0.1
 
 
     class rewards( LeggedRobotCfg.rewards ):
-        # From Unitree
         soft_dof_pos_limit = 0.9 # +/- 90% of 50% of limit range
-        base_height_target = 0.25 # 0.25 original
-        
-        class scales( LeggedRobotCfg.rewards.scales ):
+        base_height_target = 0.25
 
-            # # Rudolf 2
+        class scales( LeggedRobotCfg.rewards.scales ):
+            # Rudolf 2, 3
             # tracking_lin_vel = 1.5
             # tracking_ang_vel = 1.0
             # lin_vel_z = -1.0
@@ -129,22 +145,22 @@ class Go2Cfg( LeggedRobotCfg ):
             # dof_error = -0.04           # New
             # contact_phase_match = 0.5   # New
 
-            # Rudolf 3
+            # Rudolf 4
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.0
             lin_vel_z = -1.0
             ang_vel_xy = -0.05
-            orientation = -5.0          # -1.0 original
-            torques = -0.0002           # -0.00001 original
+            orientation = -5.0
+            torques = -0.0002
             dof_acc = -2.5e-7
             action_rate = -0.1
             collision = -10.0
             stumble = -1.0
             feet_air_time = 0.5
-            delta_torques = -1.0e-7     # New
-            hip_pos = -1.0              # New (was -0.5)
-            dof_error = -0.04           # New
-            contact_phase_match = 0.5   # New
+            delta_torques = -1.0e-7 
+            hip_pos = -1.0 
+            dof_error = -0.04 
+            contact_phase_match = 0.5
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -153,12 +169,14 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         critic_hidden_dims = [128*4, 64*4, 32*4]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
+
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
 
+
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'rudolf3'
+        run_name = 'rudolf4'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 10000
-        save_interval = 500
+        max_iterations = 600
+        save_interval = 100
