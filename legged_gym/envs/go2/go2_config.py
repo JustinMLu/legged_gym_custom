@@ -28,10 +28,8 @@ class Go2Cfg( LeggedRobotCfg ):
             "downsampled_scale": 0.25,
         }
 
-        # types: [smooth slope, rough slope, stairs up, stairs down, discrete, rocky bump, bumpy wave]
-        # terrain_proportions = [0.07, 0.07, 0.18, 0.18, 0.14, 0.18, 0.18]
-        terrain_proportions = [0.07, 0.07, 0.0, 0.0, 0.14, 0.20, 0.20]
-
+        # types: [smoothSlope, roughSlope, stairsUp, stairsDown, discrete, bumpyWave, bumpyHole], else flat
+        terrain_proportions = [0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]
 
     class domain_rand:      
         randomize_friction = True
@@ -113,29 +111,13 @@ class Go2Cfg( LeggedRobotCfg ):
         
         class scales( LeggedRobotCfg.rewards.scales ):
 
-            # Custom
-            # tracking_lin_vel = 1.5
-            # tracking_ang_vel = 1.0
-            # feet_air_time = 0.5
-            # ang_vel_xy = -0.05
-            # base_height = -0.0001
-            # orientation = -2.5
-            # stand_still = -0.009
-            # dof_acc = -5.5e-7
-            # delta_torques = -1.0e-7 # New
-            # hip_pos = -0.5 # New
-            # dof_error = -0.04 # New
-            # contact_phase_match = 0.6 # New
-            # foot_swing_height = 0.5 # New
-
-
-            # Extreme Parkour
+            # Rudolf 2, Rudolf 3
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.0
             lin_vel_z = -1.0
             ang_vel_xy = -0.05
-            orientation = -5.0 # -1.0 original
-            torques = -0.0002  # -0.00001 original
+            orientation = -5.0          # -1.0 original
+            torques = -0.0002           # -0.00001 original
             dof_acc = -2.5e-7
             action_rate = -0.1
             collision = -10.0
@@ -145,7 +127,6 @@ class Go2Cfg( LeggedRobotCfg ):
             hip_pos = -1.0              # New (was -0.5)
             dof_error = -0.04           # New
             contact_phase_match = 0.5   # New
-            # foot_swing_height = 0.5   # New
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -161,5 +142,5 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         run_name = 'rudolf'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 50000
+        max_iterations = 20000
         save_interval = 1000
