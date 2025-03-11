@@ -51,9 +51,7 @@ class Go2Robot(LeggedRobot):
         noise_vec[12:24] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
         noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[36:48] = 0. # previous actions
-
-        # Include phase stuff here; it's zero but we need to keep the same size
-        noise_vec[48:52] = 0.0
+        noise_vec[48:52] = 0.0 # phase observations
         
         # Add heightmap noise (if heightmap used)
         if self.cfg.terrain.measure_heights:

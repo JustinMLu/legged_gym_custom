@@ -1,6 +1,6 @@
 # Default config
 policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/rudolf_2_command_curriculum.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_mountain.xml"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_slope.xml"
 
 # Total simulation time (seconds)
 simulation_duration: 200.0
@@ -40,8 +40,7 @@ default_angles: [
       -0.1, 1.0, -1.5]  # RR
 
 
-
-# Match normalization class in Isaac Gym cfg
+# Scales: match normalization class in Isaac cfg
 lin_accel_scale: 1.0    # NEW
 lin_vel_scale: 2.0
 ang_vel_scale: 0.25
@@ -54,6 +53,12 @@ cmd_scale: [2.0, 2.0, 0.25]
 num_actions: 12         # 12 for go2
 num_obs: 53        
 
+# Phase gait stuff
+period: 0.66
+fr_offset: 0.0
+bl_offset: 0.0
+fl_offset: 0.5
+br_offset: 0.5
 
 # Cmd: ([forward, lateral, yaw])
-command: [3., .0, .0]
+command: [0.75, .0, .0]

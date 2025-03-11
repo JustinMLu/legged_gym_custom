@@ -29,12 +29,12 @@ class Controller:
         self.policy = torch.jit.load(config.policy_path)
         
         # Initializing process variables
-        self.qj = np.zeros(config.num_actions, dtype=np.float32)
-        self.dqj = np.zeros(config.num_actions, dtype=np.float32)
-        self.action = np.zeros(config.num_actions, dtype=np.float32)
-        self.target_dof_pos = config.default_angles.copy()
-        self.obs = np.zeros(config.num_obs, dtype=np.float32)
-        self.cmd = np.array([0.0, 0, 0])
+        self.qj = np.zeros(config.num_actions, dtype=np.float32)        # joint pos.
+        self.dqj = np.zeros(config.num_actions, dtype=np.float32)       # joint vel.
+        self.actions = np.zeros(config.num_actions, dtype=np.float32)   # actions
+        self.target_dof_pos = config.default_angles.copy()              # target joint positions    
+        self.obs = np.zeros(config.num_obs, dtype=np.float32)           # observation
+        self.cmd = np.array([0.0, 0.0, 0.0])                            # command (x, y, yaw)
         self.counter = 0
 
 
@@ -79,10 +79,10 @@ class Controller:
             time.sleep(self.config.control_dt)
 
     def move_to_default_pos(self):
-        print("Moving to default pos.")
+        print("===== MOVING TO DEFAULT POSITION... =====")
         # move time 2s
         total_time = 4
-        num_step = int(total_time / self.config.control_dt)
+        num_step = int(total_time / self.config.control_dt) # 0.02 for go2 (0.005 sim dt * 4 ctrl decimation)
         
         dof_idx = self.config.leg_joint2motor_idx
         kps = self.config.kps
@@ -104,24 +104,31 @@ class Controller:
                 target_pos = default_pos[j]
                 self.low_cmd.motor_cmd[motor_idx].q = init_dof_pos[j] * (1 - alpha) + target_pos * alpha
                 self.low_cmd.motor_cmd[motor_idx].qd = 0
-                self.low_cmd.motor_cmd[motor_idx].kp = kps[j]
-                self.low_cmd.motor_cmd[motor_idx].kd = kds[j]
+                self.low_cmd.motor_cmd[motor_idx].kp = kps[j] # Kp obtained from cfg
+                self.low_cmd.motor_cmd[motor_idx].kd = kds[j] # Kd obtained from cfg
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
             self.send_cmd(self.low_cmd)
-            time.sleep(self.config.control_dt)
+            time.sleep(self.config.control_dt) # should be correct
 
     def default_pos_state(self):
-        print("Enter default pos state.")
+        print("default_pos_state() invoked...")
         print("Waiting for the Button A signal...")
+        
         while self.remote_controller.button[KeyMap.A] != 1:
+            print("Building motor_cmd for leg joints...")
+            print("Length of leg_joint2motor_idx: ", len(self.config.leg_joint2motor_idx))
+
             for i in range(len(self.config.leg_joint2motor_idx)):
                 motor_idx = self.config.leg_joint2motor_idx[i]
+
+                print("Building motor_cmd for [ motor_idx =", motor_idx, "]")
                 self.low_cmd.motor_cmd[motor_idx].q = self.config.default_angles[i]
                 self.low_cmd.motor_cmd[motor_idx].qd = 0
                 self.low_cmd.motor_cmd[motor_idx].kp = self.config.kps[i]
                 self.low_cmd.motor_cmd[motor_idx].kd = self.config.kds[i]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
 
+            # UPPERBODY COMMANDS COMMENTED OUT
             # for i in range(len(self.config.arm_waist_joint2motor_idx)):
             #     motor_idx = self.config.arm_waist_joint2motor_idx[i]
             #     self.low_cmd.motor_cmd[motor_idx].q = self.config.arm_waist_target[i]
@@ -129,11 +136,16 @@ class Controller:
             #     self.low_cmd.motor_cmd[motor_idx].kp = self.config.arm_waist_kps[i]
             #     self.low_cmd.motor_cmd[motor_idx].kd = self.config.arm_waist_kds[i]
             #     self.low_cmd.motor_cmd[motor_idx].tau = 0
+
+            print("Sending default pos command to motors...")
             self.send_cmd(self.low_cmd)
+
+            print("Command sent. Sleeping for control_dt...")
             time.sleep(self.config.control_dt)
 
     def run(self):
         self.counter += 1
+
         # Get the current joint position and velocity
         for i in range(len(self.config.leg_joint2motor_idx)):
             self.qj[i] = self.low_state.motor_state[self.config.leg_joint2motor_idx[i]].q
@@ -150,14 +162,17 @@ class Controller:
         #     waist_yaw_omega = self.low_state.motor_state[self.config.arm_waist_joint2motor_idx[0]].dq
         #     quat, ang_vel = transform_imu_data(waist_yaw=waist_yaw, waist_yaw_omega=waist_yaw_omega, imu_quat=quat, imu_omega=ang_vel)
 
-        # create observation
-        gravity_orientation = get_gravity_orientation(quat)
+        # Prepare observation quantities
         qj_obs = self.qj.copy()
         dqj_obs = self.dqj.copy()
-        qj_obs = (qj_obs - self.config.default_angles) * self.config.dof_pos_scale
+        qj_obs = (qj_obs - self.config.default_angles) * self.config.dof_pos_scale 
         dqj_obs = dqj_obs * self.config.dof_vel_scale
-        
         ang_vel = ang_vel * self.config.ang_vel_scale
+        gravity_orientation = get_gravity_orientation(quat)
+
+        # Prepare phase features
+
+
         period = 0.8
         count = self.counter * self.config.control_dt
         phase = count % period / period
@@ -168,22 +183,26 @@ class Controller:
         self.cmd[1] = self.remote_controller.lx * -1
         self.cmd[2] = self.remote_controller.rx * -1
 
+
+        # Construct observation tensor
         num_actions = self.config.num_actions
         self.obs[:3] = ang_vel
         self.obs[3:6] = gravity_orientation
         self.obs[6:9] = self.cmd * self.config.cmd_scale * self.config.max_cmd
         self.obs[9 : 9 + num_actions] = qj_obs
         self.obs[9 + num_actions : 9 + num_actions * 2] = dqj_obs
-        self.obs[9 + num_actions * 2 : 9 + num_actions * 3] = self.action
+        self.obs[9 + num_actions * 2 : 9 + num_actions * 3] = self.actions
         self.obs[9 + num_actions * 3] = sin_phase
         self.obs[9 + num_actions * 3 + 1] = cos_phase
 
-        # Get the action from the policy network
+        # Convert to tensor
         obs_tensor = torch.from_numpy(self.obs).unsqueeze(0)
-        self.action = self.policy(obs_tensor).detach().numpy().squeeze()
+
+        # Get actions from policy network
+        self.actions = self.policy(obs_tensor).detach().numpy().squeeze()
         
         # transform action to target_dof_pos
-        target_dof_pos = self.config.default_angles + self.action * self.config.action_scale
+        target_dof_pos = self.config.default_angles + self.actions * self.config.action_scale
 
         # Build low cmd
         for i in range(len(self.config.leg_joint2motor_idx)):
@@ -202,7 +221,7 @@ class Controller:
             self.low_cmd.motor_cmd[motor_idx].kd = self.config.arm_waist_kds[i]
             self.low_cmd.motor_cmd[motor_idx].tau = 0
 
-        # send the command
+        # Send command
         self.send_cmd(self.low_cmd)
 
         time.sleep(self.config.control_dt)

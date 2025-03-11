@@ -12,9 +12,14 @@ import pdb
 # ========================================================
 def get_gravity_orientation(quaternion):
     """ Returns gravity orientation in the frame specified by the quaternion.
-        So if the quaternion is the orientation of the base with respect to the 
-        world frame, then gravity_orientation will be the MuJoCo gravity vector 
-        ([0, 0, -1]) projected onto the base frame.
+
+    Args:
+        quaternion (np.array): A quaternion representing the orientation of the
+        base of the robot w.r.t. the world frame.
+
+    Returns:
+        np.array: A 3D vector representing the MuJoCo unit gravity vector ([0, 0, -1])
+        projected onto the base frame.
     """
     qw = quaternion[0]
     qx = quaternion[1]
@@ -22,13 +27,12 @@ def get_gravity_orientation(quaternion):
     qz = quaternion[3]
 
     gravity_orientation = np.zeros(3)
-
     gravity_orientation[0] = 2 * (-qz * qx + qw * qy)
     gravity_orientation[1] = -2 * (qz * qy + qw * qx)
     gravity_orientation[2] = 1 - 2 * (qw * qw + qz * qz)
 
     return gravity_orientation
-
+# ========================================================
 def get_pd_control(target_q, q, kp, target_dq, dq, kd):
     """Calculates torques from position commands"""
     return kp*(target_q-q) + kd*(target_dq-dq)
@@ -50,16 +54,22 @@ if __name__ == "__main__":
     with open(f"{LEGGED_GYM_ROOT_DIR}/deploy/deploy_mujoco/configs/{config_file}", "r") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
-        # Load arguments
+        # Paths
         policy_path = config["policy_path"].replace("{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
         xml_path = config["xml_path"].replace("{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
+        
+        # Timing
         simulation_duration = config["simulation_duration"]
         run_forever = config["run_forever"]
         simulation_dt = config["simulation_dt"]
         control_decimation = config["control_decimation"]
+        
+        # PD gains
         kp_gains = np.array(config["kp_gains"], dtype=np.float32) 
         kd_gains = np.array(config["kd_gains"], dtype=np.float32)
         default_angles = np.array(config["default_angles"], dtype=np.float32)
+        
+        # Scales
         lin_accel_scale = config["lin_accel_scale"] # NEW
         lin_vel_scale = config["lin_vel_scale"]
         ang_vel_scale = config["ang_vel_scale"]
@@ -67,9 +77,18 @@ if __name__ == "__main__":
         dof_vel_scale = config["dof_vel_scale"]
         action_scale = config["action_scale"]
         cmd_scale = np.array(config["cmd_scale"], dtype=np.float32)
+        
+        # Actions & Observation
         num_actions = config["num_actions"]
         num_obs = config["num_obs"]
         cmd = np.array(config["command"], dtype=np.float32)
+        
+        # Phase
+        period = config["period"]
+        fr_offset = config["fr_offset"]
+        bl_offset = config["bl_offset"]
+        fl_offset = config["fl_offset"]
+        br_offset = config["br_offset"]
 
     # Initialize some non-scalar data structures
     actions = np.zeros(num_actions, dtype=np.float32)
@@ -92,7 +111,6 @@ if __name__ == "__main__":
 
     # Initialize phase-related variables
     sim_time_s = 0.0
-    period = 0.66  # MATCH WITH GO2ROBOT
 
     # Start simulation
     counter = 0
@@ -127,7 +145,7 @@ if __name__ == "__main__":
         counter += 1
         if counter % control_decimation == 0:
 
-            # Create observation
+            # Prepare observation quantities
             qj = qj_pos
             dqj = qj_vel
             lin_vel = d.qvel[:3]                        # linear vel. in the world frame
@@ -150,12 +168,12 @@ if __name__ == "__main__":
             # accel_sensor_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SENSOR, "imu_acc")
             # sensor_lin_accel = d.sensordata[accel_sensor_id:accel_sensor_id+3]
             
-            # MATCH WITH GO2ROBOT
+            # Prepare phase features (***MUST MATCH***)
             phase = (sim_time_s % period) / period
-            phase_fr = phase
-            phase_bl = phase
-            phase_fl = (phase + 0.5) % 1
-            phase_br = (phase + 0.5) % 1
+            phase_fr = (phase + fr_offset) % 1
+            phase_bl = (phase + bl_offset) % 1
+            phase_fl = (phase + fl_offset) % 1
+            phase_br = (phase + br_offset) % 1
 
             sin_phase_fl = np.sin(2 * np.pi * phase_fl)
             cos_phase_fl = np.cos(2 * np.pi * phase_fl)
@@ -166,7 +184,7 @@ if __name__ == "__main__":
             sin_phase_br = np.sin(2 * np.pi * phase_br)
             cos_phase_br = np.cos(2 * np.pi * phase_br)
 
-            # MATCH WITH GO2ROBOT
+            # Construct phase features vector (***MUST MATCH ISAAC OBSERVATION***)
             phase_features = np.array([
                 sin_phase_fr, cos_phase_fr, 
                 sin_phase_fl, cos_phase_fl,
@@ -175,7 +193,7 @@ if __name__ == "__main__":
             ], dtype=np.float32)
 
 
-            # Create observation
+            # Create observation tensor
             obs[:3] = ang_vel * ang_vel_scale
             obs[3:6] = projected_gravity
             obs[6:9] = cmd * cmd_scale 
@@ -184,20 +202,10 @@ if __name__ == "__main__":
             obs[9+2*num_actions : 9+3*num_actions] = actions
             obs[9+3*num_actions:9+3*num_actions+8] = phase_features
 
-            # ================== ORIGINAL OBS ==================
-            # obs[:3] = base_lin_vel * lin_vel_scale
-            # obs[3:6] = ang_vel * ang_vel_scale
-            # obs[6:9] = projected_gravity
-            # obs[9:12] = cmd * cmd_scale 
-            # obs[12 : 12+num_actions] = qj
-            # obs[12+num_actions : 12+2*num_actions] = dqj
-            # obs[12+2*num_actions : 12+3*num_actions] = actions
-            # ==================================================
-
             # Convert to tensor
             obs_tensor = torch.from_numpy(obs).unsqueeze(0)
             
-            # Get actions from policy
+            # Get actions from policy network
             actions = policy(obs_tensor).detach().numpy().squeeze()
 
             # Transform action to target_dof_pos
