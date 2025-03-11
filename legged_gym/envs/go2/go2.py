@@ -55,7 +55,7 @@ class Go2Robot(LeggedRobot):
         
         # Add heightmap noise (if heightmap used)
         if self.cfg.terrain.measure_heights:
-            noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
+            noise_vec[52:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
         return noise_vec
 
 
