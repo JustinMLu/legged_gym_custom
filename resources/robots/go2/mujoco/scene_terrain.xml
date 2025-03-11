@@ -26,20 +26,23 @@
                 Z_top is the max height above 0 (after normalization),
                 Z_bottom is the thickness extending below 0.    -->
 
-        <hfield name="perlin_hfield" size="20.0 20.0 4.0 4.0" file="../height_field.png" />
-        
+
         <!--    =========== DEFAULTS =========== -->
         <!-- <hfield name="perlin_hfield" size="1.0 0.75 0.2 0.2" file="../height_field.png" /> -->
         <!-- <hfield name="image_hfield" size="1.0 1.0 0.02 0.1" file="../unitree_hfield.png" /> -->
+
+
+        <!--    ======= PERLIN HEIGHTFIELDS ======= -->
+        <hfield name="hfield_1" size="20.0 20.0 5.0 5.0" file="../height_field.png" />
+        <!-- <hfield name="hfield_2" size="10.0 10.0 1.5 1.5" file="../height_field.png" /> -->
         
     </asset>
 
     <worldbody>
         <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
         
-        <geom name="floor" type="hfield" hfield="perlin_hfield" pos="0.0 0.0 -2.0"/>
-        <!-- <geom name="floor" type="hfield" hfield="image_hfield" pos="0.0 0.0 -1.0" friction = "1.0 0.005 0.0001"/> -->
-
+        <geom name="floor_tile_1" type="hfield" hfield="hfield_1" pos="0.0 0.0 -5.0"/>
+        <!-- <geom name="floor_tile_2" type="hfield" hfield="hfield_2" pos="20.0 0.0 -2.0"/> -->
 
     </worldbody>
 </mujoco>

@@ -86,11 +86,12 @@ class Go2Cfg( LeggedRobotCfg ):
     #     user_command = [0.75, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
     # # =================================================
 
-    # # ============== COMMAND CURRICULUM ===============
-    # class commands ( LeggedRobotCfg.commands ):
-    #     curriculum = True
-    #     max_curriculum = 1.5
-    # # =================================================
+
+    # ============== COMMAND CURRICULUM ===============
+    class commands ( LeggedRobotCfg.commands ):
+        curriculum = True
+        max_curriculum = 2.0
+    # =================================================
 
     class normalization( LeggedRobotCfg.normalization ):
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
@@ -111,7 +112,24 @@ class Go2Cfg( LeggedRobotCfg ):
         
         class scales( LeggedRobotCfg.rewards.scales ):
 
-            # Rudolf 2, Rudolf 3
+            # # Rudolf 2
+            # tracking_lin_vel = 1.5
+            # tracking_ang_vel = 1.0
+            # lin_vel_z = -1.0
+            # ang_vel_xy = -0.05
+            # orientation = -5.0          # -1.0 original
+            # torques = -0.0002           # -0.00001 original
+            # dof_acc = -2.5e-7
+            # action_rate = -0.1
+            # collision = -10.0
+            # stumble = -1.0
+            # feet_air_time = 0.5
+            # delta_torques = -1.0e-7     # New
+            # hip_pos = -1.0              # New (was -0.5)
+            # dof_error = -0.04           # New
+            # contact_phase_match = 0.5   # New
+
+            # Rudolf 3
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.0
             lin_vel_z = -1.0
@@ -139,8 +157,8 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'rudolf'
+        run_name = 'rudolf3'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 20000
-        save_interval = 1000
+        max_iterations = 10000
+        save_interval = 500

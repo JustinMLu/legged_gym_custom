@@ -1,6 +1,6 @@
 # Default config
 policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/rudolf_2_command_curriculum.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_mountain.xml"
 
 # Total simulation time (seconds)
 simulation_duration: 200.0
@@ -18,25 +18,31 @@ kp_gains: [20, 20, 20,
       20, 20, 20,
       20, 20, 20]
 
-kd_gains: [0.5, 0.5, 0.5,
-      0.5, 0.5, 0.5,
-      0.5, 0.5, 0.5,
-      0.5, 0.5, 0.5]
+# # ======= ORIGINAL DAMPING =======
+# kd_gains: [0.5, 0.5, 0.5,
+#       0.5, 0.5, 0.5,
+#       0.5, 0.5, 0.5,
+#       0.5, 0.5, 0.5]
+# # ================================
+
+
+# ======= 2X DAMPING TEST! =======
+kd_gains: [1.0, 1.0, 1.0,
+      1.0, 1.0, 1.0,
+      1.0, 1.0, 1.0,
+      1.0, 1.0, 1.0]
+# ================================
 
 default_angles: [
-      0.1, 0.8, -1.5, # FL
-      -0.1, 0.8, -1.5, # FR
-      0.1, 1.0, -1.5, # RL
-      -0.1, 1.0, -1.5] # RR
+      0.1, 0.8, -1.5,   # FL
+      -0.1, 0.8, -1.5,  # FR
+      0.1, 1.0, -1.5,   # RL
+      -0.1, 1.0, -1.5]  # RR
 
-# default_angles: [
-#       0, 0.9, -1.8,
-#       0, 0.9, -1.8,
-#       0, 0.9, -1.8, 
-#       0, 0.9, -1.8]
+
 
 # Match normalization class in Isaac Gym cfg
-lin_accel_scale: 1.0 # NEW
+lin_accel_scale: 1.0    # NEW
 lin_vel_scale: 2.0
 ang_vel_scale: 0.25
 dof_pos_scale: 1.0
@@ -44,8 +50,10 @@ dof_vel_scale: 0.05
 action_scale: 0.25
 cmd_scale: [2.0, 2.0, 0.25]
 
-num_actions: 12    # 12 for go2
+# Match with network
+num_actions: 12         # 12 for go2
 num_obs: 53        
 
-# Robot command ([forward, lateral, yaw])
-command: [1.0, .0, .0]
+
+# Cmd: ([forward, lateral, yaw])
+command: [3., .0, .0]
