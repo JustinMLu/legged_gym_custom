@@ -90,15 +90,14 @@ class Go2Robot(LeggedRobot):
         # Update feet states, positions, velociites
         self.update_feet_states()
 
-        period = 0.8 # Complete cycle duration (seconds)
-        offset = 0.4 # Phase offset (seconds)
+        period = 0.66 # Complete cycle duration (seconds)
 
         self.phase = (self.episode_length_buf * self.dt) % period / period 
 
-        self.phase_fr = self.phase
-        self.phase_fl = (self.phase + offset) % 1 
-        self.phase_bl = self.phase
-        self.phase_br = (self.phase + offset) % 1
+        self.phase_fr = self.phase % 1
+        self.phase_bl = (self.phase) % 1
+        self.phase_fl = (self.phase + 0.5) % 1 
+        self.phase_br = (self.phase + 0.5) % 1
 
         return super()._post_physics_step_callback()
     
@@ -108,27 +107,29 @@ class Go2Robot(LeggedRobot):
             linear acceleration instead of linear velocity as an observation.
         """
         # Calculate sine and cosine of phases for smooth transitions
-        sin_phase_fr = torch.sin(2 * np.pi * self.phase_fr).unsqueeze(1)
-        cos_phase_fr = torch.cos(2 * np.pi * self.phase_fr).unsqueeze(1)
-        sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl).unsqueeze(1)
+        sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl).unsqueeze(1) # FL
         cos_phase_fl = torch.cos(2 * np.pi * self.phase_fl).unsqueeze(1)
+        sin_phase_fr = torch.sin(2 * np.pi * self.phase_fr).unsqueeze(1) # FR
+        cos_phase_fr = torch.cos(2 * np.pi * self.phase_fr).unsqueeze(1)
+        sin_phase_bl = torch.sin(2 * np.pi * self.phase_bl).unsqueeze(1) # BL
+        cos_phase_bl = torch.cos(2 * np.pi * self.phase_bl).unsqueeze(1)
+        sin_phase_br = torch.sin(2 * np.pi * self.phase_br).unsqueeze(1) # BR
+        cos_phase_br = torch.cos(2 * np.pi * self.phase_br).unsqueeze(1)
+
         
         # Combine into phase features (using sin/cos provides continuity at cycle boundaries)
-        phase_features = torch.cat([sin_phase_fr, cos_phase_fr, sin_phase_fl, cos_phase_fl], dim=1)
+        # phase_features = torch.cat([sin_phase_fr, cos_phase_fr, sin_phase_fl, cos_phase_fl], dim=1)
+        phase_features = torch.cat([
+            sin_phase_fr, cos_phase_fr, 
+            sin_phase_fl, cos_phase_fl,
+            sin_phase_bl, cos_phase_bl,
+            sin_phase_br, cos_phase_br
+        ], dim=1)
 
         # np.set_printoptions(precision=3)
         # print(phase_features[0])
 
-        # Construct observations
-        # base_obs = torch.cat((((self.base_lin_vel - self.last_base_lin_vel) / self.dt) * self.obs_scales.lin_accel,
-        #                             self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
-        #                             self.projected_gravity,                                             # (3,)
-        #                             self.commands[:, :3] * self.commands_scale,                         # (3,)  
-        #                             (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
-        #                             self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
-        #                             self.actions                                                        # (12,) last actions
-        #                             ),dim=-1)                                                            # total: (48,)
-        
+        # Construct observations       
         base_obs = torch.cat((      self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
                                     self.projected_gravity,                                             # (3,)
                                     self.commands[:, :3] * self.commands_scale,                         # (3,)  
@@ -138,7 +139,7 @@ class Go2Robot(LeggedRobot):
                                     ),dim=-1)                                                            # total: (45,)
         
         # Add phase info to observations
-        self.obs_buf = torch.cat([base_obs, phase_features], dim=1) # total: (49,)
+        self.obs_buf = torch.cat([base_obs, phase_features], dim=1) # total: (53,)
 
         # add perceptive inputs (height map) if not blind
         if self.cfg.terrain.measure_heights:
@@ -173,24 +174,28 @@ class Go2Robot(LeggedRobot):
             - FL and BR feet should contact when phase >= 0.5
         """
 
-        # Define when each foot should be in stance (contacting ground)
-        fr_rl_stance = self.phase_fr < 0.5  # Front-right and back-left in stance for first half
-        fl_rr_stance = self.phase_fl < 0.5  # Front-left and back-right in stance for first half
+        # "Duty factor" (% of each legs cycle on the ground)
+        stance_threshold = 0.5
+
+        fl_stance = self.phase_fl < stance_threshold
+        fr_stance = self.phase_fr < stance_threshold
+        bl_stance = self.phase_bl < stance_threshold
+        br_stance = self.phase_br < stance_threshold
         
         # Check actual foot contacts (measured from contact forces)
         # Threshold force (1.0) determines what counts as "contact"
         fl_contact = self.contact_forces[:, self.feet_indices[0], 2] > 1.0
         fr_contact = self.contact_forces[:, self.feet_indices[1], 2] > 1.0
-        rl_contact = self.contact_forces[:, self.feet_indices[2], 2] > 1.0
-        rr_contact = self.contact_forces[:, self.feet_indices[3], 2] > 1.0
+        bl_contact = self.contact_forces[:, self.feet_indices[2], 2] > 1.0
+        br_contact = self.contact_forces[:, self.feet_indices[3], 2] > 1.0
         
         # Reward matching contacts (true when contact matches expected stance)
         # Reward when both true or both false
         reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
-        reward += torch.where(~(fl_contact ^ fl_rr_stance), 0.25, 0.0)  # FL
-        reward += torch.where(~(fr_contact ^ fr_rl_stance), 0.25, 0.0)  # FR
-        reward += torch.where(~(rl_contact ^ fr_rl_stance), 0.25, 0.0)  # RL (same phase as FR)
-        reward += torch.where(~(rr_contact ^ fl_rr_stance), 0.25, 0.0)  # RR (same phase as FL)
+        reward += torch.where(~(fl_contact ^ fl_stance), 0.25, 0.0)
+        reward += torch.where(~(fr_contact ^ fr_stance), 0.25, 0.0)
+        reward += torch.where(~(bl_contact ^ bl_stance), 0.25, 0.0)
+        reward += torch.where(~(br_contact ^ br_stance), 0.25, 0.0)
 
         return reward
 

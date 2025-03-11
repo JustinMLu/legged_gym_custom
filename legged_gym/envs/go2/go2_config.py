@@ -3,7 +3,7 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
-        num_observations = 49
+        num_observations = 53
         num_actions = 12
 
     class terrain( LeggedRobotCfg.terrain ):
@@ -25,11 +25,13 @@ class Go2Cfg( LeggedRobotCfg ):
             "min_height": -0.08,
             "max_height": 0.08,
             "step": 0.01,
-            "downsampled_scale": 0.15,
+            "downsampled_scale": 0.25,
         }
 
         # types: [smooth slope, rough slope, stairs up, stairs down, discrete, rocky bump, bumpy wave]
-        terrain_proportions = [0.07, 0.07, 0.18, 0.18, 0.14, 0.18, 0.18]
+        # terrain_proportions = [0.07, 0.07, 0.18, 0.18, 0.14, 0.18, 0.18]
+        terrain_proportions = [0.07, 0.07, 0.0, 0.0, 0.14, 0.20, 0.20]
+
 
     class domain_rand:      
         randomize_friction = True
@@ -39,8 +41,8 @@ class Go2Cfg( LeggedRobotCfg ):
         added_mass_range = [-1.1, 1.1]
         
         push_robots = True
-        push_interval_s = 15
-        max_push_vel_xy = 2.0
+        push_interval_s = 30
+        max_push_vel_xy = 2.5
     
 
     class init_state( LeggedRobotCfg.init_state ):
@@ -83,9 +85,12 @@ class Go2Cfg( LeggedRobotCfg ):
 
     # # ============ NEVER USE WHEN TRAINING ============
     # class commands( LeggedRobotCfg.commands ):
-    #     user_command = [0.0, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
+    #     user_command = [0.75, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
     # # ============ NEVER USE WHEN TRAINING ============
 
+    class commands ( LeggedRobotCfg.commands ):
+        curriculum = True
+        max_curriculum = 10.0
 
     class normalization( LeggedRobotCfg.normalization ):
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
@@ -127,18 +132,18 @@ class Go2Cfg( LeggedRobotCfg ):
             tracking_ang_vel = 1.0
             lin_vel_z = -1.0
             ang_vel_xy = -0.05
-            orientation = -1.0
-            torques = -0.00001
+            orientation = -5.0 # -1.0 original
+            torques = -0.0002  # -0.00001 original
             dof_acc = -2.5e-7
             action_rate = -0.1
             collision = -10.0
             stumble = -1.0
-            delta_torques = -1.0e-7 # New
-            hip_pos = -0.5 # New
-            dof_error = -0.04 # New
             feet_air_time = 0.5
-            contact_phase_match = 0.5
-            # foot_swing_height = 0.5
+            delta_torques = -1.0e-7     # New
+            hip_pos = -1.0              # New (was -0.5)
+            dof_error = -0.04           # New
+            contact_phase_match = 0.5   # New
+            # foot_swing_height = 0.5   # New
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -151,8 +156,8 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'bambi-parkour'
+        run_name = 'rudolf'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 10000
-        save_interval = 100
+        max_iterations = 50000
+        save_interval = 1000

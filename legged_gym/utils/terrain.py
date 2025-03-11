@@ -168,7 +168,11 @@ class Terrain:
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.12, max_height=0.12, step=0.01, downsampled_scale=0.25)
         
         else:
-            pit_terrain(terrain, depth=pit_depth, platform_size=4.)
+            # pit_terrain(terrain, depth=pit_depth, platform_size=4.)
+
+            # remove this later
+            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1.25, platform_size=3.)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.12, max_height=0.12, step=0.01, downsampled_scale=0.25)
 
         
         return terrain
