@@ -1,7 +1,8 @@
 # Legged Gym Custom - A Less-Deprecated Isaac Gym Reinforcement Learning Framework  #
 
-![go2_fail](https://github.com/user-attachments/assets/1a5062e2-f062-4528-929f-09ea0b1da057)
-![anymal_fail](https://github.com/user-attachments/assets/aafa9d2f-bfbf-452e-8215-3e1fd6227e85)
+<img src="https://github.com/user-attachments/assets/afaa9d2f-bfbf-452e-8215-3e1fd6227e85" width="400"/>
+<img src="https://github.com/user-attachments/assets/aafa9d2f-bfbf-452e-8215-3e1fd6227e85" width="400"/>
+
 
 ---
 
