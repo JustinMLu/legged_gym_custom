@@ -1,5 +1,5 @@
-# Custom Isaac Gym Environments for Legged Robots #
-This is a custom fork of the (now-slightly-deprecated) Isaac Gym Reinforcement Learning framework, originally used to train ANYmal and other robots.
+# Legged Gym Custom - A less-deprecated (but still deprecated) Reinforcement Learning framework  #
+This is a custom fork of the Robotic Systems Lab "Legged Gym" Reinforcement Learning framework, originally used to train ANYmal and other robots.
 It originally provided all components for sim2real transfer (actuator network for ANYmal, friction & mass randomization, random pushes, noisy observations).
 
 The original repo has a surprisingly large amount of bugs, and as a result I've been slowly patching and improving it over time.
