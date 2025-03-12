@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/rudolf_4_30k.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/rudolf_4_40k.pt"
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml"
 
 # Protocols
@@ -68,4 +68,4 @@ br_offset: 0.5
 rc_scale: [0.8, 0.5, 1.57]
 
 # Mujoco command ([forward, lateral, yaw])
-command: [2.5, 0.0, 0.0]
+command: [5.0, 0.0, 0.0]
