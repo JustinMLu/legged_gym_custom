@@ -1,7 +1,7 @@
 # Legged Gym Custom - A Less-Deprecated Isaac Gym Reinforcement Learning Framework  #
 
-<img src="https://github.com/user-attachments/assets/1a5062e2-f062-4528-929f-09ea0b1da057" width="400"/>
-<img src="https://github.com/user-attachments/assets/aafa9d2f-bfbf-452e-8215-3e1fd6227e85" width="400"/>
+<img src="https://github.com/user-attachments/assets/1a5062e2-f062-4528-929f-09ea0b1da057" width="200"/>
+<img src="https://github.com/user-attachments/assets/aafa9d2f-bfbf-452e-8215-3e1fd6227e85" width="200"/>
 
 ---
 
@@ -112,5 +112,3 @@ The base environment `legged_robot` implements a rough terrain locomotion task. 
     self.gym.refresh_force_sensor_tensor(self.sim)
     contact = self.sensor_forces[:, :, 2] > 1.
 ```
-
-2. Terrain selection SUCKS!!! But numerous people have created solutions. I'll see if I want to tweak it for my own usage or I'll just use someone elses.
