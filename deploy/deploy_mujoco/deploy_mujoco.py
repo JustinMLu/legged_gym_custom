@@ -115,10 +115,16 @@ if __name__ == "__main__":
     # Start simulation
     counter = 0
 
-    # Init viewer
+    # Initialize Mujoco Viewer
     viewer = mujoco.viewer.launch_passive(m, d)
+
+    # Have camera track the robot base
     viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
     viewer.cam.trackbodyid = 0
+
+    # Set some visualization flags
+    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
+    # viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = True
     
     start = time.time()
 
