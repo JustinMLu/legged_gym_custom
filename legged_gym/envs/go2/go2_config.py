@@ -36,14 +36,14 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class domain_rand:      
         randomize_friction = True
-        friction_range = [0.3, 1.2]
+        friction_range = [0.25, 1.5]
 
         randomize_base_mass = True
         added_mass_range = [-1.1, 1.1]
         
         push_robots = True
-        push_interval_s = 30
-        max_push_vel_xy = 2.5
+        push_interval_s = 8
+        max_push_vel_xy = 0.5
     
 
     class init_state( LeggedRobotCfg.init_state ):
@@ -90,14 +90,17 @@ class Go2Cfg( LeggedRobotCfg ):
     # # =================================================
 
 
-    # # ============== COMMAND CURRICULUM ===============
-    # class commands ( LeggedRobotCfg.commands ):
-    #     curriculum = True
-    #     max_curriculum = 5.0
-    # # =================================================
+    # ============== COMMAND CURRICULUM ===============
+    class commands ( LeggedRobotCfg.commands ):
+        curriculum = True
+        max_curriculum = 5.0
+    # =================================================
 
 
     class normalization( LeggedRobotCfg.normalization ):
+        clip_observations = 100.
+        clip_actions = 100.
+        
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
             lin_accel = 1.0 # Deprecated
             lin_vel = 2.0   # Deprecated
@@ -105,8 +108,6 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_pos = 1.0
             dof_vel = 0.05
             height_measurements = 5.0
-        clip_observations = 100.
-        clip_actions = 100.
 
 
     class noise( LeggedRobotCfg.noise):
@@ -141,7 +142,7 @@ class Go2Cfg( LeggedRobotCfg ):
             # stumble = -1.0
             # feet_air_time = 0.5
             # delta_torques = -1.0e-7     # New
-            # hip_pos = -1.0              # New (was -0.5)
+            # hip_pos = -1.0              # New
             # dof_error = -0.04           # New
             # contact_phase_match = 0.5   # New
 
@@ -151,7 +152,7 @@ class Go2Cfg( LeggedRobotCfg ):
             lin_vel_z = -1.0
             ang_vel_xy = -0.05
             orientation = -5.0
-            torques = -0.0002
+            torques = -0.00001  # Reverted to original
             dof_acc = -2.5e-7
             action_rate = -0.1
             collision = -10.0
@@ -178,5 +179,5 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         run_name = 'rudolf4'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 600
-        save_interval = 100
+        max_iterations = 2000
+        save_interval = 1000

@@ -173,7 +173,7 @@ class Terrain:
             terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1.3, platform_size=3.)
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.12, max_height=0.12, step=0.01, downsampled_scale=0.4)
         
-        # Else random flat
+        # Else flat terrain
         else:
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.01, max_height=0.01, step=0.005, downsampled_scale=0.05)
         
