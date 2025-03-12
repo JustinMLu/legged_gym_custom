@@ -5,12 +5,11 @@
 
 ---
 
-This is a custom fork of the Robotic Systems Lab "Legged Gym" Reinforcement Learning framework, originally used to train ANYmal and other robots.
-It originally provided all components for sim2real transfer (actuator network for ANYmal, friction & mass randomization, random pushes, noisy observations).
+Legged Gym Custom is a...custom...extension of NVIDIA's Isaac Gym RL framework. Key features from the original version include actuator modeling, friction and mass randomization, sensor noise, and configurable external disturbances to robustify trained policies.
 
-The original repo has a surprisingly large amount of bugs, and as a result I've been slowly patching and improving it over time.
-This repository provides the environment used to train ANYmal (and other robots) to walk on rough terrain using NVIDIA's Isaac Gym.
-It includes all components needed for sim-to-real transfer: actuator network, friction & mass randomization, noisy observations and random pushes during training.  
+Originally used by the Robotic Systems Lab to train the ANYmal quadruped on a variety of different environments, this fork adds a sim-to-sim-to-real verification and training pipeline from Isaac Sim to Mujoco and then onto the real robot, as well as a unified robot config format and improved terrain selection/curriculum specifications. The original repo has a surprisingly large number of bugs, so critical improvements and bug fixes have been made to the codebase to ensure more reliable experimentation. 
+
+In addition, lots of custom rewards from papers like "Extreme Parkour" and "Deep Whole-Body Control" have been added (to great success!), the observation space (currently only for the Go2) has been tweaked to no longer rely on data that would require a state estimator (e.g: linear velocity), and the sim2sim2real deployment pipeline has been designed to be as clean as possible without compromising any of the original Legged Gym functionality.
 
 **Affiliation**: ARCAD Lab, University of Michigan  
 **Contact**: lujust@umich.edu  
