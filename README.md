@@ -5,7 +5,7 @@
 
 ---
 
-Legged Gym Custom is a...custom...extension of NVIDIA's Isaac Gym RL framework. Key features from the original version include actuator modeling, friction and mass randomization, sensor noise, and configurable external disturbances to robustify trained policies.
+Legged Gym Custom is an extension of NVIDIA and RSL's Legged Gym RL framework. Key features from the original version include actuator modeling, friction and mass randomization, sensor noise, and configurable external disturbances to robustify trained policies.
 
 Originally used by the Robotic Systems Lab to train the ANYmal quadruped on a variety of different environments, this fork adds a sim-to-sim-to-real verification and training pipeline from Isaac Sim to Mujoco and then onto the real robot, as well as a unified robot config format and improved terrain selection/curriculum specifications. The original repo has a surprisingly large number of bugs, so critical improvements and bug fixes have been made to the codebase to ensure more reliable experimentation. 
 
