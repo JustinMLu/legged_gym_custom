@@ -1,18 +1,17 @@
 # Legged Gym Custom - A Less-Deprecated Isaac Gym Reinforcement Learning Framework  #
 
-<img src="https://github.com/user-attachments/assets/1a5062e2-f062-4528-929f-09ea0b1da057" width="250"/>
-<img src="https://github.com/user-attachments/assets/aafa9d2f-bfbf-452e-8215-3e1fd6227e85" width="250"/>
+<img src="https://github.com/user-attachments/assets/1a5062e2-f062-4528-929f-09ea0b1da057" width="300"/>
+<img src="https://github.com/user-attachments/assets/aafa9d2f-bfbf-452e-8215-3e1fd6227e85" width="300"/>
 
 ---
 
-Legged Gym Custom is an extension of NVIDIA and RSL's Legged Gym RL framework. Key features from the original version include actuator modeling, friction and mass randomization, sensor noise, and configurable external disturbances to robustify trained policies.
+Legged Gym Custom is an extension of NVIDIA and RSL's Legged Gym RL framework.
 
 Originally used by the Robotic Systems Lab to train the ANYmal quadruped on a variety of different environments, this fork adds a sim-to-sim-to-real verification and training pipeline from Isaac Sim to Mujoco and then onto the real robot, as well as a unified robot config format and improved terrain selection/curriculum specifications. The original repo has a surprisingly large number of bugs, so critical improvements and bug fixes have been made to the codebase to ensure more reliable experimentation. 
 
 In addition, lots of custom rewards from papers like "Extreme Parkour" and "Deep Whole-Body Control" have been added (to great success!), the observation space (currently only for the Go2) has been tweaked to no longer rely on data that would require a state estimator (e.g: linear velocity), and the sim2sim2real deployment pipeline has been designed to be as clean as possible without compromising any of the original Legged Gym functionality.
 
 **Affiliation**: ARCAD Lab, University of Michigan  
-**Contact**: lujust@umich.edu  
 
 ---
 
