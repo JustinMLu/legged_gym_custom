@@ -1,7 +1,13 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk6/1000.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk4/30000.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs.xml"
+
+# Action & Observations
+num_actions: 12
+num_proprio: 53
+enable_history: False
+buffer_length: 5
 
 # Protocols
 msg_type: "go"     # "hg" or "go"
@@ -53,14 +59,6 @@ dof_vel_scale: 0.05
 action_scale: 0.25
 cmd_scale: [2.0, 2.0, 0.25]
 
-# Action & Observations
-num_actions: 12
-num_proprio: 53
-enable_history: True
-buffer_length: 5
-
-# num_obs: 53 # This shouldnt be needed anymore
-
 # Phase Features
 period: 0.66
 fr_offset: 0.0
@@ -72,4 +70,4 @@ br_offset: 0.5
 rc_scale: [0.8, 0.5, 1.57]
 
 # Mujoco command ([forward, lateral, yaw])
-command: [0.75, 0.0, 0.0]
+command: [0.5, 0.0, 0.0]

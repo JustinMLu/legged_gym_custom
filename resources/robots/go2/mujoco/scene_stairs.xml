@@ -27,15 +27,26 @@
 
     <!-- Stairs -->
     <geom pos="2.0 0.0 0.02" type="box"  size="0.25 2.0 0.10" quat="1.0 0 0 0"/>
-    <geom pos="2.3 0.0 0.02" type="box"  size="0.25 2.0 0.22" quat="1.0 0 0 0"/>
-    <geom pos="2.6 0.0 0.02" type="box"  size="0.25 2.0 0.34" quat="1.0 0 0 0"/>
-    <geom pos="2.9 0.0 0.02" type="box"  size="0.25 2.0 0.46" quat="1.0 0 0 0"/>
-    <geom pos="3.2 0.0 0.02" type="box"  size="0.25 2.0 0.58" quat="1.0 0 0 0"/>
-    <geom pos="3.5 0.0 0.02" type="box"  size="0.25 2.0 0.70" quat="1.0 0 0 0"/>
-    <geom pos="3.8 0.0 0.02" type="box"  size="0.25 2.0 0.82" quat="1.0 0 0 0"/>
-    <geom pos="4.1 0.0 0.02" type="box"  size="0.25 2.0 0.94" quat="1.0 0 0 0"/>
-    <geom pos="4.4 0.0 0.02" type="box"  size="0.25 2.0 1.06" quat="1.0 0 0 0"/>
-    <geom pos="4.7 0.0 0.02" type="box"  size="0.25 2.0 1.18" quat="1.0 0 0 0"/>
+    <geom pos="2.3 0.0 0.02" type="box"  size="0.25 2.0 0.20" quat="1.0 0 0 0"/>
+    <geom pos="2.6 0.0 0.02" type="box"  size="0.25 2.0 0.30" quat="1.0 0 0 0"/>
+    <geom pos="2.9 0.0 0.02" type="box"  size="0.25 2.0 0.40" quat="1.0 0 0 0"/>
+    <geom pos="3.2 0.0 0.02" type="box"  size="0.25 2.0 0.50" quat="1.0 0 0 0"/>
+    <geom pos="3.5 0.0 0.02" type="box"  size="0.25 2.0 0.60" quat="1.0 0 0 0"/>
+    <geom pos="3.8 0.0 0.02" type="box"  size="0.25 2.0 0.70" quat="1.0 0 0 0"/>
+    <geom pos="4.1 0.0 0.02" type="box"  size="0.25 2.0 0.80" quat="1.0 0 0 0"/>
+    <geom pos="4.4 0.0 0.02" type="box"  size="0.25 2.0 0.90" quat="1.0 0 0 0"/>
+    <geom pos="4.7 0.0 0.02" type="box"  size="0.25 2.0 1.00" quat="1.0 0 0 0"/>
+    <geom pos="5.0 0.0 0.02" type="box" size="0.25 2.0 1.10" quat="1.0 0 0 0"/>
+    <geom pos="5.3 0.0 0.02" type="box" size="0.25 2.0 1.20" quat="1.0 0 0 0"/>
+    <geom pos="5.6 0.0 0.02" type="box" size="0.25 2.0 1.30" quat="1.0 0 0 0"/>
+    <geom pos="5.9 0.0 0.02" type="box" size="0.25 2.0 1.40" quat="1.0 0 0 0"/>
+    <geom pos="6.2 0.0 0.02" type="box" size="0.25 2.0 1.50" quat="1.0 0 0 0"/>
+    <geom pos="6.5 0.0 0.02" type="box" size="0.25 2.0 1.60" quat="1.0 0 0 0"/>
+    <geom pos="6.8 0.0 0.02" type="box" size="0.25 2.0 1.70" quat="1.0 0 0 0"/>
+    <geom pos="7.1 0.0 0.02" type="box" size="0.25 2.0 1.80" quat="1.0 0 0 0"/>
+    <geom pos="7.4 0.0 0.02" type="box" size="0.25 2.0 1.90" quat="1.0 0 0 0"/>
+    <geom pos="7.7 0.0 0.02" type="box" size="0.25 2.0 2.00" quat="1.0 0 0 0"/>
+
 
   </worldbody>
 </mujoco>

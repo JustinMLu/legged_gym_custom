@@ -224,7 +224,7 @@ class Go2Robot(LeggedRobot):
 
         return reward
 
-    def _reward_foot_swing_height(self):
+    def _reward_foot_swing_height(self): # Deprecated
         """Reward appropriate foot height during swing phase.
         Works on any terrain by only considering feet not in contact.
         """
