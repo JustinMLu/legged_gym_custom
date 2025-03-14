@@ -2,12 +2,11 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 
 class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
-        enable_buffer = True # use history for obs
+        enable_history = True
         buffer_length = 5 # number of previous obs to keep in buffer
         num_proprio = 53 
-
+        num_observations = (num_proprio * buffer_length if enable_history else num_proprio)
         num_envs = 4096
-        num_observations = num_proprio*buffer_length
         num_actions = 12
 
     class terrain( LeggedRobotCfg.terrain ):
@@ -16,14 +15,8 @@ class Go2Cfg( LeggedRobotCfg ):
 
         mesh_type = 'trimesh'
         measure_heights = False # Enable heightmap in obs
-        curriculum = False
-        selected = True
-
-        # terrain_kwargs = {
-        #     "type": "terrain_utils.wave_terrain",
-        #     "num_waves": 1,
-        #     "amplitude": 0.5
-        # }
+        curriculum = True
+        selected = False
 
         terrain_kwargs = {
             "type": "terrain_utils.random_uniform_terrain",
@@ -96,7 +89,7 @@ class Go2Cfg( LeggedRobotCfg ):
     # ============== COMMAND CURRICULUM ===============
     class commands ( LeggedRobotCfg.commands ):
         curriculum = True
-        max_curriculum = 5.0
+        max_curriculum = 2.0
     # =================================================
 
 
@@ -133,7 +126,7 @@ class Go2Cfg( LeggedRobotCfg ):
 
         class scales( LeggedRobotCfg.rewards.scales ):
 
-            # Rudolf 5
+            # Rudolf 6
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.0
             lin_vel_z = -1.0
@@ -163,7 +156,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
 
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'rudolf5'
+        run_name = 'rudolf6'
         experiment_name = 'go2'
         load_run = -1
         max_iterations = 50000

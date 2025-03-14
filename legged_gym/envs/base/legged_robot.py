@@ -156,7 +156,7 @@ class LeggedRobot(BaseTask):
         self.last_root_vel[env_ids] = 0.
         self.last_base_lin_vel[env_ids] = 0.
         self.last_torques[env_ids] = 0. 
-        self.obs_history_buf[env_ids, :, :] = 0.  # reset obs history buffer
+        self.obs_history[env_ids, :, :] = 0.  # reset obs history buffer
 
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
@@ -221,21 +221,21 @@ class LeggedRobot(BaseTask):
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
         
         # Update and use history buffer
-        if self.cfg.env.enable_buffer:
+        if self.cfg.env.enable_history:
 
             # Update history buffer
-            self.obs_history_buf = torch.where(
+            self.obs_history = torch.where(
                 (self.episode_length_buf <= 1)[:, None, None], # If first step of episode
                 torch.stack([self.obs_buf] * (self.cfg.env.buffer_length-1), dim=1), # Initialize with copies
                 torch.cat([
-                    self.obs_history_buf[:, 1:], # Remove oldest observation
+                    self.obs_history[:, 1:], # Remove oldest observation
                     self.obs_buf.unsqueeze(1)         # Add current observation as newest
                 ], dim=1)
             )
 
             # Concatenate into observation
             self.obs_buf = torch.cat([
-                self.obs_history_buf.view(self.num_envs, -1),  # Flatten history
+                self.obs_history.view(self.num_envs, -1),  # Flatten history
                 self.obs_buf                                       # Current observation
             ], dim=-1)
         
@@ -566,8 +566,8 @@ class LeggedRobot(BaseTask):
         self.measured_heights = 0
 
         # Init history buffer (if used)
-        if self.cfg.env.enable_buffer:
-            self.obs_history_buf = torch.zeros(
+        if self.cfg.env.enable_history:
+            self.obs_history = torch.zeros(
                 self.num_envs,
                 self.cfg.env.buffer_length-1, # minus current observation
                 self.cfg.env.num_proprio,

@@ -32,12 +32,11 @@ from .base_config import BaseConfig
 
 class LeggedRobotCfg(BaseConfig):
     class env:
-        enable_buffer = False # use history for obs
-        buffer_length = -1 # number of previous obs to keep in buffer
-        num_proprio = -1 # number of proprioceptive obs (but really, the number of "actual" obs not inc. history)
-
+        enable_history = False # use history for obs
+        buffer_length = 5 # number of previous obs to keep in buffer
+        num_proprio = 235 # number of proprio. obs
+        num_observations = (num_proprio * buffer_length if enable_history else num_proprio)
         num_envs = 4096
-        num_observations = 235
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 

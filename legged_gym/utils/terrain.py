@@ -170,7 +170,7 @@ class Terrain:
         # 7. Bumpy hole
         elif choice < self.proportions[6]:
             # ORIGINAL: gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
-            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1.3, platform_size=3.)
+            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1.2, platform_size=3.)
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.12, max_height=0.12, step=0.01, downsampled_scale=0.4)
         
         # Else flat terrain

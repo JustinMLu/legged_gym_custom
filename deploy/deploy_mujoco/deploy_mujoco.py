@@ -78,11 +78,13 @@ if __name__ == "__main__":
         action_scale = config["action_scale"]
         cmd_scale = np.array(config["cmd_scale"], dtype=np.float32)
         
-        # Actions & Obs & Cmd
+        # Actions & Observations
         num_actions = config["num_actions"]
-        num_obs = config["num_obs"]
-        cmd = np.array(config["command"], dtype=np.float32)
-        
+        num_proprio = config["num_proprio"]
+        enable_history = config["enable_history"]
+        buffer_length = config["buffer_length"]
+        num_obs = (num_proprio * buffer_length if enable_history else num_proprio)
+
         # Phase
         period = config["period"]
         fr_offset = config["fr_offset"]
@@ -90,10 +92,15 @@ if __name__ == "__main__":
         fl_offset = config["fl_offset"]
         br_offset = config["br_offset"]
 
-    # Initialize some non-scalar data structures
+        # User command
+        cmd = np.array(config["command"], dtype=np.float32)
+
+
+    # Initialize non-optional (essential) buffers
     actions = np.zeros(num_actions, dtype=np.float32)
     target_dof_pos = default_angles.copy()
     obs = np.zeros(num_obs, dtype=np.float32)
+    obs_history = np.zeros((buffer_length, num_proprio), dtype=np.float32)
 
     """
     https://mujoco.readthedocs.io/en/stable/APIreference/APItypes.html#mjmodel
@@ -207,6 +214,21 @@ if __name__ == "__main__":
             obs[9+num_actions : 9+2*num_actions] = dqj * dof_vel_scale
             obs[9+2*num_actions : 9+3*num_actions] = actions
             obs[9+3*num_actions:9+3*num_actions+8] = phase_features
+
+            # Add history to observation tensor
+            if enable_history:
+                cur_obs = obs[:9+3*num_actions+8] # slice to exclude pre-allocated history indices
+
+                if counter == control_decimation:  # First control step
+                    obs_history = np.zeros((buffer_length-1, num_proprio), dtype=np.float32)
+                    for i in range(buffer_length-1):
+                        obs_history[i] = cur_obs
+                else:
+                    obs_history = np.roll(obs_history, 1, axis=0)
+                    obs_history[-1] = cur_obs
+                
+                obs[:(buffer_length-1)*num_proprio] = obs_history.flatten()
+                obs[(buffer_length-1)*num_proprio:] = cur_obs 
 
             # Convert to tensor
             obs_tensor = torch.from_numpy(obs).unsqueeze(0)
