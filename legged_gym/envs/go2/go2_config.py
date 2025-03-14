@@ -3,9 +3,13 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
-        num_observations = 53
+        num_observations = 53 * 20 # number of "actual" obs * history buffer length
         num_actions = 12
 
+    class history:
+        enable_buffer = True # use history for obs
+        buffer_length = 20 # number of previous obs to keep in buffer
+        num_proprio = 53 
 
     class terrain( LeggedRobotCfg.terrain ):
         static_friction = 1.0
@@ -122,7 +126,7 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_vel = 1.5
             gravity = 0.05
             height_measurements = 0.1
-
+        
 
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9 # +/- 90% of 50% of limit range

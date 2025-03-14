@@ -198,9 +198,9 @@ class LeggedRobot(BaseTask):
             self.episode_sums["termination"] += rew
     
     def compute_observations(self):
-        """ Computes observations for the robot.
+        """ Computes (i.e constructs) the observation tensor that is fed into the policy network.
         """
-        self.obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,                        # (3,)
+        obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,                        # (3,)
                                     self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
                                     self.projected_gravity,                                             # (3,)
                                     self.commands[:, :3] * self.commands_scale,                         # (3,)  
@@ -209,15 +209,40 @@ class LeggedRobot(BaseTask):
                                     self.actions                                                        # (12,) last actions
                                     ),dim=-1)                                                           # total: (48,)
         
-        # add perceptive inputs (height map) if not blind
+        # Add perceptive inputs (height map) if not blind
         # heights defined as [(z_base - 0.5) - z_terrain], clipped to [-1, 1]
         if self.cfg.terrain.measure_heights:
             heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
-            self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
+            obs_buf = torch.cat((obs_buf, heights), dim=-1)
         
-        # add noise if needed
+        # Add noise
         if self.add_noise:
-            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
+            obs_buf += (2 * torch.rand_like(obs_buf) - 1) * self.noise_scale_vec
+
+        # Update and use history buffer
+        if self.cfg.history.enable_buffer:
+
+            # Update history buffer
+            self.obs_history_buf = torch.where(
+                (self.episode_length_buf <= 1)[:, None, None], # If first step of episode
+                torch.stack([obs_buf] * (self.cfg.env.buffer_length-1), dim=1), # Initialize with copies
+                torch.cat([
+                    self.obs_history_buf[:, 1:], # Remove oldest observation
+                    obs_buf.unsqueeze(1)         # Add current observation as newest
+                ], dim=1)
+            )
+
+            # Concatenate into observation
+            self.obs_buf = torch.cat([
+                self.obs_history_buf.view(self.num_envs, -1),  # Flatten history
+                obs_buf                                       # Current observation
+            ], dim=-1)
+        
+        else:
+            # Without history buffer, just use current observation
+            self.obs_buf = obs_buf
+
+
 
     def create_sim(self):
         """ Creates simulation, terrain and evironments
@@ -513,7 +538,7 @@ class LeggedRobot(BaseTask):
 
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3) # shape: num_envs, num_bodies, xyz axis
 
-        # initialize some data used later on
+        # Init non-optional buffers
         self.common_step_counter = 0
         self.extras = {}
         self.noise_scale_vec = self._get_noise_scale_vec(self.cfg)
@@ -527,7 +552,7 @@ class LeggedRobot(BaseTask):
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
         self.last_root_vel = torch.zeros_like(self.root_states[:, 7:13])
         self.last_torques = torch.zeros_like(self.torques) # (NEW)
-        self.commands = torch.zeros(self.num_envs, self.cfg.commands.num_commands, dtype=torch.float, device=self.device, requires_grad=False) # x vel, y vel, yaw vel, heading
+        self.commands = torch.zeros(self.num_envs, self.cfg.commands.num_commands, dtype=torch.float, device=self.device, requires_grad=False)
         self.commands_scale = torch.tensor([self.obs_scales.lin_vel, self.obs_scales.lin_vel, self.obs_scales.ang_vel], device=self.device, requires_grad=False,)
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
         self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
@@ -535,11 +560,23 @@ class LeggedRobot(BaseTask):
         self.last_base_lin_vel = self.base_lin_vel.clone() # (NEW)
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
+
+        # Init height points buffer (if used)
         if self.cfg.terrain.measure_heights:
             self.height_points = self._init_height_points()
         self.measured_heights = 0
 
-        # joint positions offsets and PD gains
+        # Init history buffer (if used)
+        if self.cfg.history.enable_buffer:
+            self.obs_history_buf = torch.zeros(
+                self.num_envs,
+                self.cfg.history.buffer_length-1, # minus current observation
+                self.cfg.history.num_proprio,
+                device=self.device,
+                dtype=torch.float
+            )
+
+        # Init joint positions offsets and PD gains
         self.default_dof_pos = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
         for i in range(self.num_dofs):
             name = self.dof_names[i]
