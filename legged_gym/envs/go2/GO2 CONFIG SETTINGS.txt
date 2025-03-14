@@ -1,0 +1,33 @@
+# Rudolf 2, 3
+tracking_lin_vel = 1.5
+tracking_ang_vel = 1.0
+lin_vel_z = -1.0
+ang_vel_xy = -0.05
+orientation = -5.0          # -1.0 original
+torques = -0.0002           # -0.00001 original
+dof_acc = -2.5e-7
+action_rate = -0.1
+collision = -10.0
+stumble = -1.0
+feet_air_time = 0.5
+delta_torques = -1.0e-7     # New
+hip_pos = -1.0              # New
+dof_error = -0.04           # New
+contact_phase_match = 0.5   # New
+
+# Rudolf 4
+tracking_lin_vel = 1.5
+tracking_ang_vel = 1.0
+lin_vel_z = -1.0
+ang_vel_xy = -0.05
+orientation = -5.0
+torques = -0.00001  # Reverted to original
+dof_acc = -2.5e-7
+action_rate = -0.1
+collision = -10.0
+stumble = -1.0
+feet_air_time = 0.5
+delta_torques = -1.0e-7 
+hip_pos = -1.0 
+dof_error = -0.04 
+contact_phase_match = 0.5

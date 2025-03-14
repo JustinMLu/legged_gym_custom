@@ -2,14 +2,13 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 
 class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
-        num_envs = 4096
-        num_observations = 53*20 # number of "actual" obs * history buffer length
-        num_actions = 12
-
-    class history:
         enable_buffer = True # use history for obs
-        buffer_length = 20 # number of previous obs to keep in buffer
+        buffer_length = 5 # number of previous obs to keep in buffer
         num_proprio = 53 
+
+        num_envs = 4096
+        num_observations = num_proprio*buffer_length
+        num_actions = 12
 
     class terrain( LeggedRobotCfg.terrain ):
         static_friction = 1.0
@@ -17,8 +16,8 @@ class Go2Cfg( LeggedRobotCfg ):
 
         mesh_type = 'trimesh'
         measure_heights = False # Enable heightmap in obs
-        curriculum = True
-        selected = False
+        curriculum = False
+        selected = True
 
         # terrain_kwargs = {
         #     "type": "terrain_utils.wave_terrain",
@@ -26,13 +25,13 @@ class Go2Cfg( LeggedRobotCfg ):
         #     "amplitude": 0.5
         # }
 
-        # terrain_kwargs = {
-        #     "type": "terrain_utils.random_uniform_terrain",
-        #     "min_height": -0.08,
-        #     "max_height": 0.08,
-        #     "step": 0.01,
-        #     "downsampled_scale": 0.25,
-        # }
+        terrain_kwargs = {
+            "type": "terrain_utils.random_uniform_terrain",
+            "min_height": -0.05,
+            "max_height": 0.05,
+            "step": 0.01,
+            "downsampled_scale": 0.25,
+        }
 
         # types: [smoothSlope, roughSlope, stairsUp, stairsDown, discrete, bumpyWave, bumpyHole], else flat
         terrain_proportions = [0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]
@@ -133,24 +132,8 @@ class Go2Cfg( LeggedRobotCfg ):
         base_height_target = 0.25
 
         class scales( LeggedRobotCfg.rewards.scales ):
-            # Rudolf 2, 3
-            # tracking_lin_vel = 1.5
-            # tracking_ang_vel = 1.0
-            # lin_vel_z = -1.0
-            # ang_vel_xy = -0.05
-            # orientation = -5.0          # -1.0 original
-            # torques = -0.0002           # -0.00001 original
-            # dof_acc = -2.5e-7
-            # action_rate = -0.1
-            # collision = -10.0
-            # stumble = -1.0
-            # feet_air_time = 0.5
-            # delta_torques = -1.0e-7     # New
-            # hip_pos = -1.0              # New
-            # dof_error = -0.04           # New
-            # contact_phase_match = 0.5   # New
 
-            # Rudolf 4
+            # Rudolf 5
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.0
             lin_vel_z = -1.0
@@ -170,8 +153,8 @@ class Go2Cfg( LeggedRobotCfg ):
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
-        actor_hidden_dims = [128*4, 64*4, 32*4]
-        critic_hidden_dims = [128*4, 64*4, 32*4]
+        actor_hidden_dims = [256, 256, 64]
+        critic_hidden_dims = [256, 256, 64]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
 

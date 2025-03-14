@@ -40,7 +40,7 @@ class Go2Robot(LeggedRobot):
             [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
         """
         # Build noise vector with linear acceleration instead of linear velocity
-        noise_vec = torch.zeros(self.cfg.history.num_proprio, device=self.device)
+        noise_vec = torch.zeros(self.cfg.env.num_proprio, device=self.device)
 
         # NOTE: USING ZEROS_LIKE TO MATCH DIMENSIONS OF obs_buf[0] RESULTS IN A 1060 DIM VECTOR!
         # noise_vec = torch.zeros_like(self.obs_buf[0])
@@ -160,12 +160,12 @@ class Go2Robot(LeggedRobot):
 
 
         # Update and use history buffer
-        if self.cfg.history.enable_buffer:
+        if self.cfg.env.enable_buffer:
 
             # Update history buffer
             self.obs_history_buf = torch.where(
                 (self.episode_length_buf <= 1)[:, None, None], # If first step of episode
-                torch.stack([obs_buf] * (self.cfg.history.buffer_length-1), dim=1), # Initialize with copies
+                torch.stack([obs_buf] * (self.cfg.env.buffer_length-1), dim=1), # Initialize with copies
                 torch.cat([
                     self.obs_history_buf[:, 1:], # Remove oldest observation
                     obs_buf.unsqueeze(1)         # Add current observation as newest
