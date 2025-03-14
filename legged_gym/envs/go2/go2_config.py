@@ -87,17 +87,17 @@ class Go2Cfg( LeggedRobotCfg ):
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
 
-    # # ============ NEVER USE WHEN TRAINING ============
-    # class commands( LeggedRobotCfg.commands ):
-    #     user_command = [0.75, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
-    # # =================================================
-
-
-    # ============== COMMAND CURRICULUM ===============
-    class commands ( LeggedRobotCfg.commands ):
-        curriculum = True
-        max_curriculum = 5.0
+    # ============ NEVER USE WHEN TRAINING ============
+    class commands( LeggedRobotCfg.commands ):
+        user_command = [1.5, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
     # =================================================
+
+
+    # # ============== COMMAND CURRICULUM ===============
+    # class commands ( LeggedRobotCfg.commands ):
+    #     curriculum = True
+    #     max_curriculum = 5.0
+    # # =================================================
 
 
     class normalization( LeggedRobotCfg.normalization ):
