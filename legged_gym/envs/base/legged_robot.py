@@ -154,9 +154,9 @@ class LeggedRobot(BaseTask):
         self.last_actions[env_ids] = 0.
         self.last_dof_vel[env_ids] = 0.
         self.last_root_vel[env_ids] = 0.
-        self.last_base_lin_vel[env_ids] = 0. # (NEW)
-        self.last_torques[env_ids] = 0. # (NEW)
-        self.obs_history_buf[env_ids, :, :] = 0.  # (NEW) reset obs history buffer
+        self.last_base_lin_vel[env_ids] = 0.
+        self.last_torques[env_ids] = 0. 
+        self.obs_history_buf[env_ids, :, :] = 0.  # reset obs history buffer
 
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
@@ -201,7 +201,7 @@ class LeggedRobot(BaseTask):
     def compute_observations(self):
         """ Computes (i.e constructs) the observation tensor that is fed into the policy network.
         """
-        obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,                        # (3,)
+        self.obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,                        # (3,)
                                     self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
                                     self.projected_gravity,                                             # (3,)
                                     self.commands[:, :3] * self.commands_scale,                         # (3,)  
@@ -213,39 +213,32 @@ class LeggedRobot(BaseTask):
         # Add perceptive inputs (height map) if not blind
         if self.cfg.terrain.measure_heights:
             heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
-            obs_buf = torch.cat((obs_buf, heights), dim=-1)
+            self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
 
         
         # Add noise
         if self.add_noise:
-            obs_buf += (2 * torch.rand_like(obs_buf) - 1) * self.noise_scale_vec
+            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
         
-
         # Update and use history buffer
         if self.cfg.env.enable_buffer:
 
             # Update history buffer
             self.obs_history_buf = torch.where(
                 (self.episode_length_buf <= 1)[:, None, None], # If first step of episode
-                torch.stack([obs_buf] * (self.cfg.env.buffer_length-1), dim=1), # Initialize with copies
+                torch.stack([self.obs_buf] * (self.cfg.env.buffer_length-1), dim=1), # Initialize with copies
                 torch.cat([
                     self.obs_history_buf[:, 1:], # Remove oldest observation
-                    obs_buf.unsqueeze(1)         # Add current observation as newest
+                    self.obs_buf.unsqueeze(1)         # Add current observation as newest
                 ], dim=1)
             )
 
             # Concatenate into observation
             self.obs_buf = torch.cat([
                 self.obs_history_buf.view(self.num_envs, -1),  # Flatten history
-                obs_buf                                       # Current observation
+                self.obs_buf                                       # Current observation
             ], dim=-1)
         
-        else:
-            # Without history buffer, just use current observation
-            self.obs_buf = obs_buf
-
-
-
 
     def create_sim(self):
         """ Creates simulation, terrain and evironments
@@ -504,8 +497,9 @@ class LeggedRobot(BaseTask):
         Returns:
             [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
         """
-        # Build noise vector - matches the observation structure
-        noise_vec = torch.zeros_like(self.obs_buf[0])
+        # Build noise vector -must match obs structure before history
+        # noise_vec = torch.zeros_like(self.obs_buf[0]) # NOTE: UNCOMMENTING THIS RESULTS IN 1060 vs. 53 MISMATCH IF HISTORY=TRUE
+        noise_vec = torch.zeros(self.cfg.env.num_proprio, device=self.device)
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         noise_level = self.cfg.noise.noise_level

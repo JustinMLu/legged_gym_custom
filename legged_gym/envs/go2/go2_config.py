@@ -87,17 +87,17 @@ class Go2Cfg( LeggedRobotCfg ):
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
 
-    # ============ NEVER USE WHEN TRAINING ============
-    class commands( LeggedRobotCfg.commands ):
-        user_command = [1.5, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
-    # =================================================
-
-
-    # # ============== COMMAND CURRICULUM ===============
-    # class commands ( LeggedRobotCfg.commands ):
-    #     curriculum = True
-    #     max_curriculum = 5.0
+    # # ============ NEVER USE WHEN TRAINING ============
+    # class commands( LeggedRobotCfg.commands ):
+    #     user_command = [1.5, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
     # # =================================================
+
+
+    # ============== COMMAND CURRICULUM ===============
+    class commands ( LeggedRobotCfg.commands ):
+        curriculum = True
+        max_curriculum = 5.0
+    # =================================================
 
 
     class normalization( LeggedRobotCfg.normalization ):
@@ -105,8 +105,8 @@ class Go2Cfg( LeggedRobotCfg ):
         clip_actions = 100.
         
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
-            lin_accel = 1.0 # Deprecated
-            lin_vel = 2.0   # Deprecated
+            lin_accel = 1.0 # (Deprecated)
+            lin_vel = 2.0   # (Deprecated)
             ang_vel = 0.25
             dof_pos = 1.0
             dof_vel = 0.05
@@ -118,8 +118,8 @@ class Go2Cfg( LeggedRobotCfg ):
         noise_level = 1.0
 
         class noise_scales( LeggedRobotCfg.noise.noise_scales):
-            lin_accel = 0.1 # Deprecated
-            lin_vel = 0.1   # Deprecated
+            lin_accel = 0.1 # (Deprecated)
+            lin_vel = 0.1   # (Deprecated)
             ang_vel = 0.2
             dof_pos = 0.01
             dof_vel = 1.5
