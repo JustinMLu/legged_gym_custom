@@ -222,12 +222,12 @@ class LeggedRobot(BaseTask):
         
 
         # Update and use history buffer
-        if self.cfg.history.enable_buffer:
+        if self.cfg.env.enable_buffer:
 
             # Update history buffer
             self.obs_history_buf = torch.where(
                 (self.episode_length_buf <= 1)[:, None, None], # If first step of episode
-                torch.stack([obs_buf] * (self.cfg.history.buffer_length-1), dim=1), # Initialize with copies
+                torch.stack([obs_buf] * (self.cfg.env.buffer_length-1), dim=1), # Initialize with copies
                 torch.cat([
                     self.obs_history_buf[:, 1:], # Remove oldest observation
                     obs_buf.unsqueeze(1)         # Add current observation as newest
@@ -572,11 +572,11 @@ class LeggedRobot(BaseTask):
         self.measured_heights = 0
 
         # Init history buffer (if used)
-        if self.cfg.history.enable_buffer:
+        if self.cfg.env.enable_buffer:
             self.obs_history_buf = torch.zeros(
                 self.num_envs,
-                self.cfg.history.buffer_length-1, # minus current observation
-                self.cfg.history.num_proprio,
+                self.cfg.env.buffer_length-1, # minus current observation
+                self.cfg.env.num_proprio,
                 device=self.device,
                 dtype=torch.float
             )

@@ -153,8 +153,8 @@ class Go2Cfg( LeggedRobotCfg ):
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
-        actor_hidden_dims = [256, 256, 64]
-        critic_hidden_dims = [256, 256, 64]
+        actor_hidden_dims = [512, 256, 128]
+        critic_hidden_dims = [512, 256, 128]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
 
