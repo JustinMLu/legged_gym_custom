@@ -3,7 +3,7 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
-        num_observations = 53 * 20 # number of "actual" obs * history buffer length
+        num_observations = 53*20 # number of "actual" obs * history buffer length
         num_actions = 12
 
     class history:
@@ -183,5 +183,5 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         run_name = 'rudolf4'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 2000
+        max_iterations = 50000
         save_interval = 1000

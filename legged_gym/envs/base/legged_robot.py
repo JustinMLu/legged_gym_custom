@@ -156,7 +156,8 @@ class LeggedRobot(BaseTask):
         self.last_root_vel[env_ids] = 0.
         self.last_base_lin_vel[env_ids] = 0. # (NEW)
         self.last_torques[env_ids] = 0. # (NEW)
-        
+        self.obs_history_buf[env_ids, :, :] = 0.  # (NEW) reset obs history buffer
+
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
@@ -210,14 +211,15 @@ class LeggedRobot(BaseTask):
                                     ),dim=-1)                                                           # total: (48,)
         
         # Add perceptive inputs (height map) if not blind
-        # heights defined as [(z_base - 0.5) - z_terrain], clipped to [-1, 1]
         if self.cfg.terrain.measure_heights:
             heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
             obs_buf = torch.cat((obs_buf, heights), dim=-1)
+
         
         # Add noise
         if self.add_noise:
             obs_buf += (2 * torch.rand_like(obs_buf) - 1) * self.noise_scale_vec
+        
 
         # Update and use history buffer
         if self.cfg.history.enable_buffer:
@@ -225,7 +227,7 @@ class LeggedRobot(BaseTask):
             # Update history buffer
             self.obs_history_buf = torch.where(
                 (self.episode_length_buf <= 1)[:, None, None], # If first step of episode
-                torch.stack([obs_buf] * (self.cfg.env.buffer_length-1), dim=1), # Initialize with copies
+                torch.stack([obs_buf] * (self.cfg.history.buffer_length-1), dim=1), # Initialize with copies
                 torch.cat([
                     self.obs_history_buf[:, 1:], # Remove oldest observation
                     obs_buf.unsqueeze(1)         # Add current observation as newest
@@ -241,6 +243,7 @@ class LeggedRobot(BaseTask):
         else:
             # Without history buffer, just use current observation
             self.obs_buf = obs_buf
+
 
 
 
@@ -489,6 +492,8 @@ class LeggedRobot(BaseTask):
             self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - 0.5, -self.cfg.commands.max_curriculum, 0.)
             self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + 0.5, 0., self.cfg.commands.max_curriculum)
 
+
+    # TODO WE NEED TO MAKE THIS COMPATIBLE W/ OBS HISTORY BUFFER - RIGHT NOW IT'S JUST OVERLOADED PER-ROBOT
     def _get_noise_scale_vec(self, cfg):
         """ Sets a vector used to scale the noise added to the observations.
             [NOTE]: Must be adapted when changing the observations structure

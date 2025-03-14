@@ -40,8 +40,12 @@ class Go2Robot(LeggedRobot):
             [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
         """
         # Build noise vector with linear acceleration instead of linear velocity
-        noise_vec = torch.zeros_like(self.obs_buf[0])
+        noise_vec = torch.zeros(self.cfg.history.num_proprio, device=self.device)
+
+        # NOTE: USING ZEROS_LIKE TO MATCH DIMENSIONS OF obs_buf[0] RESULTS IN A 1060 DIM VECTOR!
+        # noise_vec = torch.zeros_like(self.obs_buf[0])
         self.add_noise = self.cfg.noise.add_noise
+
         noise_scales = self.cfg.noise.noise_scales
         noise_level = self.cfg.noise.noise_level
         noise_vec[:3] = noise_scales.lin_accel * noise_level * self.obs_scales.lin_accel
@@ -51,11 +55,12 @@ class Go2Robot(LeggedRobot):
         noise_vec[12:24] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
         noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[36:48] = 0. # previous actions
-        noise_vec[48:52] = 0.0 # phase observations
-        
+        noise_vec[48:52] = 0. # phase observations
+
         # Add heightmap noise (if heightmap used)
         if self.cfg.terrain.measure_heights:
             noise_vec[52:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
+            
         return noise_vec
 
 
@@ -132,7 +137,7 @@ class Go2Robot(LeggedRobot):
         # print(phase_features[0])
 
         # Construct observations       
-        base_obs = torch.cat((      self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
+        obs_buf = torch.cat((      self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
                                     self.projected_gravity,                                             # (3,)
                                     self.commands[:, :3] * self.commands_scale,                         # (3,)  
                                     (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
@@ -141,16 +146,43 @@ class Go2Robot(LeggedRobot):
                                     ),dim=-1)                                                            # total: (45,)
         
         # Add phase info to observations
-        self.obs_buf = torch.cat([base_obs, phase_features], dim=1) # total: (53,)
+        obs_buf = torch.cat([obs_buf, phase_features], dim=1) # total: (53,)
 
-        # add perceptive inputs (height map) if not blind
+        # Add perceptive inputs (height map) if not blind
         if self.cfg.terrain.measure_heights:
             heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
-            self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
+            obs_buf = torch.cat((obs_buf, heights), dim=-1)
 
-        # add noise if needed
+
+        # Add noise
         if self.add_noise:
-            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
+            obs_buf += (2 * torch.rand_like(obs_buf) - 1) * self.noise_scale_vec
+
+
+        # Update and use history buffer
+        if self.cfg.history.enable_buffer:
+
+            # Update history buffer
+            self.obs_history_buf = torch.where(
+                (self.episode_length_buf <= 1)[:, None, None], # If first step of episode
+                torch.stack([obs_buf] * (self.cfg.history.buffer_length-1), dim=1), # Initialize with copies
+                torch.cat([
+                    self.obs_history_buf[:, 1:], # Remove oldest observation
+                    obs_buf.unsqueeze(1)         # Add current observation as newest
+                ], dim=1)
+            )
+
+
+            # Concatenate into observation
+            self.obs_buf = torch.cat([
+                self.obs_history_buf.view(self.num_envs, -1), # Flatten history
+                obs_buf                                       # Current observation
+            ], dim=-1)
+        
+        else:
+            # Without history buffer, just use current observation
+            self.obs_buf = obs_buf
+
 
 
     # =========================== NEW REWARD FUNCTIONS ===========================
