@@ -180,7 +180,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
 
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'rudolf4'
+        run_name = 'rudolf5'
         experiment_name = 'go2'
         load_run = -1
         max_iterations = 50000
