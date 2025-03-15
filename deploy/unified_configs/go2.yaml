@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk6/15000.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk6-5/8000.pt"
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml"
 
 # Action & Observations
@@ -60,14 +60,14 @@ action_scale: 0.25
 cmd_scale: [2.0, 2.0, 0.25]
 
 # Phase Features
-period: 0.66
-fr_offset: 0.0
-bl_offset: 0.0
-fl_offset: 0.5
-br_offset: 0.5
+period: 0.8            # [sec]
+fr_offset: 0.25        # [%]
+bl_offset: 0.0         # [%]
+fl_offset: 0.75        # [%]
+br_offset: 0.5         # [%]
 
 # Remote controller scale
 rc_scale: [0.8, 0.5, 1.57]
 
 # Mujoco command ([forward, lateral, yaw])
-command: [3.0, 0.0, -0.07]
+command: [4.0, 0.0, 0.0]

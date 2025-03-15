@@ -98,7 +98,7 @@ class Terrain:
                 difficulty = i / self.cfg.num_rows      # Rows represent difficulty
                 choice = j / self.cfg.num_cols + 0.001
 
-                terrain = self.make_terrain(choice, difficulty / 3.0) # less difficulty :)
+                terrain = self.make_terrain(choice, difficulty)
                 self.add_terrain_to_map(terrain, i, j)
 
     def selected_terrain(self):
@@ -135,7 +135,7 @@ class Terrain:
         stone_distance = 0.05 if difficulty==0 else 0.1
         gap_size = 1. * difficulty
         pit_depth = 1. * difficulty
-        amplitude = 0.25 + 0.75 * difficulty
+        amplitude = 0.25 + 0.75 * difficulty # For wave terrain
         
         # 1. Smooth slope
         if choice < self.proportions[0]:
@@ -146,32 +146,37 @@ class Terrain:
         # 2. Rough slope
         elif choice < self.proportions[1]:
             terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.04, max_height=0.04, step=0.01, downsampled_scale=0.15)
-        
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005, downsampled_scale=0.2)
+
+
         # 3-4. Stairs up & down
         elif choice < self.proportions[3]:
             if choice<self.proportions[2]:
                 step_height *= -1
             terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=3.)
         
-        # 5. Discrete
+        # 5. Discrete obstacles
         elif choice < self.proportions[4]:
             num_rectangles = 20
             rectangle_min_size = 1.
             rectangle_max_size = 2.
             terrain_utils.discrete_obstacles_terrain(terrain, discrete_obstacles_height, rectangle_min_size, rectangle_max_size, num_rectangles, platform_size=3.)
         
-        # 6. Bumpy wave
+        # 6. Stepping stones
         elif choice < self.proportions[5]:
-            # ORIGINAL: terrain_utils.stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=stone_distance, max_height=0., platform_size=4.)
+            terrain_utils.stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=stone_distance, max_height=0., platform_size=4.)
+        
+        # 7. # Bumpy Wave
+        elif choice < self.proportions[6]:
             terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=amplitude)
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.04, max_height=0.04, step=0.01, downsampled_scale=0.15)
-        
-        # 7. Bumpy hole
-        elif choice < self.proportions[6]:
-            # ORIGINAL: gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
-            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1.2, platform_size=3.)
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.12, max_height=0.12, step=0.01, downsampled_scale=0.4)
+            
+            # ORIGINAL: 
+            # gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
+            
+            # Bumpy hole
+            # terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1.2, platform_size=3.)
+            # terrain_utils.random_uniform_terrain(terrain, min_height=-0.12, max_height=0.12, step=0.01, downsampled_scale=0.4)
         
         # Else flat terrain
         else:

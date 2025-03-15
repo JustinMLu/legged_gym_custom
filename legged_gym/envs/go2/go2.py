@@ -91,11 +91,11 @@ class Go2Robot(LeggedRobot):
         self.update_feet_states()
 
         # TODO PUT ALL PHASE VARIABLES IN CONFIG!!!
-        period = 0.66 # Complete cycle duration (seconds)
-        fr_offset = 0.0
-        bl_offset = 0.0
-        fl_offset = 0.5
-        br_offset = 0.5
+        period = 0.66       # [sec]
+        fr_offset = 0.25    # [%]
+        bl_offset = 0.0     # [%]
+        fl_offset = 0.75    # [%]
+        br_offset = 0.5     # [%]
 
         self.phase = (self.episode_length_buf * self.dt) % period / period 
         self.phase_fr = (self.phase + fr_offset) % 1

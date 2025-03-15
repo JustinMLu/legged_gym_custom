@@ -26,9 +26,8 @@ class Go2Cfg( LeggedRobotCfg ):
             "downsampled_scale": 0.25,
         }
 
-        # types: [smoothSlope, roughSlope, stairsUp, stairsDown, discrete, bumpyWave, bumpyHole], else flat
-        terrain_proportions = [0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]
-
+        # types: [flat, rough, stairsUp, stairsDown, discrete, stones, wave] else flat
+        terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2, 0.0, 0.0]
 
     class domain_rand:      
         randomize_friction = True
@@ -89,7 +88,7 @@ class Go2Cfg( LeggedRobotCfg ):
     # ============== COMMAND CURRICULUM ===============
     class commands ( LeggedRobotCfg.commands ):
         curriculum = True
-        max_curriculum = 2.5
+        max_curriculum = 2.0
     # =================================================
 
 
@@ -156,7 +155,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
 
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'rudolf6'
+        run_name = 'rudolf7'
         experiment_name = 'go2'
         load_run = -1
         max_iterations = 50000

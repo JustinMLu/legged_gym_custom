@@ -949,18 +949,21 @@ class LeggedRobot(BaseTask):
         return torch.sum((torch.abs(self.torques) - self.torque_limits*self.cfg.rewards.soft_torque_limit).clip(min=0.), dim=1)
 
     def _reward_tracking_lin_vel(self):
-        """ Tracking of linear velocity commands (xy axes) """
+        """ Tracking of linear velocity commands (xy axes) 
+        """
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
         return torch.exp(-lin_vel_error/self.cfg.rewards.tracking_sigma)
     
     def _reward_tracking_ang_vel(self):
-        """ Tracking of angular velocity commands (yaw) """
+        """ Tracking of angular velocity commands (yaw) 
+        """
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma)
 
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 
-            the contact reporting of PhysX is unreliable on meshes """
+            the contact reporting of PhysX is unreliable on meshes 
+        """
         contact = self.contact_forces[:, self.feet_indices, 2] > 1.
         contact_filt = torch.logical_or(contact, self.last_contacts) 
         self.last_contacts = contact

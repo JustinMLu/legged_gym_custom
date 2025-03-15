@@ -18,8 +18,8 @@
             contact_phase_match = 0.5   # New
 
 CURRICULUM:
-terrain curriculum? Yes
-max_curriculum = 10.0
+    terrain curriculum? Yes
+    max_curriculum = 10.0
 
 ======================================================
 
@@ -41,8 +41,8 @@ max_curriculum = 10.0
             contact_phase_match = 0.5
 
 CURRICULUM:
-terrain curriculum? Yes
-max_curriculum = 5.0
+    terrain curriculum? Yes
+    max_curriculum = 5.0
 
 ======================================================
 
@@ -50,8 +50,8 @@ max_curriculum = 5.0
             (Rewards unchanged)
 
 CURRICULUM:
-terrain curriculum?  No (Slightly bumpy flat ground)
-max_curriculum = 5.0 --> forward commands > 2.0 resulted in no real movement
+    terrain curriculum?  No (Slightly bumpy flat ground)
+    max_curriculum = 5.0 --> forward commands > 2.0 resulted in no real movement
 
 ======================================================
 
@@ -59,7 +59,39 @@ max_curriculum = 5.0 --> forward commands > 2.0 resulted in no real movement
             (Rewards unchanged)
 
 CURRICULUM:
-terrain curriculum?  Yes
-max_curriculum = 2.0
+    terrain curriculum?  Yes
+    max_curriculum = 2.0
+
+GAIT:
+    stance_threshold = 0.5
+    period = 0.66 
+    fr_offset = 0.0
+    bl_offset = 0.0
+    fl_offset = 0.5
+    br_offset = 0.5
+
+TRAINING:
+# types: [flat, rough, stairsUp, stairsDown, discrete, stones, wave] else flat
+terrain_proportions = [0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125] else 0.125
+** Also difficulty was difficulty / 3 **
 
 ======================================================
+
+# MK7
+            (Rewards unchanged)
+
+CURRICULUM:
+    terrain curriculum?  Yes
+    max_curriculum = 2.0
+
+GAIT:
+    stance_threshold = 0.5  # [% on ground]
+    period = 0.66           # [sec]
+    fr_offset = 0.25        # [%]
+    bl_offset = 0.0         # [%]
+    fl_offset = 0.75        # [%]
+    br_offset = 0.5         # [%]
+
+TRAINING:
+    # types: [flat, rough, stairsUp, stairsDown, discrete, stones, wave] else flat
+    terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2, 0.0, 0.0]
