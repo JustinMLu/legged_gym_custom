@@ -123,6 +123,7 @@ class Terrain:
         """ Generate a terrain based on the choice and difficulty.
             TODO: Explain this better.
         """
+
         terrain = terrain_utils.SubTerrain(   "terrain",
                                 width=self.width_per_env_pixels,
                                 length=self.length_per_env_pixels,
