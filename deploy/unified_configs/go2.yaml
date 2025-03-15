@@ -1,12 +1,12 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk4/30000.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs.xml"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk6/15000.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml"
 
 # Action & Observations
 num_actions: 12
 num_proprio: 53
-enable_history: False
+enable_history: True
 buffer_length: 5
 
 # Protocols
@@ -70,4 +70,4 @@ br_offset: 0.5
 rc_scale: [0.8, 0.5, 1.57]
 
 # Mujoco command ([forward, lateral, yaw])
-command: [0.5, 0.0, 0.0]
+command: [3.0, 0.0, -0.07]

@@ -1,6 +1,6 @@
 ======================================================
 
-# MK2, MK3
+# MK2
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.0
             lin_vel_z = -1.0
@@ -19,7 +19,7 @@
 
 CURRICULUM:
 terrain curriculum? Yes
-max_curriculum = 5.0
+max_curriculum = 10.0
 
 ======================================================
 

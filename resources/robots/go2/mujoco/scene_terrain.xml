@@ -33,7 +33,7 @@
 
 
         <!--    ======= PERLIN HEIGHTFIELDS ======= -->
-        <hfield name="hfield_1" size="20.0 20.0 2.0 2.0" file="../height_field.png" />
+        <hfield name="hfield_1" size="20.0 20.0 4.5 4.5" file="../height_field.png" />
         <!-- <hfield name="hfield_2" size="10.0 10.0 1.5 1.5" file="../height_field.png" /> -->
         
     </asset>
@@ -41,7 +41,7 @@
     <worldbody>
         <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
         
-        <geom name="floor_tile_1" type="hfield" hfield="hfield_1" pos="0.0 0.0 -5.0"/>
+        <geom name="floor_tile_1" type="hfield" hfield="hfield_1" pos="10.0 -17.0 -7.0" euler="0.15 0.0 0.0"/>
         <!-- <geom name="floor_tile_2" type="hfield" hfield="hfield_2" pos="20.0 0.0 -2.0"/> -->
 
     </worldbody>

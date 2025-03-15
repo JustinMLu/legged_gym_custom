@@ -89,7 +89,7 @@ class Go2Cfg( LeggedRobotCfg ):
     # ============== COMMAND CURRICULUM ===============
     class commands ( LeggedRobotCfg.commands ):
         curriculum = True
-        max_curriculum = 2.0
+        max_curriculum = 2.5
     # =================================================
 
 
