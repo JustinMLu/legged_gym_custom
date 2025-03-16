@@ -98,7 +98,7 @@ class Terrain:
                 difficulty = i / self.cfg.num_rows      # Rows represent difficulty
                 choice = j / self.cfg.num_cols + 0.001
 
-                terrain = self.make_terrain(choice, difficulty)
+                terrain = self.make_terrain(choice, difficulty / 2.5) # Make it easier because the Go2 is a tiny fella
                 self.add_terrain_to_map(terrain, i, j)
 
     def selected_terrain(self):
@@ -128,8 +128,7 @@ class Terrain:
                                 length=self.length_per_env_pixels,
                                 vertical_scale=self.cfg.vertical_scale,
                                 horizontal_scale=self.cfg.horizontal_scale)
-        
-        difficulty = difficulty / 2.0 # Make it easier because the Go2 is a tiny fella
+
         
         slope = difficulty * 0.4
         step_height = 0.05 + 0.18 * difficulty

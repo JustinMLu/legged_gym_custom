@@ -1,0 +1,135 @@
+<mujoco model="smaller stairway to heaven">
+  <include file="go2.xml"/>
+
+  <statistic center="0 0 0.1" extent="0.8"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+
+    <!-- Bumpy wumpys -->
+    <!-- <geom pos="1.0 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/> -->
+    <!-- <geom pos="1.4 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/> -->
+
+
+    <!-- The go2 ascends the stairway to heaven, -->
+    <geom pos="2.00 0.0 0.02" type="box" size="0.25 2.0 0.075" quat="1.0 0 0 0"/>
+    <geom pos="2.25 0.0 0.02" type="box" size="0.25 2.0 0.15"  quat="1.0 0 0 0"/>
+    <geom pos="2.50 0.0 0.02" type="box" size="0.25 2.0 0.225" quat="1.0 0 0 0"/>
+    <geom pos="2.75 0.0 0.02" type="box" size="0.25 2.0 0.30"  quat="1.0 0 0 0"/>
+    <geom pos="3.00 0.0 0.02" type="box" size="0.25 2.0 0.375" quat="1.0 0 0 0"/>
+    <geom pos="3.25 0.0 0.02" type="box" size="0.25 2.0 0.45"  quat="1.0 0 0 0"/>
+    <geom pos="3.50 0.0 0.02" type="box" size="0.25 2.0 0.525" quat="1.0 0 0 0"/>
+    <geom pos="3.75 0.0 0.02" type="box" size="0.25 2.0 0.600" quat="1.0 0 0 0"/>
+    <geom pos="4.00 0.0 0.02" type="box" size="0.25 2.0 0.675" quat="1.0 0 0 0"/>
+    <geom pos="4.25 0.0 0.02" type="box" size="0.25 2.0 0.75"  quat="1.0 0 0 0"/>
+    <geom pos="4.50 0.0 0.02" type="box" size="0.25 2.0 0.825" quat="1.0 0 0 0"/>
+    <geom pos="4.75 0.0 0.02" type="box" size="0.25 2.0 0.90"  quat="1.0 0 0 0"/>
+    <geom pos="5.00 0.0 0.02" type="box" size="0.25 2.0 0.975" quat="1.0 0 0 0"/>
+    <geom pos="5.25 0.0 0.02" type="box" size="0.25 2.0 1.05"  quat="1.0 0 0 0"/>
+    <geom pos="5.50 0.0 0.02" type="box" size="0.25 2.0 1.125" quat="1.0 0 0 0"/>
+    <geom pos="5.75 0.0 0.02" type="box" size="0.25 2.0 1.2"  quat="1.0 0 0 0"/>
+    <geom pos="6.00 0.0 0.02" type="box" size="0.25 2.0 1.275" quat="1.0 0 0 0"/>
+    <geom pos="6.25 0.0 0.02" type="box" size="0.25 2.0 1.35"  quat="1.0 0 0 0"/>
+    <geom pos="6.50 0.0 0.02" type="box" size="0.25 2.0 1.425" quat="1.0 0 0 0"/>
+    <geom pos="6.75 0.0 0.02" type="box" size="0.25 2.0 1.5"  quat="1.0 0 0 0"/>
+    <geom pos="7.00 0.0 0.02" type="box" size="0.25 2.0 1.575" quat="1.0 0 0 0"/>
+    <geom pos="7.25 0.0 0.02" type="box" size="0.25 2.0 1.65"  quat="1.0 0 0 0"/>
+    <geom pos="7.50 0.0 0.02" type="box" size="0.25 2.0 1.725" quat="1.0 0 0 0"/>
+    <geom pos="7.75 0.0 0.02" type="box" size="0.25 2.0 1.8"  quat="1.0 0 0 0"/>
+    <geom pos="8.00 0.0 0.02" type="box" size="0.25 2.0 1.875" quat="1.0 0 0 0"/>
+    <geom pos="8.25 0.0 0.02" type="box" size="0.25 2.0 1.95"  quat="1.0 0 0 0"/>
+    <geom pos="8.50 0.0 0.02" type="box" size="0.25 2.0 2.025" quat="1.0 0 0 0"/>
+    <geom pos="8.75 0.0 0.02" type="box" size="0.25 2.0 2.1"   quat="1.0 0 0 0"/>
+    <geom pos="9.00 0.0 0.02" type="box" size="0.25 2.0 2.175" quat="1.0 0 0 0"/>
+    <geom pos="9.25 0.0 0.02" type="box" size="0.25 2.0 2.25"  quat="1.0 0 0 0"/>
+    <geom pos="9.50 0.0 0.02" type="box" size="0.25 2.0 2.325" quat="1.0 0 0 0"/>
+    <geom pos="9.75 0.0 0.02" type="box" size="0.25 2.0 2.4"   quat="1.0 0 0 0"/>
+    <geom pos="10.00 0.0 0.02" type="box" size="0.25 2.0 2.475" quat="1.0 0 0 0"/>
+    <geom pos="10.25 0.0 0.02" type="box" size="0.25 2.0 2.55"  quat="1.0 0 0 0"/>
+    <geom pos="10.50 0.0 0.02" type="box" size="0.25 2.0 2.625" quat="1.0 0 0 0"/>
+    <geom pos="10.75 0.0 0.02" type="box" size="0.25 2.0 2.7"   quat="1.0 0 0 0"/>
+    <geom pos="11.00 0.0 0.02" type="box" size="0.25 2.0 2.775" quat="1.0 0 0 0"/>
+    <geom pos="11.25 0.0 0.02" type="box" size="0.25 2.0 2.85"  quat="1.0 0 0 0"/>
+    <geom pos="11.50 0.0 0.02" type="box" size="0.25 2.0 2.925" quat="1.0 0 0 0"/>
+    <geom pos="11.75 0.0 0.02" type="box" size="0.25 2.0 3.0"   quat="1.0 0 0 0"/>
+    <geom pos="12.00 0.0 0.02" type="box" size="0.25 2.0 3.075" quat="1.0 0 0 0"/>
+    <geom pos="12.25 0.0 0.02" type="box" size="0.25 2.0 3.15"  quat="1.0 0 0 0"/>
+    <geom pos="12.50 0.0 0.02" type="box" size="0.25 2.0 3.225" quat="1.0 0 0 0"/>
+    <geom pos="12.75 0.0 0.02" type="box" size="0.25 2.0 3.30"  quat="1.0 0 0 0"/>
+    <geom pos="13.00 0.0 0.02" type="box" size="0.25 2.0 3.375" quat="1.0 0 0 0"/>
+    <geom pos="13.25 0.0 0.02" type="box" size="0.25 2.0 3.45"  quat="1.0 0 0 0"/>
+    <geom pos="13.50 0.0 0.02" type="box" size="0.25 2.0 3.525" quat="1.0 0 0 0"/>
+    <geom pos="13.75 0.0 0.02" type="box" size="0.25 2.0 3.60"  quat="1.0 0 0 0"/>
+    <geom pos="14.00 0.0 0.02" type="box" size="0.25 2.0 3.675" quat="1.0 0 0 0"/>
+    <geom pos="14.25 0.0 0.02" type="box" size="0.25 2.0 3.55"  quat="1.0 0 0 0"/>
+    
+
+    
+    <!-- Yet heaven refuses the creation of man. -->
+
+    <!-- Thus, he falls back to Earth. -->
+    <geom pos="14.50 0.0 0.2" type="box" size="0.25 2.0 3.55"  quat="1.0 0 0 0"/>
+    <geom pos="14.75 0.0 0.2" type="box" size="0.25 2.0 3.475" quat="1.0 0 0 0"/>
+    <geom pos="15.00 0.0 0.2" type="box" size="0.25 2.0 3.40"  quat="1.0 0 0 0"/>
+    <geom pos="15.25 0.0 0.2" type="box" size="0.25 2.0 3.325" quat="1.0 0 0 0"/>
+    <geom pos="15.50 0.0 0.2" type="box" size="0.25 2.0 3.25"  quat="1.0 0 0 0"/>
+    <geom pos="15.75 0.0 0.2" type="box" size="0.25 2.0 3.175" quat="1.0 0 0 0"/>
+    <geom pos="16.00 0.0 0.2" type="box" size="0.25 2.0 3.10"  quat="1.0 0 0 0"/>
+    <geom pos="16.25 0.0 0.2" type="box" size="0.25 2.0 3.025" quat="1.0 0 0 0"/>
+    <geom pos="16.50 0.0 0.2" type="box" size="0.25 2.0 2.95"  quat="1.0 0 0 0"/>
+    <geom pos="16.75 0.0 0.2" type="box" size="0.25 2.0 2.875" quat="1.0 0 0 0"/>
+    <geom pos="17.00 0.0 0.2" type="box" size="0.25 2.0 2.80"  quat="1.0 0 0 0"/>
+    <geom pos="17.25 0.0 0.2" type="box" size="0.25 2.0 2.725" quat="1.0 0 0 0"/>
+    <geom pos="17.50 0.0 0.2" type="box" size="0.25 2.0 2.65"  quat="1.0 0 0 0"/>
+    <geom pos="17.75 0.0 0.2" type="box" size="0.25 2.0 2.575" quat="1.0 0 0 0"/>
+    <geom pos="18.00 0.0 0.2" type="box" size="0.25 2.0 2.50"  quat="1.0 0 0 0"/>
+    <geom pos="18.25 0.0 0.2" type="box" size="0.25 2.0 2.425" quat="1.0 0 0 0"/>
+    <geom pos="18.50 0.0 0.2" type="box" size="0.25 2.0 2.35"  quat="1.0 0 0 0"/>
+    <geom pos="18.75 0.0 0.2" type="box" size="0.25 2.0 2.275" quat="1.0 0 0 0"/>
+    <geom pos="19.00 0.0 0.2" type="box" size="0.25 2.0 2.20"  quat="1.0 0 0 0"/>
+    <geom pos="19.25 0.0 0.2" type="box" size="0.25 2.0 2.125" quat="1.0 0 0 0"/>
+    <geom pos="19.50 0.0 0.2" type="box" size="0.25 2.0 2.05"  quat="1.0 0 0 0"/>
+    <geom pos="19.75 0.0 0.2" type="box" size="0.25 2.0 1.975" quat="1.0 0 0 0"/>
+    <geom pos="20.00 0.0 0.2" type="box" size="0.25 2.0 1.90"  quat="1.0 0 0 0"/>
+    <geom pos="20.25 0.0 0.2" type="box" size="0.25 2.0 1.825" quat="1.0 0 0 0"/>
+    <geom pos="20.50 0.0 0.2" type="box" size="0.25 2.0 1.75"  quat="1.0 0 0 0"/>
+    <geom pos="20.75 0.0 0.2" type="box" size="0.25 2.0 1.675" quat="1.0 0 0 0"/>
+    <geom pos="21.00 0.0 0.2" type="box" size="0.25 2.0 1.60"  quat="1.0 0 0 0"/>
+    <geom pos="21.25 0.0 0.2" type="box" size="0.25 2.0 1.525" quat="1.0 0 0 0"/>
+    <geom pos="21.50 0.0 0.2" type="box" size="0.25 2.0 1.45"  quat="1.0 0 0 0"/>
+    <geom pos="21.75 0.0 0.2" type="box" size="0.25 2.0 1.375" quat="1.0 0 0 0"/>
+    <geom pos="22.00 0.0 0.2" type="box" size="0.25 2.0 1.30"  quat="1.0 0 0 0"/>
+    <geom pos="22.25 0.0 0.2" type="box" size="0.25 2.0 1.225" quat="1.0 0 0 0"/>
+    <geom pos="22.50 0.0 0.2" type="box" size="0.25 2.0 1.15"  quat="1.0 0 0 0"/>
+    <geom pos="22.75 0.0 0.2" type="box" size="0.25 2.0 1.075" quat="1.0 0 0 0"/>
+    <geom pos="23.00 0.0 0.2" type="box" size="0.25 2.0 1.00"  quat="1.0 0 0 0"/>
+    <geom pos="23.25 0.0 0.2" type="box" size="0.25 2.0 0.925" quat="1.0 0 0 0"/>
+    <geom pos="23.50 0.0 0.2" type="box" size="0.25 2.0 0.85"  quat="1.0 0 0 0"/>
+    <geom pos="23.75 0.0 0.2" type="box" size="0.25 2.0 0.775" quat="1.0 0 0 0"/>
+    <geom pos="24.00 0.0 0.2" type="box" size="0.25 2.0 0.70"  quat="1.0 0 0 0"/>
+    <geom pos="24.25 0.0 0.2" type="box" size="0.25 2.0 0.625" quat="1.0 0 0 0"/>
+    <geom pos="24.50 0.0 0.2" type="box" size="0.25 2.0 0.55"  quat="1.0 0 0 0"/>
+    <geom pos="24.75 0.0 0.2" type="box" size="0.25 2.0 0.475" quat="1.0 0 0 0"/>
+    <geom pos="25.00 0.0 0.2" type="box" size="0.25 2.0 0.40"  quat="1.0 0 0 0"/>
+    <geom pos="25.25 0.0 0.2" type="box" size="0.25 2.0 0.325" quat="1.0 0 0 0"/>
+    <geom pos="25.50 0.0 0.2" type="box" size="0.25 2.0 0.25"  quat="1.0 0 0 0"/>
+    <geom pos="25.75 0.0 0.2" type="box" size="0.25 2.0 0.175" quat="1.0 0 0 0"/>
+    <geom pos="26.00 0.0 0.2" type="box" size="0.25 2.0 0.10"  quat="1.0 0 0 0"/>
+
+
+  </worldbody>
+</mujoco>

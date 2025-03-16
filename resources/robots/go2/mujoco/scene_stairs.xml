@@ -25,7 +25,7 @@
     <!-- <geom pos="1.4 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/> -->
 
 
-    <!-- He ascends, step by step, toward the throne of God, -->
+    <!-- The go2 ascends the stairway to heaven, -->
     <geom pos="2.0 0.0 0.02" type="box" size="0.25 2.0 0.10" quat="1.0 0 0 0"/>
     <geom pos="2.25 0.0 0.02" type="box" size="0.25 2.0 0.20" quat="1.0 0 0 0"/>
     <geom pos="2.5 0.0 0.02" type="box" size="0.25 2.0 0.30" quat="1.0 0 0 0"/>

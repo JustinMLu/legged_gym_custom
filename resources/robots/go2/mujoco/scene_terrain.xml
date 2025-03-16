@@ -26,7 +26,7 @@
                 Z_top is the max height above 0 (after normalization),
                 Z_bottom is the thickness extending below 0.    -->
 
-        <hfield name="hfield_1" size="25.0 25.0 0.30 0.30" file="../hf_elevate.png" />
+        <hfield name="hfield_1" size="25.0 25.0 2.0 2.0" file="../hf_zoober.png" />
         
     </asset>
 
