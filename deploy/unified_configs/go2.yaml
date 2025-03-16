@@ -60,11 +60,11 @@ action_scale: 0.25
 cmd_scale: [2.0, 2.0, 0.25]
 
 # Phase Features
-period: 0.8            # [sec]
-fr_offset: 0.25        # [%]
-bl_offset: 0.0         # [%]
-fl_offset: 0.75        # [%]
-br_offset: 0.5         # [%]
+period: 0.66         # [sec]
+fr_offset: 0.0       # [%]
+bl_offset: 0.0       # [%]
+fl_offset: 0.5       # [%]
+br_offset: 0.5       # [%]
 
 # Remote controller scale
 rc_scale: [0.8, 0.5, 1.57]

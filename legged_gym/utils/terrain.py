@@ -123,12 +123,14 @@ class Terrain:
         """ Generate a terrain based on the choice and difficulty.
             TODO: Explain this better.
         """
-
         terrain = terrain_utils.SubTerrain(   "terrain",
                                 width=self.width_per_env_pixels,
                                 length=self.length_per_env_pixels,
                                 vertical_scale=self.cfg.vertical_scale,
                                 horizontal_scale=self.cfg.horizontal_scale)
+        
+        difficulty = difficulty / 2.0 # Make it easier because the Go2 is a tiny fella
+        
         slope = difficulty * 0.4
         step_height = 0.05 + 0.18 * difficulty
         discrete_obstacles_height = 0.05 + difficulty * 0.2
