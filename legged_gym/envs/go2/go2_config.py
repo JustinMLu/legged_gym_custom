@@ -27,7 +27,7 @@ class Go2Cfg( LeggedRobotCfg ):
         }
 
         # types: [flat, rough, stairsUp, stairsDown, discrete, stones, wave] else flat
-        terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2, 0.0, 0.0]
+        terrain_proportions = [0.1, 0.1, 0.25, 0.25, 0.2, 0.0, 0.1]
 
     class domain_rand:      
         randomize_friction = True
@@ -158,5 +158,5 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         run_name = 'rudolf8'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 10000
+        max_iterations = 50000
         save_interval = 1000
