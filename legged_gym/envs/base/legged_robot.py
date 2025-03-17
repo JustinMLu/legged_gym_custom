@@ -156,11 +156,14 @@ class LeggedRobot(BaseTask):
         self.last_root_vel[env_ids] = 0.
         self.last_base_lin_vel[env_ids] = 0.
         self.last_torques[env_ids] = 0. 
-        self.obs_history[env_ids, :, :] = 0.  # reset obs history buffer
+
+        if self.cfg.env.enable_history:
+            self.obs_history[env_ids, :, :] = 0.  # reset obs history buffer
 
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
+        
         # fill extras
         self.extras["episode"] = {}
         for key in self.episode_sums.keys():
@@ -201,44 +204,41 @@ class LeggedRobot(BaseTask):
     def compute_observations(self):
         """ Computes (i.e constructs) the observation tensor that is fed into the policy network.
         """
-        self.obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,                        # (3,)
-                                    self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
-                                    self.projected_gravity,                                             # (3,)
-                                    self.commands[:, :3] * self.commands_scale,                         # (3,)  
-                                    (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
-                                    self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
-                                    self.actions                                                        # (12,) last actions
-                                    ),dim=-1)                                                           # total: (48,)
+        cur_obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel,                        # (3,)
+                                 self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
+                                 self.projected_gravity,                                             # (3,)
+                                 self.commands[:, :3] * self.commands_scale,                         # (3,)  
+                                 (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
+                                 self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
+                                 self.actions                                                        # (12,) last actions
+                                ),dim=-1)                                                            # total: (48,)
         
         # Add perceptive inputs (height map) if not blind
         if self.cfg.terrain.measure_heights:
             heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
-            self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
+            cur_obs_buf = torch.cat((cur_obs_buf, heights), dim=-1)
 
         
         # Add noise
         if self.add_noise:
-            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
+            cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
         
         # Update and use history buffer
         if self.cfg.env.enable_history:
 
-            # Update history buffer
-            self.obs_history = torch.where(
-                (self.episode_length_buf <= 1)[:, None, None], # If first step of episode
-                torch.stack([self.obs_buf] * (self.cfg.env.buffer_length-1), dim=1), # Initialize with copies
-                torch.cat([
-                    self.obs_history[:, 1:], # Remove oldest observation
-                    self.obs_buf.unsqueeze(1)         # Add current observation as newest
-                ], dim=1)
-            )
-
-            # Concatenate into observation
+            # Update self.obs_buf
             self.obs_buf = torch.cat([
-                self.obs_history.view(self.num_envs, -1),  # Flatten history
-                self.obs_buf                                       # Current observation
+                self.obs_history.view(self.num_envs, -1),  # Flattened history
+                cur_obs_buf                                # Current observation
             ], dim=-1)
-        
+
+            # Update history buffer 
+            self.obs_history = torch.where((
+                self.episode_length_buf <= 1)[:, None, None],
+                torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
+                torch.cat([self.obs_history[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1
+            ))
+            
 
     def create_sim(self):
         """ Creates simulation, terrain and evironments
@@ -569,11 +569,12 @@ class LeggedRobot(BaseTask):
         if self.cfg.env.enable_history:
             self.obs_history = torch.zeros(
                 self.num_envs,
-                self.cfg.env.buffer_length-1, # minus current observation
+                self.cfg.env.buffer_length, # minus current observation
                 self.cfg.env.num_proprio,
                 device=self.device,
                 dtype=torch.float
             )
+            print("Obs history initialized with shape: ", self.obs_history.shape)
 
         # Init joint positions offsets and PD gains
         self.default_dof_pos = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)

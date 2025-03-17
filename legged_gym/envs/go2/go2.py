@@ -129,45 +129,40 @@ class Go2Robot(LeggedRobot):
         # print(phase_features[0])
 
         # Construct observations       
-        self.obs_buf = torch.cat((  self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
-                                    self.projected_gravity,                                             # (3,)
-                                    self.commands[:, :3] * self.commands_scale,                         # (3,)  
-                                    (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
-                                    self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
-                                    self.actions                                                        # (12,) last actions
-                                    ),dim=-1)                                                            # total: (45,)
+        cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
+                                self.projected_gravity,                                             # (3,)
+                                self.commands[:, :3] * self.commands_scale,                         # (3,)  
+                                (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
+                                self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
+                                self.actions                                                        # (12,) last actions
+                                ),dim=-1)                                                            # total: (45,)
         
         # Add phase info to observations
-        self.obs_buf = torch.cat([self.obs_buf, phase_features], dim=1) # total: (53,)
-
-        # # Add perceptive inputs (height map) if not blind
-        # if self.cfg.terrain.measure_heights:
-        #     heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
-        #     self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
+        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
 
         # Add noise
         if self.add_noise:
-            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
+            cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
 
         # Update and use history buffer
         if self.cfg.env.enable_history:
 
-            # Update history buffer
-            self.obs_history = torch.where(
-                (self.episode_length_buf <= 1)[:, None, None], # If first step of episode
-                torch.stack([self.obs_buf] * (self.cfg.env.buffer_length-1), dim=1), # Initialize with copies
-                torch.cat([
-                    self.obs_history[:, 1:],    # Slice out oldest observation
-                    self.obs_buf.unsqueeze(1)   # Add current observation as newest
-                ], dim=1)
-            )
-
-            # Concatenate into observation
+            # Update self.obs_buf
             self.obs_buf = torch.cat([
-                self.obs_history.view(self.num_envs, -1), # Flatten history
-                self.obs_buf                              # Add cur obs to end
+                self.obs_history.view(self.num_envs, -1),  # Flattened history
+                cur_obs_buf                                # Current observation
             ], dim=-1)
-        
+
+            # print("self.obs_buf.shape: ", self.obs_buf.shape)
+
+            # Update history buffer 
+            self.obs_history = torch.where((
+                self.episode_length_buf <= 1)[:, None, None],
+                torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
+                torch.cat([self.obs_history[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1
+            ))
+            
+            # print("self.obs_history.shape: ", self.obs_history.shape)
 
 
     # =========================== NEW REWARD FUNCTIONS ===========================

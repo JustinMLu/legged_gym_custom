@@ -83,7 +83,7 @@ if __name__ == "__main__":
         num_proprio = config["num_proprio"]
         enable_history = config["enable_history"]
         buffer_length = config["buffer_length"]
-        num_obs = (num_proprio * buffer_length if enable_history else num_proprio)
+        num_obs = num_proprio+(num_proprio*buffer_length) if enable_history else num_proprio
 
         # Phase
         period = config["period"]
@@ -210,30 +210,36 @@ if __name__ == "__main__":
 
 
             # Create observation tensor
-            obs[:3] = ang_vel * ang_vel_scale
-            obs[3:6] = projected_gravity
-            obs[6:9] = cmd * cmd_scale 
-            obs[9 : 9+num_actions] = (qj - default_angles) * dof_pos_scale
-            obs[9+num_actions : 9+2*num_actions] = dqj * dof_vel_scale
-            obs[9+2*num_actions : 9+3*num_actions] = actions
-            obs[9+3*num_actions:9+3*num_actions+8] = phase_features
+            cur_obs = np.zeros(num_proprio, dtype=np.float32)
+            cur_obs[:3] = ang_vel * ang_vel_scale
+            cur_obs[3:6] = projected_gravity
+            cur_obs[6:9] = cmd * cmd_scale 
+            cur_obs[9 : 9+num_actions] = (qj - default_angles) * dof_pos_scale
+            cur_obs[9+num_actions : 9+2*num_actions] = dqj * dof_vel_scale
+            cur_obs[9+2*num_actions : 9+3*num_actions] = actions
+            cur_obs[9+3*num_actions:9+3*num_actions+8] = phase_features
 
             # Add history to observation tensor
             if enable_history:
-                cur_obs = obs[:9+3*num_actions+8] # slice to exclude pre-allocated history indices
+                # print("obs.shape ", obs.shape)
+                # print("cur_obs.shape ", cur_obs.shape)
+                # print("obs_history.flatten().shape ", obs_history.flatten().shape)
+                
+                # Concatenate history with actual observation
+                obs[:] = np.concatenate([obs_history.flatten(), cur_obs])
 
-                # If we are at the first step, initialize the history buffer
+                # Update history buffer
                 if first_step_ever:
                     first_step_ever = False
-                    obs_history = np.zeros((buffer_length-1, num_proprio), dtype=np.float32)
-                    for i in range(buffer_length-1):
-                        obs_history[i] = cur_obs
+                    obs_history = np.tile(cur_obs, (buffer_length, 1))  # Fill history with copies
                 else:
                     obs_history = np.roll(obs_history, -1, axis=0)
                     obs_history[-1] = cur_obs
-                
-                obs[:(buffer_length-1)*num_proprio] = obs_history.flatten()
-                obs[(buffer_length-1)*num_proprio:] = cur_obs 
+
+            # Else, no history
+            else:
+                obs[:] = cur_obs
+            
 
             # Convert to tensorlinear
             obs_tensor = torch.from_numpy(obs).unsqueeze(0)

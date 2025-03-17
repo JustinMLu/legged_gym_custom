@@ -77,6 +77,7 @@ class Terrain:
                                                                                             self.cfg.vertical_scale,
                                                                                             self.cfg.slope_treshold)
     
+
     def randomized_terrain(self):
         for k in range(self.cfg.num_sub_terrains):
             # Env coordinates in the world
@@ -87,6 +88,7 @@ class Terrain:
             terrain = self.make_terrain(choice, difficulty)
             self.add_terrain_to_map(terrain, i, j)
         
+    
     def curiculum(self):
         """ Generate a curriculum of terrains with varying difficulty and choice.
             Proportions can be set in the config file to control the amount of each terrain.
@@ -98,8 +100,9 @@ class Terrain:
                 difficulty = i / self.cfg.num_rows      # Rows represent difficulty
                 choice = j / self.cfg.num_cols + 0.001
 
-                terrain = self.make_terrain(choice, difficulty / 2.5) # Make it easier because the Go2 is a tiny fella
+                terrain = self.make_terrain(choice, difficulty / 3) # Can make it easier if you'd like
                 self.add_terrain_to_map(terrain, i, j)
+
 
     def selected_terrain(self):
         """ Incredibly stupid way of selecting singular terrain from config.
@@ -118,10 +121,10 @@ class Terrain:
             eval(terrain_type)(terrain, **self.cfg.terrain_kwargs)
             self.add_terrain_to_map(terrain, i, j)
     
-    # NOT used when selected_terrain is used (selected = True in config)
+
     def make_terrain(self, choice, difficulty):
         """ Generate a terrain based on the choice and difficulty.
-            TODO: Explain this better.
+            NOT used when selected terrain is used (i.e selected = True in the config).
         """
         terrain = terrain_utils.SubTerrain(   "terrain",
                                 width=self.width_per_env_pixels,
@@ -171,20 +174,21 @@ class Terrain:
         # 7. # Bumpy Wave
         elif choice < self.proportions[6]:
             terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=amplitude)
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.04, max_height=0.04, step=0.01, downsampled_scale=0.15)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.045, max_height=0.045, step=0.01, downsampled_scale=0.15)
+        
+        # Else random uniform (this one is pretty good)
+        else:
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005, downsampled_scale=0.05)
             
-            # ORIGINAL: 
+            # Gap terrain: 
             # gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
             
             # Bumpy hole
             # terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1.2, platform_size=3.)
             # terrain_utils.random_uniform_terrain(terrain, min_height=-0.12, max_height=0.12, step=0.01, downsampled_scale=0.4)
         
-        # Else flat terrain
-        else:
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.01, max_height=0.01, step=0.005, downsampled_scale=0.05)
-        
         return terrain
+
 
     def add_terrain_to_map(self, terrain, row, col):
         i = row
@@ -205,6 +209,7 @@ class Terrain:
         env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*terrain.vertical_scale
         self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
 
+
 def gap_terrain(terrain, gap_size, platform_size=1.):
     gap_size = int(gap_size / terrain.horizontal_scale)
     platform_size = int(platform_size / terrain.horizontal_scale)
@@ -218,6 +223,7 @@ def gap_terrain(terrain, gap_size, platform_size=1.):
    
     terrain.height_field_raw[center_x-x2 : center_x + x2, center_y-y2 : center_y + y2] = -1000
     terrain.height_field_raw[center_x-x1 : center_x + x1, center_y-y1 : center_y + y1] = 0
+
 
 def pit_terrain(terrain, depth, platform_size=1.):
     depth = int(depth / terrain.vertical_scale)

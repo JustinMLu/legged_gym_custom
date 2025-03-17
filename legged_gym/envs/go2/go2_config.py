@@ -3,9 +3,9 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         enable_history = True
-        buffer_length = 5 # number of previous obs to keep in buffer
+        buffer_length = 4 # number of previous obs to keep in buffer
         num_proprio = 53 
-        num_observations = (num_proprio * buffer_length if enable_history else num_proprio)
+        num_observations = num_proprio+(num_proprio*buffer_length) if enable_history else num_proprio
         num_envs = 4096
         num_actions = 12
 
@@ -26,8 +26,13 @@ class Go2Cfg( LeggedRobotCfg ):
             "downsampled_scale": 0.25,
         }
 
-        # types: [flat, rough, stairsUp, stairsDown, discrete, stones, wave] else flat
-        terrain_proportions = [0.1, 0.1, 0.25, 0.25, 0.2, 0.0, 0.1]
+        terrain_proportions = [0.10,    # smooth slope
+                               0.00,    # rough slope
+                               0.40,    # stairs up
+                               0.20,    # stairs down
+                               0.20,    # discrete terrain
+                               0.00,    # stepping stones
+                               0.10]    # bumpy wave
 
     class domain_rand:      
         randomize_friction = True
@@ -131,7 +136,7 @@ class Go2Cfg( LeggedRobotCfg ):
             ang_vel_xy = -0.05
             orientation = -5.0
             torques = -0.00001
-            dof_acc = -2.5e-7 * 2 # Twice the penalty (HAVENT RUN YET)
+            dof_acc = -2.5e-7 # Remember to double the penalty for mk10 if mk9 is bad
             action_rate = -0.1
             collision = -10.0
             stumble = -1.0
@@ -154,8 +159,8 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
 
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'rudolf8'
+        run_name = 'rudolf9'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 50000
-        save_interval = 1000
+        max_iterations = 10000
+        save_interval = 500

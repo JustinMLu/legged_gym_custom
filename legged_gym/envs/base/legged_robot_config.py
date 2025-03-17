@@ -35,7 +35,7 @@ class LeggedRobotCfg(BaseConfig):
         enable_history = False # use history for obs
         buffer_length = 5 # number of previous obs to keep in buffer
         num_proprio = 235 # number of proprio. obs
-        num_observations = (num_proprio * buffer_length if enable_history else num_proprio)
+        num_observations = num_proprio+(num_proprio*buffer_length) if enable_history else num_proprio
         num_envs = 4096
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
@@ -64,9 +64,7 @@ class LeggedRobotCfg(BaseConfig):
         terrain_width = 8.
         num_rows = 10 # number of terrain rows (levels)
         num_cols = 20 # number of terrain cols (types)
-
-        # types: [flat, rough, stairsUp, stairsDown, discrete, stones, wave] else flat
-        terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2, 0.0, 0.0]
+        terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2, 0.0, 0.0] # see terrain.py for details
         
         # trimesh only:
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
