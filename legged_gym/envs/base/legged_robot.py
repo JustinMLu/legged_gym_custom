@@ -236,8 +236,8 @@ class LeggedRobot(BaseTask):
             self.obs_history = torch.where((
                 self.episode_length_buf <= 1)[:, None, None],
                 torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
-                torch.cat([self.obs_history[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1
-            ))
+                torch.cat([self.obs_history[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
+            )
             
 
     def create_sim(self):

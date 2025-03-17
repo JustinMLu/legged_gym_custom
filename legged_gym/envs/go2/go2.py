@@ -52,10 +52,6 @@ class Go2Robot(LeggedRobot):
         noise_vec[21:33] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[33:45] = 0. # previous actions (12)
         noise_vec[45:53] = 0. # phase observations (8)
-
-        # # Add heightmap noise (if heightmap used)
-        # if self.cfg.terrain.measure_heights:
-        #     noise_vec[53:235] = noise_scales.height_measurements*noise_level*self.obs_scales.height_measurements
         return noise_vec
 
 
@@ -153,15 +149,14 @@ class Go2Robot(LeggedRobot):
                 cur_obs_buf                                # Current observation
             ], dim=-1)
 
-            # print("self.obs_buf.shape: ", self.obs_buf.shape)
-
             # Update history buffer 
             self.obs_history = torch.where((
                 self.episode_length_buf <= 1)[:, None, None],
                 torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
-                torch.cat([self.obs_history[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1
-            ))
-            
+                torch.cat([self.obs_history[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
+            )
+
+            # print("self.obs_buf.shape: ", self.obs_buf.shape)
             # print("self.obs_history.shape: ", self.obs_history.shape)
 
 
