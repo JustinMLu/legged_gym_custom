@@ -3,7 +3,7 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         enable_history = True
-        buffer_length = 4 # number of previous obs to keep in buffer
+        buffer_length = 9 # number of previous obs to keep in buffer
         num_proprio = 53 
         num_observations = num_proprio+(num_proprio*buffer_length) if enable_history else num_proprio
         num_envs = 4096
@@ -27,10 +27,10 @@ class Go2Cfg( LeggedRobotCfg ):
         }
 
         terrain_proportions = [0.10,    # smooth slope
-                               0.00,    # rough slope
-                               0.40,    # stairs up
-                               0.20,    # stairs down
-                               0.20,    # discrete terrain
+                               0.10,    # rough slope
+                               0.35,    # stairs up
+                               0.25,    # stairs down
+                               0.10,    # discrete terrain
                                0.00,    # stepping stones
                                0.10]    # bumpy wave
 

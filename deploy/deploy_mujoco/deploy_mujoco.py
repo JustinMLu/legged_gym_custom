@@ -221,9 +221,6 @@ if __name__ == "__main__":
 
             # Add history to observation tensor
             if enable_history:
-                # print("obs.shape ", obs.shape)
-                # print("cur_obs.shape ", cur_obs.shape)
-                # print("obs_history.flatten().shape ", obs_history.flatten().shape)
                 
                 # Concatenate history with actual observation
                 obs[:] = np.concatenate([obs_history.flatten(), cur_obs])
@@ -231,7 +228,7 @@ if __name__ == "__main__":
                 # Update history buffer
                 if first_step_ever:
                     first_step_ever = False
-                    obs_history = np.tile(cur_obs, (buffer_length, 1))  # Fill history with copies
+                    obs_history = np.tile(cur_obs, (buffer_length, 1))  # (4x1, 1x53)
                 else:
                     obs_history = np.roll(obs_history, -1, axis=0)
                     obs_history[-1] = cur_obs

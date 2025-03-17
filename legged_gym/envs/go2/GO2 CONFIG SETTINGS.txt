@@ -1,64 +1,74 @@
-======================================================
-
+===========================================================
 # MK2
-            tracking_lin_vel = 1.5
-            tracking_ang_vel = 1.0
-            lin_vel_z = -1.0
-            ang_vel_xy = -0.05
-            orientation = -5.0          # -1.0 original
-            torques = -0.0002           # -0.00001 original
-            dof_acc = -2.5e-7
-            action_rate = -0.1
-            collision = -10.0
-            stumble = -1.0
-            feet_air_time = 0.5
-            delta_torques = -1.0e-7     # New
-            hip_pos = -1.0              # New
-            dof_error = -0.04           # New
-            contact_phase_match = 0.5   # New
+
+REWARDS:
+    tracking_lin_vel = 1.5
+    tracking_ang_vel = 1.0
+    lin_vel_z = -1.0
+    ang_vel_xy = -0.05
+    orientation = -5.0          # -1.0 original
+    torques = -0.0002           # -0.00001 original
+    dof_acc = -2.5e-7
+    action_rate = -0.1
+    collision = -10.0
+    stumble = -1.0
+    feet_air_time = 0.5
+    delta_torques = -1.0e-7
+    hip_pos = -1.0
+    dof_error = -0.04
+    contact_phase_match = 0.5
 
 CURRICULUM:
     terrain curriculum? Yes
     command curriculum? Yes
     max_curriculum = 10.0
+===========================================================
 
-======================================================
 
+===========================================================
 # MK4
-            tracking_lin_vel = 1.5
-            tracking_ang_vel = 1.0
-            lin_vel_z = -1.0
-            ang_vel_xy = -0.05
-            orientation = -5.0
-            torques = -0.00001  # Reverted to original
-            dof_acc = -2.5e-7
-            action_rate = -0.1
-            collision = -10.0
-            stumble = -1.0
-            feet_air_time = 0.5
-            delta_torques = -1.0e-7 
-            hip_pos = -1.0 
-            dof_error = -0.04 
-            contact_phase_match = 0.5
+
+REWARDS:
+    tracking_lin_vel = 1.5
+    tracking_ang_vel = 1.0
+    lin_vel_z = -1.0
+    ang_vel_xy = -0.05
+    orientation = -5.0
+    torques = -0.00001  # Reverted to original
+    dof_acc = -2.5e-7
+    action_rate = -0.1
+    collision = -10.0
+    stumble = -1.0
+    feet_air_time = 0.5
+    delta_torques = -1.0e-7 
+    hip_pos = -1.0 
+    dof_error = -0.04 
+    contact_phase_match = 0.5
 
 CURRICULUM:
     terrain curriculum? Yes
     command curriculum? Yes
     max_curriculum = 5.0
+===========================================================
 
-======================================================
 
+===========================================================
 # MK5
-            (Rewards unchanged)
+
+REWARDS:
+    (Rewards unchanged)
 
 CURRICULUM:
-    terrain curriculum?  No (Slightly bumpy flat ground)
+    terrain curriculum?  No (Slightly bumpy random_uniform_terrain)
     max_curriculum = 5.0 --> forward commands > 2.0 resulted in no real movement
+===========================================================
 
-======================================================
 
+===========================================================
 # MK6
-            (Rewards unchanged)
+
+REWARDS:
+    (Rewards unchanged)
 
 CURRICULUM:
     terrain curriculum?  Yes
@@ -74,14 +84,22 @@ GAIT:
     br_offset = 0.5
 
 TRAINING:
-# types: [flat, rough, stairsUp, stairsDown, discrete, stones, wave] else flat
-terrain_proportions = [0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125] else 0.125
-** Also difficulty was difficulty / 3 **
+    terrain_proportions = [.125,    # smooth slope
+                           .125,    # rough slope
+                           .125,    # stairs up
+                           .125,    # stairs down
+                           .125,    # discrete terrain
+                           .125,    # stepping stones
+                           .125]    # bumpy wave
+===========================================================
 
-======================================================
 
-# MK7 --> HORRIBLE
-            (Rewards unchanged)
+===========================================================
+# MK7 
+- Absolutely horrible
+
+REWARDS:
+    (Rewards unchanged)
 
 CURRICULUM:
     terrain curriculum?  Yes
@@ -97,51 +115,23 @@ GAIT:
     br_offset = 0.5         # [%]
 
 TRAINING:
-    # types: [flat, rough, stairsUp, stairsDown, discrete, stones, wave] else flat
-    terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2, 0.0, 0.0]
-
-======================================================
-
-# MK8 --> GOOD BUT SPAZZES OUT WHEN IN TERRAIN SOMETIMES
-            (Rewards unchanged)
-
-CURRICULUM:
-    terrain curriculum?  Yes
-    command curriculum? Yes
-    max_curriculum = 2.0
-
-GAIT:
-    stance_threshold = 0.5
-    period = 0.66 
-    fr_offset = 0.0
-    bl_offset = 0.0
-    fl_offset = 0.5
-    br_offset = 0.5
-
-TRAINING:
-    # types: [flat, rough, stairsUp, stairsDown, discrete, stones, wave] else flat
-    terrain_proportions = [0.1, 0.1, 0.25, 0.25, 0.2, 0.0, 0.1]
-
-======================================================
+    terrain_proportions = [0.10,    # smooth slope
+                           0.10,    # rough slope
+                           0.35,    # stairs up
+                           0.25,    # stairs down
+                           0.20,    # discrete terrain
+                           0.00,    # stepping stones
+                           0.00]    # bumpy wave
+===========================================================
 
 
-# MK9 --> FIXED A LOT OF BUGS, REMOVED DIFFICULTY MULTIPLIER
+===========================================================
+# MK8
+- Good but spazzes out on terrain sometimes
+- EDIT: turns out this was because of 1 MILLION BUGS in the history buffer
 
-            tracking_lin_vel = 1.5
-            tracking_ang_vel = 1.0
-            lin_vel_z = -1.0
-            ang_vel_xy = -0.05
-            orientation = -5.0
-            torques = -0.00001
-            dof_acc = -2.5e-7  --> NOTE: Consider doubling penalty for next generation
-            action_rate = -0.1
-            collision = -10.0
-            stumble = -1.0
-            feet_air_time = 0.5
-            delta_torques = -1.0e-7 
-            hip_pos = -1.0 
-            dof_error = -0.04 
-            contact_phase_match = 0.5
+REWARDS:
+    (Rewards unchanged)
 
 CURRICULUM:
     terrain curriculum?  Yes
@@ -158,11 +148,45 @@ GAIT:
 
 TRAINING:
     terrain_proportions = [0.10,    # smooth slope
-                           0.00,    # rough slope
-                           0.40,    # stairs up
-                           0.20,    # stairs down
+                           0.10,    # rough slope
+                           0.25,    # stairs up
+                           0.25,    # stairs down
                            0.20,    # discrete terrain
                            0.00,    # stepping stones
                            0.10]    # bumpy wave
+===========================================================
 
-    ** Removed "difficulty = difficulty / 3" multiplier **
+
+===========================================================
+# MK9
+- Had to retrain this one at least 10 times due to BUGS!
+
+HISTORY:
+    buffer_length = 9
+
+REWARDS:
+    (Rewards unchanged)
+            
+
+CURRICULUM:
+    terrain curriculum?  Yes
+    command curriculum? Yes
+    max_curriculum = 2.0
+
+GAIT:
+    stance_threshold = 0.5
+    period = 0.66 
+    fr_offset = 0.0
+    bl_offset = 0.0
+    fl_offset = 0.5
+    br_offset = 0.5
+
+TRAINING:
+    terrain_proportions = [0.10,    # smooth slope
+                           0.10,    # rough slope
+                           0.35,    # stairs up
+                           0.25,    # stairs down
+                           0.10,    # discrete terrain
+                           0.00,    # stepping stones
+                           0.10]    # bumpy wave
+===========================================================
