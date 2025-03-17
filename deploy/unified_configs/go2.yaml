@@ -1,13 +1,13 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk9/EXPORTED.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk9/1500_flat.pt"
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs.xml"
 
 # Action & Observations
 num_actions: 12
 num_proprio: 53
 enable_history: True
-buffer_length: 4
+buffer_length: 9
 
 # Protocols
 msg_type: "go"     # "hg" or "go"

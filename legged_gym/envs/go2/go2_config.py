@@ -159,8 +159,8 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
 
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'rudolf9'
+        run_name = 'rudolf9-FIXED'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 10000
-        save_interval = 500
+        max_iterations = 50000
+        save_interval = 1000
