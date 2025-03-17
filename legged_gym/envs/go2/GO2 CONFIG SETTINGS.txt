@@ -98,7 +98,44 @@ TRAINING:
 
 ======================================================
 
-# MK8
+# MK8 --> GOOD BUT SPAZZES OUT WHEN IN TERRAIN SOMETIMES
+            (Rewards unchanged)
+
+CURRICULUM:
+    terrain curriculum?  Yes
+    max_curriculum = 2.0
+
+GAIT:
+    stance_threshold = 0.5
+    period = 0.66 
+    fr_offset = 0.0
+    bl_offset = 0.0
+    fl_offset = 0.5
+    br_offset = 0.5
+
+TRAINING:
+    # types: [flat, rough, stairsUp, stairsDown, discrete, stones, wave] else flat
+    terrain_proportions = [0.1, 0.1, 0.25, 0.25, 0.2, 0.0, 0.1]
+
+======================================================
+
+
+# MK9 --> MK8 BUT WITH BIGGER TORQUE PENALTY (HAVENT RUN YET)
+            tracking_lin_vel = 1.5
+            tracking_ang_vel = 1.0
+            lin_vel_z = -1.0
+            ang_vel_xy = -0.05
+            orientation = -5.0
+            torques = -0.00001
+            dof_acc = -2.5e-7 * 2 # Twice the penalty
+            action_rate = -0.1
+            collision = -10.0
+            stumble = -1.0
+            feet_air_time = 0.5
+            delta_torques = -1.0e-7 
+            hip_pos = -1.0 
+            dof_error = -0.04 
+            contact_phase_match = 0.5
 
 CURRICULUM:
     terrain curriculum?  Yes

@@ -121,6 +121,7 @@ if __name__ == "__main__":
 
     # Start simulation
     counter = 0
+    first_step_ever = True
 
     # Initialize Mujoco Viewer
     viewer = mujoco.viewer.launch_passive(m, d)
@@ -161,15 +162,15 @@ if __name__ == "__main__":
             # Prepare observation quantities
             qj = qj_pos
             dqj = qj_vel
-            lin_vel = d.qvel[:3]                        # linear vel. in the world frame (Deprecated)
             ang_vel = d.qvel[3:6]                       # angular vel. in the world frame
+            lin_vel = d.qvel[:3]                        # linear vel. in the world frame (Deprecated)
             lin_accel = d.qacc[:3]                      # linear accel. in the world frame (Deprecated)
 
             # ========== rotation math ==========
-            base_rot_quat = d.qpos[3:7]                 # rotation of base in quaternion
+            base_rot_quat = d.qpos[3:7]                 #  base rot. in quaternion
             temp = np.zeros(9)   
             mujoco.mju_quat2Mat(temp, base_rot_quat)
-            base_rot_mat = temp.reshape(3, 3)           # rotation of base in matrix form
+            base_rot_mat = temp.reshape(3, 3)           # base rot. in matrix form
             base_lin_vel = base_rot_mat.T @ lin_vel     # linear vel. in the body frame (Deprecated)
             base_lin_accel = base_rot_mat.T @ lin_accel # linear accel. in the body frame (Deprecated)
             # ===================================
@@ -219,18 +220,20 @@ if __name__ == "__main__":
             if enable_history:
                 cur_obs = obs[:9+3*num_actions+8] # slice to exclude pre-allocated history indices
 
-                if counter == control_decimation:  # First control step
+                # If we are at the first step, initialize the history buffer
+                if first_step_ever:
+                    first_step_ever = False
                     obs_history = np.zeros((buffer_length-1, num_proprio), dtype=np.float32)
                     for i in range(buffer_length-1):
                         obs_history[i] = cur_obs
                 else:
-                    obs_history = np.roll(obs_history, 1, axis=0)
+                    obs_history = np.roll(obs_history, -1, axis=0)
                     obs_history[-1] = cur_obs
                 
                 obs[:(buffer_length-1)*num_proprio] = obs_history.flatten()
                 obs[(buffer_length-1)*num_proprio:] = cur_obs 
 
-            # Convert to tensor
+            # Convert to tensorlinear
             obs_tensor = torch.from_numpy(obs).unsqueeze(0)
             
             # Get actions from policy network

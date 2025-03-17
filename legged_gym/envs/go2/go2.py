@@ -162,7 +162,7 @@ class Go2Robot(LeggedRobot):
                 (self.episode_length_buf <= 1)[:, None, None], # If first step of episode
                 torch.stack([self.obs_buf] * (self.cfg.env.buffer_length-1), dim=1), # Initialize with copies
                 torch.cat([
-                    self.obs_history[:, 1:],    # Remove oldest observation
+                    self.obs_history[:, 1:],    # Slice out oldest observation
                     self.obs_buf.unsqueeze(1)   # Add current observation as newest
                 ], dim=1)
             )

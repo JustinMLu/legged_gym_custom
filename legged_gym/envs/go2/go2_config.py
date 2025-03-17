@@ -125,14 +125,13 @@ class Go2Cfg( LeggedRobotCfg ):
 
         class scales( LeggedRobotCfg.rewards.scales ):
 
-            # Rudolf 6
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.0
             lin_vel_z = -1.0
             ang_vel_xy = -0.05
             orientation = -5.0
-            torques = -0.00001  # Reverted to original
-            dof_acc = -2.5e-7
+            torques = -0.00001
+            dof_acc = -2.5e-7 * 2 # Twice the penalty (HAVENT RUN YET)
             action_rate = -0.1
             collision = -10.0
             stumble = -1.0
