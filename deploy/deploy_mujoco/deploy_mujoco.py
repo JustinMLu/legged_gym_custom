@@ -70,8 +70,8 @@ if __name__ == "__main__":
         default_angles = np.array(config["default_angles"], dtype=np.float32)
         
         # Scales
-        lin_accel_scale = config["lin_accel_scale"] # (Deprecated)
         lin_vel_scale = config["lin_vel_scale"] # (Deprecated)
+        lin_accel_scale = config["lin_accel_scale"] # (Deprecated)
         ang_vel_scale = config["ang_vel_scale"]
         dof_pos_scale = config["dof_pos_scale"]
         dof_vel_scale = config["dof_vel_scale"]
@@ -162,17 +162,19 @@ if __name__ == "__main__":
             # Prepare observation quantities
             qj = qj_pos
             dqj = qj_vel
-            ang_vel = d.qvel[3:6]                       # angular vel. in the world frame
-            lin_vel = d.qvel[:3]                        # linear vel. in the world frame (Deprecated)
-            lin_accel = d.qacc[:3]                      # linear accel. in the world frame (Deprecated)
+            ang_vel = d.qvel[3:6]                       # angular vel. in the LOCAL FRAME
+            
+            # lin_vel = d.qvel[:3]                        # linear vel. in the world frame (Deprecated)
+            # lin_accel = d.qacc[:3]                      # linear accel. in the world frame (Deprecated)
 
             # ========== rotation math ==========
             base_rot_quat = d.qpos[3:7]                 #  base rot. in quaternion
             temp = np.zeros(9)   
             mujoco.mju_quat2Mat(temp, base_rot_quat)
             base_rot_mat = temp.reshape(3, 3)           # base rot. in matrix form
-            base_lin_vel = base_rot_mat.T @ lin_vel     # linear vel. in the body frame (Deprecated)
-            base_lin_accel = base_rot_mat.T @ lin_accel # linear accel. in the body frame (Deprecated)
+            
+            # base_lin_vel = base_rot_mat.T @ lin_vel     # linear vel. in the body frame (Deprecated)
+            # base_lin_accel = base_rot_mat.T @ lin_accel # linear accel. in the body frame (Deprecated)
             # ===================================
 
             # Get projected gravity

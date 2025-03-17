@@ -45,30 +45,26 @@ class Go2Robot(LeggedRobot):
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         noise_level = self.cfg.noise.noise_level
-        noise_vec[:3] = noise_scales.lin_accel * noise_level * self.obs_scales.lin_accel
-        noise_vec[3:6] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
-        noise_vec[6:9] = noise_scales.gravity * noise_level
-        noise_vec[9:12] = 0. # commands
-        noise_vec[12:24] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
-        noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
-        noise_vec[36:48] = 0. # previous actions
-        noise_vec[48:52] = 0. # phase observations
+        noise_vec[:3] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
+        noise_vec[3:6] = noise_scales.gravity * noise_level
+        noise_vec[6:9] = 0. # commands
+        noise_vec[9:21] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
+        noise_vec[21:33] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
+        noise_vec[33:45] = 0. # previous actions (12)
+        noise_vec[45:53] = 0. # phase observations (8)
 
-        # Add heightmap noise (if heightmap used)
-        if self.cfg.terrain.measure_heights:
-            noise_vec[52:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
-            
+        # # Add heightmap noise (if heightmap used)
+        # if self.cfg.terrain.measure_heights:
+        #     noise_vec[53:235] = noise_scales.height_measurements*noise_level*self.obs_scales.height_measurements
         return noise_vec
 
 
     def _init_foot(self):
         self.feet_num = len(self.feet_indices)
         rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)
-        
         self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_state)
         self.rigid_body_states_view = self.rigid_body_states.view(self.num_envs, -1, 13)
-        self.feet_state = self.rigid_body_states_view[:, self.feet_indices, :]
-        
+        self.feet_state = self.rigid_body_states_view[:, self.feet_indices, :]    
         self.feet_pos = self.feet_state[:, :, :3]
         self.feet_vel = self.feet_state[:, :, 7:10]
 
@@ -107,8 +103,7 @@ class Go2Robot(LeggedRobot):
     
 
     def compute_observations(self):
-        """ Computes observations for the robot. Overloaded to use 
-            linear acceleration instead of linear velocity as an observation.
+        """ Computes observations for the robot. Overloaded to include unique observations for Go2.
         """
         # Calculate sine and cosine of phases for smooth transitions
         sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl).unsqueeze(1) # FL
@@ -145,10 +140,10 @@ class Go2Robot(LeggedRobot):
         # Add phase info to observations
         self.obs_buf = torch.cat([self.obs_buf, phase_features], dim=1) # total: (53,)
 
-        # Add perceptive inputs (height map) if not blind
-        if self.cfg.terrain.measure_heights:
-            heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
-            self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
+        # # Add perceptive inputs (height map) if not blind
+        # if self.cfg.terrain.measure_heights:
+        #     heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
+        #     self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
 
         # Add noise
         if self.add_noise:
