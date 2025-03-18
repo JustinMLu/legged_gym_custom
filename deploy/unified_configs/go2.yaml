@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk9/1500_flat.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk9/10000.pt"
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs.xml"
 
 # Action & Observations
@@ -15,12 +15,13 @@ imu_type: "pelvis"    # "torso" or "pelvis"
 lowcmd_topic: "rt/lowcmd"
 lowstate_topic: "rt/lowstate"
 
+
 # Timing
 simulation_duration: 200.0 # [sec]
 run_forever: True
-simulation_dt: 0.005
-control_decimation: 4 # Controller update frequency (meets the requirement of simulation_dt * control_decimation=0.02; 50Hz)
-control_dt: 0.02 
+simulation_dt: 0.005  
+control_decimation: 4   # Controller update frequency (simulation_dt * control_decimation=0.02; 50Hz)
+control_dt: 0.02        # TODO: replace with simulation_dt * control_decimation in deploy_real.py
 
 
 # LEG 2 JOINT MOTOR INDEX: fixes the order of the motors in the observation

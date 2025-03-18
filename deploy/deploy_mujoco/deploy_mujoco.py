@@ -108,13 +108,13 @@ if __name__ == "__main__":
     """
 
     # Load robot model
-    m = mujoco.MjModel.from_xml_path(xml_path)
-    d = mujoco.MjData(m)
-    m.opt.timestep = simulation_dt
+    mj_model = mujoco.MjModel.from_xml_path(xml_path)
+    mj_data = mujoco.MjData(mj_model)
+    mj_model.opt.timestep = simulation_dt
 
     # Load policy file
     policy = torch.jit.load(policy_path)
-    mujoco.mj_resetDataKeyframe(m, d, 0)
+    mujoco.mj_resetDataKeyframe(mj_model, mj_data, 0)
 
     # Initialize phase-related variables
     sim_time_s = 0.0
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     first_step_ever = True
 
     # Initialize Mujoco Viewer
-    viewer = mujoco.viewer.launch_passive(m, d)
+    viewer = mujoco.viewer.launch_passive(mj_model, mj_data)
 
     # Have camera track the robot base
     viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
@@ -134,23 +134,25 @@ if __name__ == "__main__":
     viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
     viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = False
     
-    start = time.time()
+    start = time.perf_counter()
 
     # Close the viewer automatically after simulation_duration wall-seconds.
-    while viewer.is_running() and (time.time() - start < simulation_duration or run_forever):
-        step_start = time.time()
+    while viewer.is_running() and ((time.perf_counter()-start) < simulation_duration or run_forever):
+        
+        # Start time of current step
+        step_start = time.perf_counter()
 
         # Get current q
-        qj_pos = d.qpos[7:] # 19 --> 12
-        qj_vel = d.qvel[6:] # 18 --> 12
+        qj_pos = mj_data.qpos[7:] # 19 --> 12
+        qj_vel = mj_data.qvel[6:] # 18 --> 12
 
         # Joint torque PD control
         tau = get_pd_control(target_dof_pos, qj_pos, kps, np.zeros_like(kds), qj_vel, kds)
-        d.ctrl[:] = tau
+        mj_data.ctrl[:] = tau
         
         # mj_step can be replaced with code that also evaluates
         # a policy and applies a control signal before stepping the physics.
-        mujoco.mj_step(m, d)
+        mujoco.mj_step(mj_model, mj_data)
 
         # Update simulation time
         sim_time_s += simulation_dt
@@ -162,13 +164,13 @@ if __name__ == "__main__":
             # Prepare observation quantities
             qj = qj_pos
             dqj = qj_vel
-            ang_vel = d.qvel[3:6]                       # angular vel. in the LOCAL FRAME
+            ang_vel = mj_data.qvel[3:6]                       # angular vel. in the LOCAL FRAME
             
             # lin_vel = d.qvel[:3]                        # linear vel. in the world frame (Deprecated)
             # lin_accel = d.qacc[:3]                      # linear accel. in the world frame (Deprecated)
 
             # ========== rotation math ==========
-            base_rot_quat = d.qpos[3:7]                 #  base rot. in quaternion
+            base_rot_quat = mj_data.qpos[3:7]                 #  base rot. in quaternion
             temp = np.zeros(9)   
             mujoco.mju_quat2Mat(temp, base_rot_quat)
             base_rot_mat = temp.reshape(3, 3)           # base rot. in matrix form
@@ -251,7 +253,7 @@ if __name__ == "__main__":
         # Pick up changes to the physics state, apply perturbations, update options from GUI.
         viewer.sync()
 
-        # Rudimentary time keeping, will drift relative to wall clock.
-        time_until_next_step = m.opt.timestep - (time.time() - step_start)
+        # Modified rudimentary timekeeping to use time.perf_counter()
+        time_until_next_step = mj_model.opt.timestep - (time.perf_counter() - step_start)
         if time_until_next_step > 0:
             time.sleep(time_until_next_step)
