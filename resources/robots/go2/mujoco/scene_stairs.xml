@@ -20,10 +20,6 @@
     <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
 
-    <!-- Bumpy wumpys -->
-    <!-- <geom pos="1.0 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/> -->
-    <!-- <geom pos="1.4 0 0.04" type="box"  size="0.1 2 0.04" quat="1.0 0 0 0"/> -->
-
 
     <!-- The go2 ascends the stairway to heaven, -->
     <geom pos="2.0 0.0 0.02" type="box" size="0.25 2.0 0.10" quat="1.0 0 0 0"/>

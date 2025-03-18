@@ -56,11 +56,11 @@ class LeggedRobot(BaseTask):
         Args:
             actions (torch.Tensor): Tensor of shape (num_envs, num_actions_per_env)
         """
-        # clip actions to specified range (from cfg)
+        # Clip actions to specified range (from cfg)
         clip_actions = self.cfg.normalization.clip_actions
         self.actions = torch.clip(actions, -clip_actions, clip_actions).to(self.device)
         
-        # step physics and render each frame
+        # Step physics and render each frame
         self.render()
         for _ in range(self.cfg.control.decimation):
             self.torques = self._compute_torques(self.actions).view(self.torques.shape)
@@ -70,14 +70,18 @@ class LeggedRobot(BaseTask):
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
 
-        # post_physics_step: updates a lot of quantities, recomputes observations, invokes physics callback
+        # Post_physics_step: updates a lot of quantities, recomputes observations, invokes physics callback
         self.post_physics_step()
 
-        # return clipped obs, clipped states (None), rewards, dones and infos
+        # Clip observations
         clip_obs = self.cfg.normalization.clip_observations
         self.obs_buf = torch.clip(self.obs_buf, -clip_obs, clip_obs)
+
+        # Clip privileged observations
         if self.privileged_obs_buf is not None:
             self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
+
+        # Return observations, privileged obs, rewards, reset flags, extras
         return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
 
     def post_physics_step(self):
@@ -233,8 +237,8 @@ class LeggedRobot(BaseTask):
             ], dim=-1)
 
             # Update history buffer 
-            self.obs_history = torch.where((
-                self.episode_length_buf <= 1)[:, None, None],
+            self.obs_history = torch.where(
+                (self.episode_length_buf <= 1)[:, None, None],
                 torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
                 torch.cat([self.obs_history[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
             )

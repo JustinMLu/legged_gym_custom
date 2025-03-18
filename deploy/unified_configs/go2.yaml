@@ -1,7 +1,7 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk9/10000.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs.xml"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk9v2/25000.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_015.xml"
 
 # Action & Observations
 num_actions: 12
@@ -21,7 +21,6 @@ simulation_duration: 200.0 # [sec]
 run_forever: True
 simulation_dt: 0.005  
 control_decimation: 4   # Controller update frequency (simulation_dt * control_decimation=0.02; 50Hz)
-control_dt: 0.02        # TODO: replace with simulation_dt * control_decimation in deploy_real.py
 
 
 # LEG 2 JOINT MOTOR INDEX: fixes the order of the motors in the observation
@@ -52,13 +51,15 @@ default_angles: [0.1, 0.8, -1.5, # FL
                 -0.1, 1.0, -1.5] # RR
 
 # Scales
-lin_accel_scale: 1.0 # Deprecated
-lin_vel_scale: 2.0   # Deprecated
 ang_vel_scale: 0.25
 dof_pos_scale: 1.0
 dof_vel_scale: 0.05
 action_scale: 0.25
 cmd_scale: [2.0, 2.0, 0.25]
+
+# Clip values
+clip_observations: 100.
+clip_actions: 3.14 # Safe deploy
 
 # Phase Features
 period: 0.66         # [sec]
@@ -71,4 +72,4 @@ br_offset: 0.5       # [%]
 rc_scale: [0.8, 0.5, 1.57]
 
 # Mujoco command ([forward, lateral, yaw])
-command: [1.0, 0.0, 0.0]
+command: [0.7, 0.0, 0.0]

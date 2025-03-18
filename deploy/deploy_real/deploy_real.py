@@ -26,28 +26,33 @@ from unitree_sdk2py.go2.sport.sport_client import SportClient
 
 class Controller:
     def __init__(self, config: Config) -> None:
-        self.config = config
+        
+        # Initialize config and controller objects
+        self.cfg = config
         self.remote_controller = RemoteController()
 
-        # Initialize the policy network
+        # Initialize policy network by loading it
         self.policy = torch.jit.load(config.policy_path)
         
-        # Initializing process variables
+        # Initialize essential buffers
         self.qj = np.zeros(config.num_actions, dtype=np.float32)        # joint pos.
         self.dqj = np.zeros(config.num_actions, dtype=np.float32)       # joint vel.
-        self.actions = np.zeros(config.num_actions, dtype=np.float32)   # actions
-        self.target_dof_pos = config.default_angles.copy()              # target joint positions    
-        self.obs = np.zeros(config.num_obs, dtype=np.float32)           # observation
-        self.cmd = np.array([0.0, 0.0, 0.0])                            # command (x, y, yaw)
+        self.actions = np.zeros(config.num_actions, dtype=np.float32)
+        self.target_dof_pos = config.default_angles.copy()   
+        self.obs = np.zeros(config.num_obs, dtype=np.float32)
+        self.obs_history = np.zeros((config.buffer_length, config.num_proprio), dtype=np.float32)
+        self.cmd = np.array([0.0, 0.0, 0.0])
+        
+        # Timing
         self.counter = 0
+        self.real_time_s = 0.0 # total accumulated real time
+        self.first_step_ever = True
 
-
+        # Low command stuff
         self.low_cmd = unitree_go_msg_dds__LowCmd_()
         self.low_state = unitree_go_msg_dds__LowState_()
-
         self.lowcmd_publisher_ = ChannelPublisher(config.lowcmd_topic, LowCmdGo)
         self.lowcmd_publisher_.Init()
-
         self.lowstate_subscriber = ChannelSubscriber(config.lowstate_topic, LowStateGo)
         self.lowstate_subscriber.Init(self.LowStateGoHandler, 10)
 
@@ -55,11 +60,9 @@ class Controller:
         self.sc = SportClient()  
         self.sc.SetTimeout(5.0)
         self.sc.Init()
-
         self.msc = MotionSwitcherClient()
         self.msc.SetTimeout(5.0)
         self.msc.Init()
-
         status, result = self.msc.CheckMode()
         while result['name']:
             self.sc.StandDown()
@@ -67,11 +70,12 @@ class Controller:
             status, result = self.msc.CheckMode()
             time.sleep(1)
             
-
         # wait for the subscriber to receive data
         self.wait_for_low_state()
         
-        init_cmd_go(self.low_cmd, weak_motor=self.config.weak_motor)
+        # Initialize low command
+        init_cmd_go(self.low_cmd, weak_motor=self.cfg.weak_motor)
+
 
     def LowStateHgHandler(self, msg: LowStateHG):
         self.low_state = msg
@@ -88,7 +92,7 @@ class Controller:
 
     def wait_for_low_state(self):
         while self.low_state.tick == 0:
-            time.sleep(self.config.control_dt)
+            time.sleep(self.cfg.control_dt)
         print("Successfully connected to the robot.")
 
     def zero_torque_state(self):
@@ -97,18 +101,18 @@ class Controller:
         while self.remote_controller.button[KeyMap.start] != 1:
             create_zero_cmd(self.low_cmd)
             self.send_cmd(self.low_cmd)
-            time.sleep(self.config.control_dt)
+            time.sleep(self.cfg.control_dt)
 
     def move_to_default_pos(self):
         print("===== MOVING TO DEFAULT POSITION... =====")
         # move time 2s
         total_time = 5
-        num_step = int(total_time / self.config.control_dt) # 0.02 for go2 (0.005 sim dt * 4 ctrl decimation)
+        num_step = int(total_time / self.cfg.control_dt)
         
-        dof_idx = self.config.leg_joint2motor_idx
-        kps = self.config.kps
-        kds = self.config.kds
-        default_pos = self.config.default_angles # already np array
+        dof_idx = self.cfg.leg_joint2motor_idx
+        kps = self.cfg.kps
+        kds = self.cfg.kds
+        default_pos = self.cfg.default_angles # already np array
         dof_size = len(dof_idx)
         
         # record the current pos
@@ -126,36 +130,33 @@ class Controller:
                 self.low_cmd.motor_cmd[motor_idx].qd = 0
                 self.low_cmd.motor_cmd[motor_idx].kp = kps[j]
                 self.low_cmd.motor_cmd[motor_idx].kd = kds[j]
-                # self.low_cmd.motor_cmd[motor_idx].kp = 20.0 # TODO REMOVE HARDCODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                # self.low_cmd.motor_cmd[motor_idx].kd = 0.5  # TODO REMOVE HARDCODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
             self.send_cmd(self.low_cmd)
-            time.sleep(self.config.control_dt) # should be correct
+            time.sleep(self.cfg.control_dt) # should be correct
 
     def default_pos_state(self):
         print("default_pos_state() invoked...")
         print("Waiting for the Button A signal...")
         
         while self.remote_controller.button[KeyMap.A] != 1:
-            for i in range(len(self.config.leg_joint2motor_idx)):
-                motor_idx = self.config.leg_joint2motor_idx[i]
-
-                self.low_cmd.motor_cmd[motor_idx].q = self.config.default_angles[i]
+            for i in range(len(self.cfg.leg_joint2motor_idx)):
+                motor_idx = self.cfg.leg_joint2motor_idx[i]
+                self.low_cmd.motor_cmd[motor_idx].q = self.cfg.default_angles[i]
                 self.low_cmd.motor_cmd[motor_idx].qd = 0
-                self.low_cmd.motor_cmd[motor_idx].kp = self.config.kps[i]
-                self.low_cmd.motor_cmd[motor_idx].kd = self.config.kds[i]
+                self.low_cmd.motor_cmd[motor_idx].kp = self.cfg.kps[i]
+                self.low_cmd.motor_cmd[motor_idx].kd = self.cfg.kds[i]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
-
             self.send_cmd(self.low_cmd)
-            time.sleep(self.config.control_dt)
-
+            time.sleep(self.cfg.control_dt)
+    
     def run(self):
         self.counter += 1
-
+        self.real_time_s = self.counter * self.cfg.control_dt
+        
         # Get the current joint position and velocity
-        for i in range(len(self.config.leg_joint2motor_idx)):
-            self.qj[i] = self.low_state.motor_state[self.config.leg_joint2motor_idx[i]].q
-            self.dqj[i] = self.low_state.motor_state[self.config.leg_joint2motor_idx[i]].dq
+        for i in range(len(self.cfg.leg_joint2motor_idx)):
+            self.qj[i] = self.low_state.motor_state[self.cfg.leg_joint2motor_idx[i]].q
+            self.dqj[i] = self.low_state.motor_state[self.cfg.leg_joint2motor_idx[i]].dq
 
 
         # imu_state quaternion: w, x, y, z
@@ -169,14 +170,12 @@ class Controller:
         # Get projected gravity
         projected_gravity = get_gravity_orientation(quat)
 
-        # Prepare phase features (*MATCH*)
-        real_time_s = self.counter * self.config.control_dt # VERIFY THIS IS SECONDS!!!
-
-        phase = (real_time_s % self.config.period) / self.config.period
-        phase_fr = (phase + self.config.fr_offset) % 1
-        phase_bl = (phase + self.config.bl_offset) % 1
-        phase_fl = (phase + self.config.fl_offset) % 1
-        phase_br = (phase + self.config.br_offset) % 1
+        # Prepare phase features
+        phase = (self.real_time_s % self.cfg.period) / self.cfg.period
+        phase_fr = (phase + self.cfg.fr_offset) % 1
+        phase_bl = (phase + self.cfg.bl_offset) % 1
+        phase_fl = (phase + self.cfg.fl_offset) % 1
+        phase_br = (phase + self.cfg.br_offset) % 1
 
         sin_phase_fl = np.sin(2 * np.pi * phase_fl)
         cos_phase_fl = np.cos(2 * np.pi * phase_fl)
@@ -200,39 +199,55 @@ class Controller:
         self.cmd[1] = self.remote_controller.lx * -1
         self.cmd[2] = self.remote_controller.rx * -1
 
-        # Construct observation tensor
-        num_actions = self.config.num_actions
+        # Create observation list
+        num_actions = self.cfg.num_actions
+        cur_obs = np.zeros(self.cfg.num_proprio, dtype=np.float32)
+        cur_obs[:3] = ang_vel * self.cfg.ang_vel_scale
+        cur_obs[3:6] = projected_gravity
+        cur_obs[6:9] = self.cmd * self.cfg.cmd_scale * self.cfg.rc_scale # controller
+        cur_obs[9 : 9+num_actions] = (qj_obs - self.cfg.default_angles) * self.cfg.dof_pos_scale 
+        cur_obs[9+num_actions : 9+2*num_actions] = dqj_obs * self.cfg.dof_vel_scale
+        cur_obs[9+2*num_actions : 9+3*num_actions] = self.actions
+        cur_obs[9+3*num_actions:9+3*num_actions+8] = phase_features
 
-        self.obs[:3] = ang_vel * self.config.ang_vel_scale
-        self.obs[3:6] = projected_gravity
-        self.obs[6:9] = self.cmd * self.config.cmd_scale * self.config.rc_scale # scale to controller
-        self.obs[9 : 9+num_actions] = (qj_obs - self.config.default_angles) * self.config.dof_pos_scale 
-        self.obs[9+num_actions : 9+2*num_actions] = dqj_obs * self.config.dof_vel_scale
-        self.obs[9+2*num_actions : 9+3*num_actions] = self.actions
-        self.obs[9+3*num_actions:9+3*num_actions+8] = phase_features
+        # Concatenate obs history if enabled
+        if self.cfg.enable_history:
+            self.obs[:] = np.concatenate([self.obs_history.flatten(), cur_obs])
+            # Then, add current observation to history
+            if self.first_step_ever:
+                self.first_step_ever = False
+                self.obs_history = np.tile(cur_obs, (self.cfg.buffer_length, 1))  # (4x1, 1x53)
+            else:
+                self.obs_history = np.roll(self.obs_history, -1, axis=0)
+                self.obs_history[-1] = cur_obs
+        else:
+            self.obs[:] = cur_obs
 
-        # Convert to tensor
+        # Convert to tensor, clip
         obs_tensor = torch.from_numpy(self.obs).unsqueeze(0)
+        obs_tensor = torch.clip(obs_tensor, -self.cfg.clip_obs, self.cfg.clip_obs)
 
-        # Get actions from policy network
-        self.actions = self.policy(obs_tensor).detach().numpy().squeeze()
+        # Get actions from policy network, clip
+        self.actions = self.policy(obs_tensor)
+        self.actions = torch.clip(self.actions, 
+                                  -self.cfg.clip_actions, 
+                                  self.cfg.clip_actions).detach().numpy().squeeze()
         
         # transform action to target_dof_pos
-        target_dof_pos = self.actions * self.config.action_scale + self.config.default_angles
+        target_dof_pos = self.actions * self.cfg.action_scale + self.cfg.default_angles
 
         # Build low cmd
-        for i in range(len(self.config.leg_joint2motor_idx)):
-            motor_idx = self.config.leg_joint2motor_idx[i]
+        for i in range(len(self.cfg.leg_joint2motor_idx)):
+            motor_idx = self.cfg.leg_joint2motor_idx[i]
             
             self.low_cmd.motor_cmd[motor_idx].q = target_dof_pos[i]
             self.low_cmd.motor_cmd[motor_idx].qd = 0
-            self.low_cmd.motor_cmd[motor_idx].kp = self.config.kps[i]
-            self.low_cmd.motor_cmd[motor_idx].kd = self.config.kds[i]
+            self.low_cmd.motor_cmd[motor_idx].kp = self.cfg.kps[i]
+            self.low_cmd.motor_cmd[motor_idx].kd = self.cfg.kds[i]
             self.low_cmd.motor_cmd[motor_idx].tau = 0
 
         # Send command
         self.send_cmd(self.low_cmd)
-        time.sleep(self.config.control_dt)
 
 
 if __name__ == "__main__":
@@ -245,12 +260,12 @@ if __name__ == "__main__":
 
     # Load config from path
     config_path = f"{LEGGED_GYM_ROOT_DIR}/deploy/unified_configs/{args.config}"
-    config = Config(config_path)
+    cfg_object = Config(config_path)
 
     # Initialize DDS communication
     ChannelFactoryInitialize(0, args.net)
 
-    controller = Controller(config)
+    controller = Controller(cfg_object)
 
     # Enter the zero torque state, press the start key to continue executing
     controller.zero_torque_state()
@@ -264,10 +279,22 @@ if __name__ == "__main__":
     print("Running...")
     while True:
         try:
-            controller.run() # UNCOMMENT LATER
+            # Start time of current run step
+            step_start = time.perf_counter()
+
+            # Run (or step)
+            controller.run()
+
+            # Timekeep
+            time_elapsed_during_step = time.perf_counter() - step_start
+            time_until_next_step = controller.cfg.control_dt - time_elapsed_during_step
+            if time_until_next_step > 0:
+                time.sleep(time_until_next_step)
+
             # Press the select key to exit
             if controller.remote_controller.button[KeyMap.select] == 1:
                 break
+
         except KeyboardInterrupt:
             break
 

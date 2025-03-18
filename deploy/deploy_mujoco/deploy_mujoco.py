@@ -70,13 +70,15 @@ if __name__ == "__main__":
         default_angles = np.array(config["default_angles"], dtype=np.float32)
         
         # Scales
-        lin_vel_scale = config["lin_vel_scale"] # (Deprecated)
-        lin_accel_scale = config["lin_accel_scale"] # (Deprecated)
         ang_vel_scale = config["ang_vel_scale"]
         dof_pos_scale = config["dof_pos_scale"]
         dof_vel_scale = config["dof_vel_scale"]
         action_scale = config["action_scale"]
         cmd_scale = np.array(config["cmd_scale"], dtype=np.float32)
+
+        # Clipping
+        clip_obs = config["clip_observations"]
+        clip_actions = config["clip_actions"]
         
         # Actions & Observations
         num_actions = config["num_actions"]
@@ -96,7 +98,7 @@ if __name__ == "__main__":
         cmd = np.array(config["command"], dtype=np.float32)
 
 
-    # Initialize non-optional (essential) buffers
+    # Initialize essential buffers
     actions = np.zeros(num_actions, dtype=np.float32)
     target_dof_pos = default_angles.copy()
     obs = np.zeros(num_obs, dtype=np.float32)
@@ -150,8 +152,7 @@ if __name__ == "__main__":
         tau = get_pd_control(target_dof_pos, qj_pos, kps, np.zeros_like(kds), qj_vel, kds)
         mj_data.ctrl[:] = tau
         
-        # mj_step can be replaced with code that also evaluates
-        # a policy and applies a control signal before stepping the physics.
+        # Step simulation
         mujoco.mj_step(mj_model, mj_data)
 
         # Update simulation time
@@ -164,27 +165,18 @@ if __name__ == "__main__":
             # Prepare observation quantities
             qj = qj_pos
             dqj = qj_vel
-            ang_vel = mj_data.qvel[3:6]                       # angular vel. in the LOCAL FRAME
+            ang_vel = mj_data.qvel[3:6]       # angular vel. in the LOCAL FRAME
+            base_rot_quat = mj_data.qpos[3:7] #  base rot. in quaternion
             
-            # lin_vel = d.qvel[:3]                        # linear vel. in the world frame (Deprecated)
-            # lin_accel = d.qacc[:3]                      # linear accel. in the world frame (Deprecated)
 
             # ========== rotation math ==========
-            base_rot_quat = mj_data.qpos[3:7]                 #  base rot. in quaternion
-            temp = np.zeros(9)   
-            mujoco.mju_quat2Mat(temp, base_rot_quat)
-            base_rot_mat = temp.reshape(3, 3)           # base rot. in matrix form
-            
-            # base_lin_vel = base_rot_mat.T @ lin_vel     # linear vel. in the body frame (Deprecated)
-            # base_lin_accel = base_rot_mat.T @ lin_accel # linear accel. in the body frame (Deprecated)
+            # temp = np.zeros(9)   
+            # mujoco.mju_quat2Mat(temp, base_rot_quat)
+            # base_rot_mat = temp.reshape(3, 3) # base rot. in matrix form
             # ===================================
 
             # Get projected gravity
             projected_gravity = get_gravity_orientation(base_rot_quat)
-            
-            # Get sensor data for accelerometer (linear accel)
-            # accel_sensor_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SENSOR, "imu_acc")
-            # sensor_lin_accel = d.sensordata[accel_sensor_id:accel_sensor_id+3]
             
             # Prepare phase features (*MATCH*)
             phase = (sim_time_s % period) / period
@@ -211,7 +203,7 @@ if __name__ == "__main__":
             ], dtype=np.float32)
 
 
-            # Create observation tensor
+            # Create observation list
             cur_obs = np.zeros(num_proprio, dtype=np.float32)
             cur_obs[:3] = ang_vel * ang_vel_scale
             cur_obs[3:6] = projected_gravity
@@ -221,39 +213,35 @@ if __name__ == "__main__":
             cur_obs[9+2*num_actions : 9+3*num_actions] = actions
             cur_obs[9+3*num_actions:9+3*num_actions+8] = phase_features
 
-            # Add history to observation tensor
+            # Concatenate obs history if enabled
             if enable_history:
-                
-                # Concatenate history with actual observation
                 obs[:] = np.concatenate([obs_history.flatten(), cur_obs])
-
-                # Update history buffer
+                # Then, add current observation to history
                 if first_step_ever:
                     first_step_ever = False
                     obs_history = np.tile(cur_obs, (buffer_length, 1))  # (4x1, 1x53)
                 else:
                     obs_history = np.roll(obs_history, -1, axis=0)
                     obs_history[-1] = cur_obs
-
-            # Else, no history
             else:
                 obs[:] = cur_obs
             
-
-            # Convert to tensorlinear
+            # Convert to tensor, clip 
             obs_tensor = torch.from_numpy(obs).unsqueeze(0)
+            obs_tensor = torch.clip(obs_tensor, -clip_obs, clip_obs)
             
-            # Get actions from policy network
-            actions = policy(obs_tensor).detach().numpy().squeeze()
+            # Get actions from policy network, clip
+            actions = policy(obs_tensor)
+            actions = torch.clip(actions, -clip_actions, clip_actions).detach().numpy().squeeze()
 
             # Transform action to target_dof_pos
             target_dof_pos = actions * action_scale + default_angles
 
-
         # Pick up changes to the physics state, apply perturbations, update options from GUI.
         viewer.sync()
 
-        # Modified rudimentary timekeeping to use time.perf_counter()
-        time_until_next_step = mj_model.opt.timestep - (time.perf_counter() - step_start)
+        # Modified timekeeping
+        time_elapsed_during_step = time.perf_counter() - step_start # wall-time elapsed in this step
+        time_until_next_step = mj_model.opt.timestep - time_elapsed_during_step
         if time_until_next_step > 0:
             time.sleep(time_until_next_step)
