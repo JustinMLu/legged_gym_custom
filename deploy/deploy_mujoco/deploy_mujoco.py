@@ -88,7 +88,7 @@ if __name__ == "__main__":
         num_obs = num_proprio+(num_proprio*buffer_length) if enable_history else num_proprio
 
         # Phase
-        period = config["period"]
+        # period = config["period"]
         fr_offset = config["fr_offset"]
         bl_offset = config["bl_offset"]
         fl_offset = config["fl_offset"]
@@ -178,7 +178,15 @@ if __name__ == "__main__":
             # Get projected gravity
             projected_gravity = get_gravity_orientation(base_rot_quat)
             
-            # Prepare phase features (*MATCH*)
+            # Prepare phase features 
+            cmd_norm = np.linalg.norm(cmd[:2])                  # Unscaled cmd  
+            period = 1.0 / (1.0 + cmd_norm)                     
+            period = (period * 2.0) * 0.66                      # Scale: 1.0 command norm -> period = un-bracketed number
+            period = np.clip(period, a_min=0.25, a_max=1.0)     # Clamp result
+            
+            print("cmd_norm: ", cmd_norm)
+            print("period: ", period)
+
             phase = (sim_time_s % period) / period
             phase_fr = (phase + fr_offset) % 1
             phase_bl = (phase + bl_offset) % 1

@@ -47,7 +47,7 @@ class Go2Robot(LeggedRobot):
         noise_level = self.cfg.noise.noise_level
         noise_vec[:3] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
         noise_vec[3:6] = noise_scales.gravity * noise_level
-        noise_vec[6:9] = 0. # commands
+        noise_vec[6:9] = 0. # commands (FOUR FOR ISAAC)
         noise_vec[9:21] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
         noise_vec[21:33] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[33:45] = 0. # previous actions (12)
@@ -75,15 +75,13 @@ class Go2Robot(LeggedRobot):
         self.feet_states = self.rigid_body_states_view[:, self.feet_indices, :]
         self.feet_pos = self.feet_states[:, :, :3]
         self.feet_vel = self.feet_states[:, :, 7:10]
-    
 
-    def _post_physics_step_callback(self):
         
-        # Update feet states, positions, velociites
-        self.update_feet_states()
-
-        # TODO PUT ALL PHASE VARIABLES IN CONFIG!!!
-        period = 0.66      # [sec]
+        cmd_norm = torch.norm(self.commands[:, :2], dim=1) # Unscaled cmd
+        period = 1.0 / (1.0 + cmd_norm)          
+        period = (period * 2.0) * 0.66           # Scale: 1.0 command norm -> period = un-bracketed number
+        period = torch.clamp(period, 0.25, 1.0)  # Clamp result
+        
         fr_offset = 0.0    # [%]
         bl_offset = 0.0    # [%]
         fl_offset = 0.5    # [%]
@@ -94,7 +92,11 @@ class Go2Robot(LeggedRobot):
         self.phase_bl = (self.phase + bl_offset) % 1
         self.phase_fl = (self.phase + fl_offset) % 1
         self.phase_br = (self.phase + br_offset) % 1
+    
 
+    def _post_physics_step_callback(self):
+        # Update feet states, positions, velociites
+        self.update_feet_states()
         return super()._post_physics_step_callback()
     
 
@@ -112,17 +114,20 @@ class Go2Robot(LeggedRobot):
         cos_phase_br = torch.cos(2 * np.pi * self.phase_br).unsqueeze(1)
 
         
-        # Combine into phase features (using sin/cos provides continuity at cycle boundaries)
-        # phase_features = torch.cat([sin_phase_fr, cos_phase_fr, sin_phase_fl, cos_phase_fl], dim=1)
-        phase_features = torch.cat([
-            sin_phase_fr, cos_phase_fr, 
-            sin_phase_fl, cos_phase_fl,
-            sin_phase_bl, cos_phase_bl,
-            sin_phase_br, cos_phase_br
-        ], dim=1)
-
+        # Combine into phase features - if tiny command norm, zero out phase features
+        if torch.norm(self.commands[:, :3]) < 0.15:
+            phase_features = torch.zeros(self.num_envs, 8, device=self.device)
+        else:
+            phase_features = torch.cat([
+                sin_phase_fr, cos_phase_fr, 
+                sin_phase_fl, cos_phase_fl,
+                sin_phase_bl, cos_phase_bl,
+                sin_phase_br, cos_phase_br
+            ], dim=1)
+        
         # np.set_printoptions(precision=3)
-        # print(phase_features[0])
+        print("self.commands: ", self.commands[:, :])
+        print("command norm: ", torch.norm(self.commands[:, :3]))
 
         # Construct observations       
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
@@ -170,6 +175,10 @@ class Go2Robot(LeggedRobot):
         """ Penalize DOF hip positions away from default"""
         return torch.sum(torch.square(self.dof_pos[:, self.hip_indices] - self.default_dof_pos[:, self.hip_indices]), dim=1)
     
+    def _reward_calf_pos(self):
+        """ Penalize DOF calf positions away from default"""
+        return torch.sum(torch.square(self.dof_pos[:, self.calf_indices] - self.default_dof_pos[:, self.calf_indices] - 0.3), dim=1)
+    
     def _reward_dof_error(self): # Extreme Parkour -0.04
         """ Penalize DOF positions away from default
         """
@@ -184,7 +193,6 @@ class Go2Robot(LeggedRobot):
         """
 
         # "Duty factor" (% of each legs cycle on the ground) 
-        # TODO PUT THIS IN CONFIG!!!
         stance_threshold = 0.5
 
         fl_stance = self.phase_fl < stance_threshold
@@ -206,23 +214,8 @@ class Go2Robot(LeggedRobot):
         reward += torch.where(~(fr_contact ^ fr_stance), 0.25, 0.0)
         reward += torch.where(~(bl_contact ^ bl_stance), 0.25, 0.0)
         reward += torch.where(~(br_contact ^ br_stance), 0.25, 0.0)
-
+        
+        cmd_norm = torch.norm(self.commands[:, :2], dim=1)
+        reward = reward * (cmd_norm >= 0.1)
         return reward
-
-    def _reward_foot_swing_height(self): # Deprecated
-        """Reward appropriate foot height during swing phase.
-        Works on any terrain by only considering feet not in contact.
-        """
-        # Target height for feet during swing
-        target_height = 0.10
-        
-        # Detect feet in contact (use 3D force magnitude for more robust detection)
-        contact = torch.norm(self.contact_forces[:, self.feet_indices, :3], dim=2) > 1.
-        
-        # Calculate error for feet not in contact (in swing phase)
-        # The z-coordinate of the foot directly gives its height in world space
-        pos_error = torch.square(self.feet_pos[:, :, 2] - target_height) * ~contact
-        
-        # Return negative sum of errors
-        return -torch.sum(pos_error, dim=1)
     

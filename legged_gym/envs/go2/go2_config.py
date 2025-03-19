@@ -84,22 +84,19 @@ class Go2Cfg( LeggedRobotCfg ):
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
 
-    # # ============ NEVER USE WHEN TRAINING ============
-    # class commands( LeggedRobotCfg.commands ):
-    #     user_command = [1.5, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
-    # # =================================================
-
 
     # ============== COMMAND CURRICULUM ===============
     class commands ( LeggedRobotCfg.commands ):
-        curriculum = True
+        heading_command = True
+        user_command = [0.0, 0.0, 0.2, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
+        curriculum = False
         max_curriculum = 2.0
     # =================================================
 
 
     class normalization( LeggedRobotCfg.normalization ):
         clip_observations = 100.
-        clip_actions = 100.
+        clip_actions = 3.14
         
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
             lin_accel = 1.0 # (Deprecated)
@@ -127,24 +124,29 @@ class Go2Cfg( LeggedRobotCfg ):
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9 # +/- 90% of 50% of limit range
         base_height_target = 0.25
+        only_positive_rewards = True
 
         class scales( LeggedRobotCfg.rewards.scales ):
-
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.0
+            # ======================
             lin_vel_z = -1.0
             ang_vel_xy = -0.05
-            orientation = -5.0
             torques = -0.00001
-            dof_acc = -2.5e-7 # Remember to double the penalty for mk10 if mk9 is bad
+            dof_acc = -2.5e-7
             action_rate = -0.1
             collision = -10.0
-            stumble = -1.0
+            delta_torques = -1.0e-7
+            # ====================== 
             feet_air_time = 0.5
-            delta_torques = -1.0e-7 
-            hip_pos = -1.0 
-            dof_error = -0.04 
             contact_phase_match = 0.5
+            hip_pos = -0.75         # orig: -0.1
+            calf_pos = -0.5         # new
+            dof_error = -0.004      # orig: -0.04
+            stumble = -2.5          # orig: -1.0
+            orientation = -2.0      # orig: -5.0
+            base_height = -0.5     # new
+
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -159,8 +161,8 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
 
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'rudolf9-FIXED'
+        run_name = 'rudolf10'
         experiment_name = 'go2'
         load_run = -1
         max_iterations = 50000
-        save_interval = 1000
+        save_interval = 100

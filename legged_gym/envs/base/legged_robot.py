@@ -345,8 +345,8 @@ class LeggedRobot(BaseTask):
         # resample commands
         self._resample_commands(env_ids)
 
-        # apply heading command if there is one
-        if self.cfg.commands.heading_command:
+        # Apply heading command if enabled AND user_command not specified
+        if self.cfg.commands.heading_command and len(self.cfg.commands.user_command) == 0:
             forward = quat_apply(self.base_quat, self.forward_vec)
             heading = torch.atan2(forward[:, 1], forward[:, 0])
             self.commands[:, 2] = torch.clip(0.5*wrap_to_pi(self.commands[:, 3] - heading), -1., 1.)
@@ -370,7 +370,7 @@ class LeggedRobot(BaseTask):
             return
 
         # Override resampling in favor of user_command
-        if self.cfg.commands.user_command is not None and len(self.cfg.commands.user_command) > 0:
+        if len(self.cfg.commands.user_command) > 0:
             self.commands[env_ids, :] = torch.as_tensor(self.cfg.commands.user_command, device=self.device).unsqueeze(0)
             return
         
@@ -378,7 +378,7 @@ class LeggedRobot(BaseTask):
         self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_x"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         
-        # Resample heading or angular velocity commands
+        # Resample angular velocity using heading
         if self.cfg.commands.heading_command:
             self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         else:
