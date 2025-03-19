@@ -35,7 +35,6 @@ class Go2Robot(LeggedRobot):
 
         Args:
             cfg (Dict): Environment config file
-
         Returns:
             [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
         """
@@ -79,9 +78,9 @@ class Go2Robot(LeggedRobot):
         # Update feet states
         self.gym.refresh_rigid_body_state_tensor(self.sim)
 
-        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
+        # DEBUG
+        # base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
         # print("Base height: ", base_height)
-        
 
         self.feet_states = self.rigid_body_states_view[:, self.feet_indices, :]
         self.feet_pos = self.feet_states[:, :, :3]
@@ -198,6 +197,10 @@ class Go2Robot(LeggedRobot):
             For a trot gait:
             - FR and BL feet should contact when phase < 0.5
             - FL and BR feet should contact when phase >= 0.5
+
+            FOR NOW, DO NOT ENABLE BOTH THIS AND _REWARD_FEET_AIR_TIME SIMULTANEOUSLY!
+            BOTH OF THEM USE self.last_contacts AND WILL OVERWRITE ONE ANOTHER'S STORED
+            PREVIOUS CONTACT INFORMATION!
         """
 
         # "Duty factor" (% of each legs cycle on the ground) 
@@ -210,11 +213,24 @@ class Go2Robot(LeggedRobot):
         
         # Check actual foot contacts (measured from contact forces)
         # Threshold force (1.0) determines what counts as "contact"
-        fl_contact = self.contact_forces[:, self.feet_indices[0], 2] > 1.0
-        fr_contact = self.contact_forces[:, self.feet_indices[1], 2] > 1.0
-        bl_contact = self.contact_forces[:, self.feet_indices[2], 2] > 1.0
-        br_contact = self.contact_forces[:, self.feet_indices[3], 2] > 1.0
+        fl_contact_raw = self.contact_forces[:, self.feet_indices[0], 2] > 1.0
+        fr_contact_raw = self.contact_forces[:, self.feet_indices[1], 2] > 1.0
+        bl_contact_raw = self.contact_forces[:, self.feet_indices[2], 2] > 1.0
+        br_contact_raw = self.contact_forces[:, self.feet_indices[3], 2] > 1.0
         
+        # Use contact filtering method from _reward_feet_air_time
+        contacts = torch.stack([fl_contact_raw, 
+                                fr_contact_raw, 
+                                bl_contact_raw, 
+                                br_contact_raw], 
+                                dim=1)
+
+        fl_contact = torch.logical_and(fl_contact_raw, self.last_contacts[:, 0])
+        fr_contact = torch.logical_and(fr_contact_raw, self.last_contacts[:, 1])
+        bl_contact = torch.logical_and(bl_contact_raw, self.last_contacts[:, 2])
+        br_contact = torch.logical_and(br_contact_raw, self.last_contacts[:, 3])
+        self.last_contacts = contacts
+
         # Reward matching contacts (true when contact matches expected stance)
         # Reward when both true or both false
         reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)

@@ -13,9 +13,9 @@ class Go2Cfg( LeggedRobotCfg ):
         static_friction = 1.0
         dynamic_friction = 1.0
 
-        mesh_type = 'plane'
+        mesh_type = 'trimesh'
         measure_heights = False
-        curriculum = False
+        curriculum = True
         selected = False
 
         terrain_kwargs = {
@@ -50,10 +50,10 @@ class Go2Cfg( LeggedRobotCfg ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
         
         default_joint_angles = {
-            'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.90, 'FL_calf_joint': -1.75, 
-            'FR_hip_joint': -0.1, 'FR_thigh_joint': 0.90, 'FR_calf_joint': -1.75,
-            'RL_hip_joint':  0.1, 'RL_thigh_joint': 0.90, 'RL_calf_joint': -1.75, 
-            'RR_hip_joint': -0.1, 'RR_thigh_joint': 0.90, 'RR_calf_joint': -1.75,
+            'FL_hip_joint':  0.1, 'FL_thigh_joint': 1.0, 'FL_calf_joint': -1.8, 
+            'FR_hip_joint': -0.1, 'FR_thigh_joint': 1.0, 'FR_calf_joint': -1.8,
+            'RL_hip_joint':  0.1, 'RL_thigh_joint': 1.0, 'RL_calf_joint': -1.8, 
+            'RR_hip_joint': -0.1, 'RR_thigh_joint': 1.0, 'RR_calf_joint': -1.8
         }
 
 
@@ -76,12 +76,12 @@ class Go2Cfg( LeggedRobotCfg ):
 
 
 
-    # ============== COMMAND CURRICULUM ===============
+    # =================================================
     class commands ( LeggedRobotCfg.commands ):
         heading_command = False
-        # user_command = [1.0, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
         curriculum = False
         max_curriculum = 2.0
+        # user_command = [1.0, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
     # =================================================
 
 
@@ -90,7 +90,6 @@ class Go2Cfg( LeggedRobotCfg ):
         clip_actions = 3.14
         
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
-            lin_accel = 1.0 # (Deprecated)
             lin_vel = 2.0   # (Deprecated)
             ang_vel = 0.25
             dof_pos = 1.0
@@ -103,40 +102,46 @@ class Go2Cfg( LeggedRobotCfg ):
         noise_level = 1.0
 
         class noise_scales( LeggedRobotCfg.noise.noise_scales):
-            lin_accel = 0.1 # (Deprecated)
             lin_vel = 0.1   # (Deprecated)
-            ang_vel = 0.2
+            # ang_vel = 0.2
+            # dof_pos = 0.01
+            # dof_vel = 1.5
+            # gravity = 0.05
+            # height_measurements = 0.1
+            
+            # From the hangman
             dof_pos = 0.01
-            dof_vel = 1.5
-            gravity = 0.05
-            height_measurements = 0.1
+            dof_vel = 0.05
+            ang_vel = 0.05
+            gravity = 0.02
+            height_measurements = 0.02
         
 
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9
-        base_height_target = 0.25   # definitely should be > 0.25
+        base_height_target = 0.26
         only_positive_rewards = True
 
         class scales( LeggedRobotCfg.rewards.scales ):
-            tracking_lin_vel = 1.5
-            tracking_ang_vel = 1.0
+            tracking_lin_vel = 1.25
+            tracking_ang_vel = 0.75
             # ======================
             lin_vel_z = -1.0
-            ang_vel_xy = -0.05
+            ang_vel_xy = -0.01
             torques = -0.00001
             dof_acc = -2.5e-7
             action_rate = -0.1
             collision = -10.0
             delta_torques = -1.0e-7
             # ====================== 
-            feet_air_time = 0.5
+            # feet_air_time = 0.5
             contact_phase_match = 0.5
             stumble = -1.0          
-            orientation = -2.0     # orig: -5.0
-            dof_error = -0.004     # orig: -0.04
-            hip_pos = -0.1         # orig: -0.1
-            calf_pos = -0.1        # new
-            base_height = -0.5     # new
+            orientation = -1.0  # orig: -5.0
+            dof_error = -0.004  # orig: -0.04
+            hip_pos = -0.5      # orig: -0.5
+            calf_pos = -0.05    # new
+            base_height = -0.5  # new
 
 
 

@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk10/EXPORTED.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk10/flat_6000.pt"
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml"
 
 # Action & Observations
@@ -46,10 +46,16 @@ kds: [1.0, 1.0, 1.0,
       1.0, 1.0, 1.0]
 
                # hip, thigh, calf
-default_angles: [0.1, 0.90, -1.75,    # FL
-                -0.1, 0.90, -1.75,    # FR
-                 0.1, 0.90, -1.75,    # RL
-                -0.1, 0.90, -1.75]    # RR
+default_angles: [0.1, 1.0, -1.8,    # FL
+                -0.1, 1.0, -1.8,    # FR
+                 0.1, 1.0, -1.8,    # RL
+                -0.1, 1.0, -1.8]    # RR
+
+# default_angles: [0.1, 0.9, -1.75,    # FL
+#                 -0.1, 0.9, -1.75,    # FR
+#                  0.1, 0.9, -1.75,    # RL
+#                 -0.1, 0.9, -1.75]    # RR
+
 
 # Scales
 ang_vel_scale: 0.25
@@ -73,4 +79,4 @@ br_offset: 0.5       # [%]
 rc_scale: [0.8, 0.5, 1.57]
 
 # Mujoco command ([forward, lateral, yaw])
-command: [1.0, 0.0, 0.0]
+command: [0.0, 0.0, 0.0]

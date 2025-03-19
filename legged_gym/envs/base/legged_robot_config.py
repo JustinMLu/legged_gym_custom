@@ -166,7 +166,6 @@ class LeggedRobotCfg(BaseConfig):
         clip_observations = 100.
         clip_actions = 100.
         class obs_scales:
-            lin_accel = 1.0 # Deprecated
             lin_vel = 2.0   # Deprecated
             ang_vel = 0.25
             dof_pos = 1.0
@@ -177,7 +176,6 @@ class LeggedRobotCfg(BaseConfig):
         add_noise = True
         noise_level = 1.0 # scales other values
         class noise_scales:
-            lin_accel = 0.1 # Deprecated
             lin_vel = 0.1   # Deprecated
             ang_vel = 0.2
             dof_pos = 0.01
