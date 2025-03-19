@@ -102,7 +102,7 @@ class Terrain:
                 difficulty = i / self.cfg.num_rows      # Rows represent difficulty
                 choice = j / self.cfg.num_cols + 0.001
 
-                terrain = self.make_terrain(choice, difficulty / 3) # Can make it easier if you'd like
+                terrain = self.make_terrain(choice, difficulty)
                 self.add_terrain_to_map(terrain, i, j)
 
 
@@ -175,7 +175,7 @@ class Terrain:
         
         # 7. # Bumpy Wave
         elif choice < self.proportions[6]:
-            terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=amplitude)
+            # terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=amplitude)
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.045, max_height=0.045, step=0.01, downsampled_scale=0.15)
         
         # Else random uniform (this one is pretty good)

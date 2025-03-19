@@ -51,11 +51,19 @@ class Go2Robot(LeggedRobot):
         noise_vec[9:21] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
         noise_vec[21:33] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[33:45] = 0. # previous actions (12)
-        noise_vec[45:53] = 0. # phase observations (8)
+        # noise_vec[45:53] = 0. # phase observations (8)
         return noise_vec
+
+    def reset_idx(self, env_ids):
+        """ Overloaded to reset the last contact time for each foot.
+        """
+        super().reset_idx(env_ids)
+        self.last_contact_time[env_ids] = 0.0
 
 
     def _init_foot(self):
+        """ Initializes foot-related attributes.
+        """
         self.feet_num = len(self.feet_indices)
         rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)
         self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_state)
@@ -63,26 +71,35 @@ class Go2Robot(LeggedRobot):
         self.feet_state = self.rigid_body_states_view[:, self.feet_indices, :]    
         self.feet_pos = self.feet_state[:, :, :3]
         self.feet_vel = self.feet_state[:, :, 7:10]
+        
+        # Also initialize last_contact_time buffer
+        self.last_contact_time = torch.zeros(self.num_envs, self.feet_num, device=self.device, dtype=torch.float32)
 
 
     def _init_buffers(self):
+        """ Overloaded to also initialize foot-related attributes.
+        """
         super()._init_buffers()
         self._init_foot()
 
 
     def update_feet_states(self):
+        """ Updates feet states, positions, and velocities.
+            Also handles the time since last contact for each foot.
+            Invariant: always called per physics update iteration (i.e post_physics_step)
+        """
+        # 1. Refresh rigid body states to update feet positions
         self.gym.refresh_rigid_body_state_tensor(self.sim)
         self.feet_states = self.rigid_body_states_view[:, self.feet_indices, :]
-        self.feet_pos = self.feet_states[:, :, :3]
-        self.feet_vel = self.feet_states[:, :, 7:10]
-    
+        self.feet_pos = self.feet_states[:, :, :3]  # indices 0,1,2 are x,y,z
+        self.feet_vel = self.feet_states[:, :, 7:10] # indices 7,8,9 are vx,vy,vz
 
-    def _post_physics_step_callback(self):
-        
-        # Update feet states, positions, velociites
-        self.update_feet_states()
+        # 2. Refresh times since last contacts for each foot
+        contact_forces = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
+        contacts = contact_forces > 1.0 # (num_envs, 4) -> Booleans
+        self.last_contact_time[:, :] += self.dt
+        self.last_contact_time[contacts] = 0.0 # reset timer for feet in contact 
 
-        # TODO PUT ALL PHASE VARIABLES IN CONFIG!!!
         period = 0.66      # [sec]
         fr_offset = 0.0    # [%]
         bl_offset = 0.0    # [%]
@@ -95,6 +112,12 @@ class Go2Robot(LeggedRobot):
         self.phase_fl = (self.phase + fl_offset) % 1
         self.phase_br = (self.phase + br_offset) % 1
 
+
+    def _post_physics_step_callback(self):
+        """ Overloaded to call update_feet_states.
+        """
+        # Update feet states, positions, velociites
+        self.update_feet_states()
         return super()._post_physics_step_callback()
     
 
@@ -111,18 +134,13 @@ class Go2Robot(LeggedRobot):
         sin_phase_br = torch.sin(2 * np.pi * self.phase_br).unsqueeze(1) # BR
         cos_phase_br = torch.cos(2 * np.pi * self.phase_br).unsqueeze(1)
 
-        
         # Combine into phase features (using sin/cos provides continuity at cycle boundaries)
-        # phase_features = torch.cat([sin_phase_fr, cos_phase_fr, sin_phase_fl, cos_phase_fl], dim=1)
         phase_features = torch.cat([
             sin_phase_fr, cos_phase_fr, 
             sin_phase_fl, cos_phase_fl,
             sin_phase_bl, cos_phase_bl,
             sin_phase_br, cos_phase_br
         ], dim=1)
-
-        # np.set_printoptions(precision=3)
-        # print(phase_features[0])
 
         # Construct observations       
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
@@ -134,7 +152,7 @@ class Go2Robot(LeggedRobot):
                                 ),dim=-1)                                                            # total: (45,)
         
         # Add phase info to observations
-        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
+        # cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # (8,)
 
         # Add noise
         if self.add_noise:
@@ -155,10 +173,6 @@ class Go2Robot(LeggedRobot):
                 torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
                 torch.cat([self.obs_history[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
             )
-
-            # print("self.obs_buf.shape: ", self.obs_buf.shape)
-            # print("self.obs_history.shape: ", self.obs_history.shape)
-
 
     # =========================== NEW REWARD FUNCTIONS ===========================
     def _reward_delta_torques(self): # Extreme Parkour -1.0e-7
@@ -184,7 +198,6 @@ class Go2Robot(LeggedRobot):
         """
 
         # "Duty factor" (% of each legs cycle on the ground) 
-        # TODO PUT THIS IN CONFIG!!!
         stance_threshold = 0.5
 
         fl_stance = self.phase_fl < stance_threshold
@@ -194,7 +207,7 @@ class Go2Robot(LeggedRobot):
         
         # Check actual foot contacts (measured from contact forces)
         # Threshold force (1.0) determines what counts as "contact"
-        fl_contact = self.contact_forces[:, self.feet_indices[0], 2] > 1.0
+        fl_contact = self.contact_forces[:, self.feet_indices[0], 2] > 1.0 # should maybe think about replacing 2 with ":" for all axes
         fr_contact = self.contact_forces[:, self.feet_indices[1], 2] > 1.0
         bl_contact = self.contact_forces[:, self.feet_indices[2], 2] > 1.0
         br_contact = self.contact_forces[:, self.feet_indices[3], 2] > 1.0
@@ -207,22 +220,49 @@ class Go2Robot(LeggedRobot):
         reward += torch.where(~(bl_contact ^ bl_stance), 0.25, 0.0)
         reward += torch.where(~(br_contact ^ br_stance), 0.25, 0.0)
 
+        # ONLY apply reward if commands aren't zero:
+        cmd_magnitude = torch.norm(self.commands[:, :2], dim=1)
+        reward = reward * (cmd_magnitude >= 0.1)
         return reward
 
-    def _reward_foot_swing_height(self): # Deprecated
-        """Reward appropriate foot height during swing phase.
-        Works on any terrain by only considering feet not in contact.
-        """
-        # Target height for feet during swing
-        target_height = 0.10
-        
-        # Detect feet in contact (use 3D force magnitude for more robust detection)
-        contact = torch.norm(self.contact_forces[:, self.feet_indices, :3], dim=2) > 1.
-        
-        # Calculate error for feet not in contact (in swing phase)
-        # The z-coordinate of the foot directly gives its height in world space
-        pos_error = torch.square(self.feet_pos[:, :, 2] - target_height) * ~contact
-        
-        # Return negative sum of errors
-        return -torch.sum(pos_error, dim=1)
     
+    def _reward_diagonal_sync(self):
+        """ Rewards diagonal foot contacts making contact close to one another.
+            Indices: [0] FL
+                     [1] FR
+                     [2] BL
+                     [3] BR
+        """
+        # Reward good synchronization of diagonal foot pairs contacting the ground
+        fr_bl_diff = torch.abs(self.last_contact_time[:, 1] - self.last_contact_time[:, 2])
+        fl_br_diff = torch.abs(self.last_contact_time[:, 0] - self.last_contact_time[:, 3])
+        return torch.exp(-(fr_bl_diff + fl_br_diff) / 0.05)
+
+    
+    def _reward_diagonal_xor(self):
+        """ Rewards diagonal foot pairs making contact ONLY if the other pair is NOT making contact.
+            Else, small penalty.
+        """
+        fr_bl_diff = torch.abs(self.last_contact_time[:, 1] - self.last_contact_time[:, 2])
+        fl_br_diff = torch.abs(self.last_contact_time[:, 0] - self.last_contact_time[:, 3])
+
+        fr_bl_close_enough = fl_br_diff < 0.15
+        fl_br_close_enough = fr_bl_diff < 0.15
+
+        # fl_contact = self.contact_forces[:, self.feet_indices[0], 2] > 1.0
+        # fr_contact = self.contact_forces[:, self.feet_indices[1], 2] > 1.0
+        # bl_contact = self.contact_forces[:, self.feet_indices[2], 2] > 1.0
+        # br_contact = self.contact_forces[:, self.feet_indices[3], 2] > 1.0
+
+        # Not XOR gates are True when both are true or both are false
+        # fr_bl_xor = ~(fr_contact ^ bl_contact)
+        # fl_br_xor = ~(fl_contact ^ br_contact)
+
+        # Reward when only one diagonal pairs is essentially contacting together
+        reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+        reward += torch.where((fr_bl_close_enough ^ fl_br_close_enough), 1.0, 0.0)
+    
+        # ONLY apply reward if commands aren't zero:
+        cmd_magnitude = torch.norm(self.commands[:, :2], dim=1)
+        reward = reward * (cmd_magnitude >= 0.1)
+        return reward

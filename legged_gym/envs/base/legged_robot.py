@@ -990,6 +990,7 @@ class LeggedRobot(BaseTask):
         """
         return torch.sum(torch.abs(self.dof_pos - self.default_dof_pos), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1)
 
+
     def _reward_feet_contact_forces(self):
         """ Penalize feet contact forces exceeding the maximum
         """
