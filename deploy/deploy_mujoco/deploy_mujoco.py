@@ -163,17 +163,13 @@ if __name__ == "__main__":
         if counter % control_decimation == 0:
 
             # Prepare observation quantities
-            qj = qj_pos
-            dqj = qj_vel
-            ang_vel = mj_data.qvel[3:6]       # angular vel. in the LOCAL FRAME
-            base_rot_quat = mj_data.qpos[3:7] #  base rot. in quaternion
-            
-
-            # ========== rotation math ==========
-            # temp = np.zeros(9)   
-            # mujoco.mju_quat2Mat(temp, base_rot_quat)
-            # base_rot_mat = temp.reshape(3, 3) # base rot. in matrix form
-            # ===================================
+            qj = qj_pos                                         # joint positions 
+            dqj = qj_vel                                        # joint velocities
+            ang_vel = mj_data.qvel[3:6]                         # angular vel. (local frame)
+            base_rot_quat = mj_data.qpos[3:7]                   # base rot. in quaternion
+            base_rot_mat = np.zeros(9)   
+            mujoco.mju_quat2Mat(base_rot_mat, base_rot_quat)
+            base_rot_mat = base_rot_mat.reshape(3, 3)           # base rot. in matrix form
 
             # Get projected gravity
             projected_gravity = get_gravity_orientation(base_rot_quat)
@@ -184,8 +180,8 @@ if __name__ == "__main__":
             period = (period * 2.0) * 0.66                      # Scale: 1.0 command norm -> period = un-bracketed number
             period = np.clip(period, a_min=0.25, a_max=1.0)     # Clamp result
             
-            print("cmd_norm: ", cmd_norm)
-            print("period: ", period)
+            # print("cmd_norm: ", cmd_norm)
+            # print("period: ", period)
 
             phase = (sim_time_s % period) / period
             phase_fr = (phase + fr_offset) % 1

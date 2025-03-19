@@ -59,10 +59,10 @@ class Go2Cfg( LeggedRobotCfg ):
             'FR_thigh_joint': 0.8,  # [rad]
             'RR_thigh_joint': 1.,   # [rad]
 
-            'FL_calf_joint': -1.5,  # [rad]
-            'RL_calf_joint': -1.5,  # [rad]
-            'FR_calf_joint': -1.5,  # [rad]
-            'RR_calf_joint': -1.5,  # [rad]
+            'FL_calf_joint': -1.8,  # [rad]
+            'RL_calf_joint': -1.8,  # [rad]
+            'FR_calf_joint': -1.8,  # [rad]
+            'RR_calf_joint': -1.8,  # [rad]
         }
 
 
