@@ -342,18 +342,24 @@ class LeggedRobot(BaseTask):
         """
         env_ids = (self.episode_length_buf % int(self.cfg.commands.resampling_time / self.dt)==0).nonzero(as_tuple=False).flatten()
 
-        # resample commands
+        # Resample commands
         self._resample_commands(env_ids)
 
-        # Apply heading command if enabled AND user_command not specified
-        if self.cfg.commands.heading_command and len(self.cfg.commands.user_command) == 0:
+        # Apply heading command if enabled
+        if self.cfg.commands.heading_command:
             forward = quat_apply(self.base_quat, self.forward_vec)
             heading = torch.atan2(forward[:, 1], forward[:, 0])
             self.commands[:, 2] = torch.clip(0.5*wrap_to_pi(self.commands[:, 3] - heading), -1., 1.)
 
-        # update measured heights if needed
-        if self.cfg.terrain.measure_heights:
-            self.measured_heights = self._get_heights()
+        """BUG: Disabling measure-heights doesn't just disable heightpoints in observations, 
+                it also  prevents _get_heights() from being called. 
+                
+                This means that self.measured_heights is ALWAYS EQUAL TO zero, which completely 
+                fucks up training on non-flat ground! Thanks ETH Zurich! 
+                (RESOLVED)
+        """
+        # if self.cfg.terrain.measure_heights:
+        self.measured_heights = self._get_heights()
 
         # bully robots
         if self.cfg.domain_rand.push_robots and  (self.common_step_counter % self.cfg.domain_rand.push_interval == 0):
@@ -369,7 +375,7 @@ class LeggedRobot(BaseTask):
         if len(env_ids)==0:
             return
 
-        # Override resampling in favor of user_command
+        # Override with user command
         if len(self.cfg.commands.user_command) > 0:
             self.commands[env_ids, :] = torch.as_tensor(self.cfg.commands.user_command, device=self.device).unsqueeze(0)
             return
@@ -378,7 +384,7 @@ class LeggedRobot(BaseTask):
         self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_x"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         
-        # Resample angular velocity using heading
+        # Resample yaw angular velocity using heading
         if self.cfg.commands.heading_command:
             self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         else:
@@ -515,7 +521,7 @@ class LeggedRobot(BaseTask):
         noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[36:48] = 0. # previous actions
 
-        # Add heightmap noise (if heightmap used)
+        # Add heightmap noise (if heightmap in obs)
         if self.cfg.terrain.measure_heights:
             noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
         return noise_vec
@@ -564,9 +570,16 @@ class LeggedRobot(BaseTask):
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
 
-        # Init height points buffer (if used)
-        if self.cfg.terrain.measure_heights:
-            self.height_points = self._init_height_points()
+        # Init height points buffer
+        """BUG: Disabling measure-heights doesn't just disable heightpoints in observations, 
+                it also  prevents _get_heights() from being called. 
+                
+                This means that self.measured_heights is ALWAYS EQUAL TO zero, which completely 
+                fucks up training on non-flat ground! Thanks ETH Zurich! 
+                (RESOLVED)
+        """
+        # if self.cfg.terrain.measure_heights:
+        self.height_points = self._init_height_points()
         self.measured_heights = 0
 
         # Init history buffer (if used)

@@ -71,22 +71,35 @@ class Go2Robot(LeggedRobot):
 
 
     def update_feet_states(self):
+        """ Updates the positions and velocities of the feet.
+            Also updates the period and phase of the gait based on commanded velocity.
+            Gait phase stuff is put here so it updates every physics step.
+        """
+
+        # Update feet states
         self.gym.refresh_rigid_body_state_tensor(self.sim)
+
+        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
+        # print("Base height: ", base_height)
+        
+
         self.feet_states = self.rigid_body_states_view[:, self.feet_indices, :]
         self.feet_pos = self.feet_states[:, :, :3]
         self.feet_vel = self.feet_states[:, :, 7:10]
 
-        
-        cmd_norm = torch.norm(self.commands[:, :2], dim=1) # Unscaled cmd
+        # Calculate gait period
+        cmd_norm = torch.norm(self.commands[:, :2], dim=1) # NORM DOESN'T CONSIDER ANGULAR YAW VELOCITY
         period = 1.0 / (1.0 + cmd_norm)          
-        period = (period * 2.0) * 0.66           # Scale: 1.0 command norm -> period = un-bracketed number
+        period = (period * 2.0) * 0.66           # Scale
         period = torch.clamp(period, 0.25, 1.0)  # Clamp result
         
-        fr_offset = 0.0    # [%]
-        bl_offset = 0.0    # [%]
-        fl_offset = 0.5    # [%]
-        br_offset = 0.5    # [%]
+        # Specify per-leg offsets (%)
+        fr_offset = 0.0
+        bl_offset = 0.0
+        fl_offset = 0.5
+        br_offset = 0.5
 
+        # Calculate per-leg phase
         self.phase = (self.episode_length_buf * self.dt) % period / period 
         self.phase_fr = (self.phase + fr_offset) % 1
         self.phase_bl = (self.phase + bl_offset) % 1
@@ -114,29 +127,27 @@ class Go2Robot(LeggedRobot):
         cos_phase_br = torch.cos(2 * np.pi * self.phase_br).unsqueeze(1)
 
         
-        # Combine into phase features - if tiny command norm, zero out phase features
-        if torch.norm(self.commands[:, :3]) < 0.15:
-            phase_features = torch.zeros(self.num_envs, 8, device=self.device)
-        else:
-            phase_features = torch.cat([
-                sin_phase_fr, cos_phase_fr, 
-                sin_phase_fl, cos_phase_fl,
-                sin_phase_bl, cos_phase_bl,
-                sin_phase_br, cos_phase_br
-            ], dim=1)
-        
-        # np.set_printoptions(precision=3)
-        print("self.commands: ", self.commands[:, :])
-        print("command norm: ", torch.norm(self.commands[:, :3]))
+        # Construct phase features
+        phase_features = torch.cat([
+            sin_phase_fr, cos_phase_fr, 
+            sin_phase_fl, cos_phase_fl,
+            sin_phase_bl, cos_phase_bl,
+            sin_phase_br, cos_phase_br
+        ], dim=1)
 
+        # Zero out if small command
+        mask = torch.norm(self.commands[:, :2], dim=1) < 0.2 # (num_envs,)
+        phase_features *= torch.where(mask.unsqueeze(1), 0.0, 1.0)
+
+        
         # Construct observations       
-        cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
+        cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                      # (3,)
                                 self.projected_gravity,                                             # (3,)
                                 self.commands[:, :3] * self.commands_scale,                         # (3,)  
                                 (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
                                 self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
                                 self.actions                                                        # (12,) last actions
-                                ),dim=-1)                                                            # total: (45,)
+                                ),dim=-1)                                                           # total: (45,)
         
         # Add phase info to observations
         cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
@@ -160,9 +171,6 @@ class Go2Robot(LeggedRobot):
                 torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
                 torch.cat([self.obs_history[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
             )
-
-            # print("self.obs_buf.shape: ", self.obs_buf.shape)
-            # print("self.obs_history.shape: ", self.obs_history.shape)
 
 
     # =========================== NEW REWARD FUNCTIONS ===========================

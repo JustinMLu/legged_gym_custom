@@ -174,21 +174,20 @@ if __name__ == "__main__":
             # Get projected gravity
             projected_gravity = get_gravity_orientation(base_rot_quat)
             
-            # Prepare phase features 
-            cmd_norm = np.linalg.norm(cmd[:2])                  # Unscaled cmd  
+            # Calculate gait period
+            cmd_norm = np.linalg.norm(cmd[:2])                  # DOESN'T FACTOR IN ANG_VEL_YAW FOR NOW
             period = 1.0 / (1.0 + cmd_norm)                     
-            period = (period * 2.0) * 0.66                      # Scale: 1.0 command norm -> period = un-bracketed number
+            period = (period * 2.0) * 0.66                      # Scale
             period = np.clip(period, a_min=0.25, a_max=1.0)     # Clamp result
-            
-            # print("cmd_norm: ", cmd_norm)
-            # print("period: ", period)
 
+            # Calculate per-leg phase
             phase = (sim_time_s % period) / period
             phase_fr = (phase + fr_offset) % 1
             phase_bl = (phase + bl_offset) % 1
             phase_fl = (phase + fl_offset) % 1
             phase_br = (phase + br_offset) % 1
 
+            # Calculate sine and cosine of phases for smooth transitions
             sin_phase_fl = np.sin(2 * np.pi * phase_fl)
             cos_phase_fl = np.cos(2 * np.pi * phase_fl)
             sin_phase_fr = np.sin(2 * np.pi * phase_fr)
@@ -197,15 +196,24 @@ if __name__ == "__main__":
             cos_phase_bl = np.cos(2 * np.pi * phase_bl)
             sin_phase_br = np.sin(2 * np.pi * phase_br)
             cos_phase_br = np.cos(2 * np.pi * phase_br)
+        
+            # Construct phase features - zero out if small command
+            if cmd_norm < 0.2:
+                phase_features = np.array([
+                    0.0, 0.0, 
+                    0.0, 0.0, 
+                    0.0, 0.0, 
+                    0.0, 0.0
+                ], dtype=np.float32)
+            else:
+                phase_features = np.array([
+                    sin_phase_fr, cos_phase_fr, 
+                    sin_phase_fl, cos_phase_fl,
+                    sin_phase_bl, cos_phase_bl,
+                    sin_phase_br, cos_phase_br
+                ], dtype=np.float32)
 
-            # Construct phase features vector (*MATCH*)
-            phase_features = np.array([
-                sin_phase_fr, cos_phase_fr, 
-                sin_phase_fl, cos_phase_fl,
-                sin_phase_bl, cos_phase_bl,
-                sin_phase_br, cos_phase_br
-            ], dtype=np.float32)
-
+            print(f"Base height: {mj_data.qpos[2]:.3f} meters")
 
             # Create observation list
             cur_obs = np.zeros(num_proprio, dtype=np.float32)

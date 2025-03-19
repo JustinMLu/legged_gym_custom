@@ -13,9 +13,9 @@ class Go2Cfg( LeggedRobotCfg ):
         static_friction = 1.0
         dynamic_friction = 1.0
 
-        mesh_type = 'trimesh'
-        measure_heights = False # Enable heightmap in obs
-        curriculum = True
+        mesh_type = 'plane'
+        measure_heights = False
+        curriculum = False
         selected = False
 
         terrain_kwargs = {
@@ -23,7 +23,7 @@ class Go2Cfg( LeggedRobotCfg ):
             "min_height": -0.05,
             "max_height": 0.05,
             "step": 0.01,
-            "downsampled_scale": 0.25,
+            "downsampled_scale": 0.2,
         }
 
         terrain_proportions = [0.10,    # smooth slope
@@ -48,21 +48,12 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
-        default_joint_angles = {    # = target angles [rad] when action = 0.0
-            'FL_hip_joint': 0.1,    # [rad]
-            'RL_hip_joint': 0.1,    # [rad]
-            'FR_hip_joint': -0.1,   # [rad]
-            'RR_hip_joint': -0.1,   # [rad]
-
-            'FL_thigh_joint': 0.8,  # [rad]
-            'RL_thigh_joint': 1.,   # [rad]
-            'FR_thigh_joint': 0.8,  # [rad]
-            'RR_thigh_joint': 1.,   # [rad]
-
-            'FL_calf_joint': -1.8,  # [rad]
-            'RL_calf_joint': -1.8,  # [rad]
-            'FR_calf_joint': -1.8,  # [rad]
-            'RR_calf_joint': -1.8,  # [rad]
+        
+        default_joint_angles = {
+            'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.90, 'FL_calf_joint': -1.75, 
+            'FR_hip_joint': -0.1, 'FR_thigh_joint': 0.90, 'FR_calf_joint': -1.75,
+            'RL_hip_joint':  0.1, 'RL_thigh_joint': 0.90, 'RL_calf_joint': -1.75, 
+            'RR_hip_joint': -0.1, 'RR_thigh_joint': 0.90, 'RR_calf_joint': -1.75,
         }
 
 
@@ -87,8 +78,8 @@ class Go2Cfg( LeggedRobotCfg ):
 
     # ============== COMMAND CURRICULUM ===============
     class commands ( LeggedRobotCfg.commands ):
-        heading_command = True
-        user_command = [0.0, 0.0, 0.2, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
+        heading_command = False
+        # user_command = [1.0, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
         curriculum = False
         max_curriculum = 2.0
     # =================================================
@@ -122,8 +113,8 @@ class Go2Cfg( LeggedRobotCfg ):
         
 
     class rewards( LeggedRobotCfg.rewards ):
-        soft_dof_pos_limit = 0.9 # +/- 90% of 50% of limit range
-        base_height_target = 0.25
+        soft_dof_pos_limit = 0.9
+        base_height_target = 0.25   # definitely should be > 0.25
         only_positive_rewards = True
 
         class scales( LeggedRobotCfg.rewards.scales ):
@@ -140,11 +131,11 @@ class Go2Cfg( LeggedRobotCfg ):
             # ====================== 
             feet_air_time = 0.5
             contact_phase_match = 0.5
-            hip_pos = -0.75         # orig: -0.1
-            calf_pos = -0.5         # new
-            dof_error = -0.004      # orig: -0.04
-            stumble = -2.5          # orig: -1.0
-            orientation = -2.0      # orig: -5.0
+            stumble = -1.0          
+            orientation = -2.0     # orig: -5.0
+            dof_error = -0.004     # orig: -0.04
+            hip_pos = -0.1         # orig: -0.1
+            calf_pos = -0.1        # new
             base_height = -0.5     # new
 
 
@@ -155,14 +146,12 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         critic_hidden_dims = [512, 256, 128]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
-
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
-
 
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = 'rudolf10'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 50000
+        max_iterations = 10000
         save_interval = 100
