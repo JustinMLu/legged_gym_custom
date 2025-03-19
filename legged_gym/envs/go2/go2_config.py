@@ -28,11 +28,11 @@ class Go2Cfg( LeggedRobotCfg ):
 
         terrain_proportions = [0.10,    # smooth slope
                                0.10,    # rough slope
-                               0.35,    # stairs up
+                               0.45,    # stairs up
                                0.25,    # stairs down
                                0.10,    # discrete terrain
                                0.00,    # stepping stones
-                               0.10]    # bumpy wave
+                               0.00]    # bumpy wave
 
     class domain_rand:      
         randomize_friction = True
@@ -70,8 +70,8 @@ class Go2Cfg( LeggedRobotCfg ):
         file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/urdf/go2.urdf"
         name = "go2"
         foot_name = "foot"
-        penalize_contacts_on = ["thigh", "calf", "imu"]
-        terminate_after_contacts_on = ["base"]
+        penalize_contacts_on = ["thigh", "calf"]
+        terminate_after_contacts_on = []
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
 
 
