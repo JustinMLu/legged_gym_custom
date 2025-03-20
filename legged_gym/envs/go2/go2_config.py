@@ -1,6 +1,7 @@
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
 class Go2Cfg( LeggedRobotCfg ):
+
     class env( LeggedRobotCfg.env ):
         enable_history = True
         buffer_length = 9 # number of previous obs to keep in buffer
@@ -10,27 +11,29 @@ class Go2Cfg( LeggedRobotCfg ):
         num_actions = 12
 
     class terrain( LeggedRobotCfg.terrain ):
-        static_friction = 1.0
-        dynamic_friction = 1.0
+        num_rows = 10 # num. discrete difficulties -> (0/n, 1/n, 2/n ... (n-1)/n)
+        num_cols = 20 # num. terrain choice steps -> determines "accuracy" of terrain proportions
 
         mesh_type = 'trimesh'
-        measure_heights = False
-        curriculum = True
-        selected = False
+        measure_heights = False # changed so this only enables the buffer & noise
+        
+        difficulty = 0.5
+        step_height = 0.05 + 0.18 * difficulty
 
+        selected = True
         terrain_kwargs = {
-            "type": "terrain_utils.random_uniform_terrain",
-            "min_height": -0.05,
-            "max_height": 0.05,
-            "step": 0.01,
-            "downsampled_scale": 0.2,
+            "type": "terrain_utils.pyramid_stairs_terrain",
+            "step_width": 0.31,
+            "step_height": step_height,
+            "platform_size": 3.0,
         }
 
-        terrain_proportions = [0.10,    # smooth slope
-                               0.10,    # rough slope
-                               0.45,    # stairs up
-                               0.25,    # stairs down
-                               0.10,    # discrete terrain
+        curriculum = False
+        terrain_proportions = [0.15,    # smooth slope
+                               0.15,    # rough slope
+                               0.40,    # stairs up
+                               0.30,    # stairs down
+                               0.00,    # discrete terrain
                                0.00,    # stepping stones
                                0.00]    # bumpy wave
 
@@ -123,8 +126,8 @@ class Go2Cfg( LeggedRobotCfg ):
         only_positive_rewards = True
 
         class scales( LeggedRobotCfg.rewards.scales ):
-            tracking_lin_vel = 1.25
-            tracking_ang_vel = 0.75
+            tracking_lin_vel = 1.5
+            tracking_ang_vel = 1.0
             # ======================
             lin_vel_z = -1.0
             ang_vel_xy = -0.01
@@ -134,13 +137,12 @@ class Go2Cfg( LeggedRobotCfg ):
             collision = -10.0
             delta_torques = -1.0e-7
             # ====================== 
-            # feet_air_time = 0.5
-            contact_phase_match = 0.5
+            contact_phase_match = 1.0
             stumble = -1.0          
-            orientation = -2.5  # orig: -5.0
-            dof_error = -0.04  # orig: -0.04
+            orientation = -5.0  # orig: -5.0
+            dof_error = -0.04   # orig: -0.04
             hip_pos = -0.5      # orig: -0.5
-            calf_pos = -0.05    # new
+            calf_pos = -0.1     # new
             base_height = -0.5  # new
 
 

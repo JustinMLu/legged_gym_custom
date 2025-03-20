@@ -206,33 +206,32 @@ class Go2Robot(LeggedRobot):
         # "Duty factor" (% of each legs cycle on the ground) 
         stance_threshold = 0.5
 
+        # Check if feet are supposed to be in stance
         fl_stance = self.phase_fl < stance_threshold
         fr_stance = self.phase_fr < stance_threshold
         bl_stance = self.phase_bl < stance_threshold
         br_stance = self.phase_br < stance_threshold
         
-        # Check actual foot contacts (measured from contact forces)
-        # Threshold force (1.0) determines what counts as "contact"
-        fl_contact_raw = self.contact_forces[:, self.feet_indices[0], 2] > 1.0
-        fr_contact_raw = self.contact_forces[:, self.feet_indices[1], 2] > 1.0
-        bl_contact_raw = self.contact_forces[:, self.feet_indices[2], 2] > 1.0
-        br_contact_raw = self.contact_forces[:, self.feet_indices[3], 2] > 1.0
+        # Check current contacts
+        cur_fl_contact = self.contact_forces[:, self.feet_indices[0], 2] > 1.0
+        cur_fr_contact = self.contact_forces[:, self.feet_indices[1], 2] > 1.0
+        cur_bl_contact = self.contact_forces[:, self.feet_indices[2], 2] > 1.0
+        cur_br_contact = self.contact_forces[:, self.feet_indices[3], 2] > 1.0
         
-        # Use contact filtering method from _reward_feet_air_time
-        contacts = torch.stack([fl_contact_raw, 
-                                fr_contact_raw, 
-                                bl_contact_raw, 
-                                br_contact_raw], 
-                                dim=1)
+        
+        # Logical OR with prev. contacts -> supposedly counteracts buggy PhysX mesh contact detection
+        fl_contact = torch.logical_or(cur_fl_contact, self.last_contacts[:, 0])
+        fr_contact = torch.logical_or(cur_fr_contact, self.last_contacts[:, 1])
+        bl_contact = torch.logical_or(cur_bl_contact, self.last_contacts[:, 2])
+        br_contact = torch.logical_or(cur_br_contact, self.last_contacts[:, 3])
 
-        fl_contact = torch.logical_and(fl_contact_raw, self.last_contacts[:, 0])
-        fr_contact = torch.logical_and(fr_contact_raw, self.last_contacts[:, 1])
-        bl_contact = torch.logical_and(bl_contact_raw, self.last_contacts[:, 2])
-        br_contact = torch.logical_and(br_contact_raw, self.last_contacts[:, 3])
-        self.last_contacts = contacts
+        # Update previous contact bools
+        self.last_contacts = torch.stack([cur_fl_contact, 
+                                          cur_fr_contact, 
+                                          cur_bl_contact, 
+                                          cur_br_contact], dim=1)
 
-        # Reward matching contacts (true when contact matches expected stance)
-        # Reward when both true or both false
+        # Reward each foot for contact when it's meant to be stance
         reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
         reward += torch.where(~(fl_contact ^ fl_stance), 0.25, 0.0)
         reward += torch.where(~(fr_contact ^ fr_stance), 0.25, 0.0)

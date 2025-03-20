@@ -351,6 +351,7 @@ class LeggedRobot(BaseTask):
             heading = torch.atan2(forward[:, 1], forward[:, 0])
             self.commands[:, 2] = torch.clip(0.5*wrap_to_pi(self.commands[:, 3] - heading), -1., 1.)
 
+        # if self.cfg.terrain.measure_heights:
         """BUG: Disabling measure-heights doesn't just disable heightpoints in observations, 
                 it also  prevents _get_heights() from being called. 
                 
@@ -358,7 +359,6 @@ class LeggedRobot(BaseTask):
                 fucks up training on non-flat ground! Thanks ETH Zurich! 
                 (RESOLVED)
         """
-        # if self.cfg.terrain.measure_heights:
         self.measured_heights = self._get_heights()
 
         # bully robots
@@ -571,6 +571,7 @@ class LeggedRobot(BaseTask):
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
 
         # Init height points buffer
+        # if self.cfg.terrain.measure_heights:
         """BUG: Disabling measure-heights doesn't just disable heightpoints in observations, 
                 it also  prevents _get_heights() from being called. 
                 
@@ -578,7 +579,6 @@ class LeggedRobot(BaseTask):
                 fucks up training on non-flat ground! Thanks ETH Zurich! 
                 (RESOLVED)
         """
-        # if self.cfg.terrain.measure_heights:
         self.height_points = self._init_height_points()
         self.measured_heights = 0
 
