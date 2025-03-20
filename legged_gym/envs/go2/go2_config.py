@@ -11,8 +11,8 @@ class Go2Cfg( LeggedRobotCfg ):
         num_actions = 12
 
     class terrain( LeggedRobotCfg.terrain ):
-        num_rows = 10 # num. discrete difficulties -> (0/n, 1/n, 2/n ... (n-1)/n)
-        num_cols = 20 # num. terrain choice steps -> determines "accuracy" of terrain proportions
+        num_rows = 10 # num. difficulty options   ->    (0/n, 1/n, 2/n ... (n-1)/n)
+        num_cols = 20 # num. choice "options"     ->    affects terrain_proportions "accuracy"
 
         mesh_type = 'trimesh'
         measure_heights = False # changed so this only enables the buffer & noise

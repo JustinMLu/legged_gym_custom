@@ -90,7 +90,7 @@ class Terrain:
             terrain = self.make_terrain(choice, difficulty)
             self.add_terrain_to_map(terrain, i, j)
         
-    
+    # whoever wrote this code needs to be executed
     def curiculum(self):
         """ Generate a curriculum of terrains with varying difficulty and choice.
             Proportions can be set in the config file to control the amount of each terrain.
