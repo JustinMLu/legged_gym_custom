@@ -137,8 +137,8 @@ class Go2Cfg( LeggedRobotCfg ):
             # feet_air_time = 0.5
             contact_phase_match = 0.5
             stumble = -1.0          
-            orientation = -1.0  # orig: -5.0
-            dof_error = -0.004  # orig: -0.04
+            orientation = -2.5  # orig: -5.0
+            dof_error = -0.04  # orig: -0.04
             hip_pos = -0.5      # orig: -0.5
             calf_pos = -0.05    # new
             base_height = -0.5  # new
@@ -155,7 +155,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'rudolf10'
+        run_name = 'rudolf11'
         experiment_name = 'go2'
         load_run = -1
         max_iterations = 10000
