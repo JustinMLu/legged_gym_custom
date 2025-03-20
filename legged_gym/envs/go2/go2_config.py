@@ -11,8 +11,8 @@ class Go2Cfg( LeggedRobotCfg ):
         num_actions = 12
 
     class terrain( LeggedRobotCfg.terrain ):
-        num_rows = 10 # num. difficulty options   ->    (0/n, 1/n, 2/n ... (n-1)/n)
-        num_cols = 20 # num. choice "options"     ->    affects terrain_proportions "accuracy"
+        num_rows = 20 # num. difficulties       ->    (0/n, 1/n, 2/n ... (n-1)/n)
+        num_cols = 20 # max. terrain choices    ->    affects terrain_proportions "accuracy"
 
         mesh_type = 'trimesh'
         measure_heights = False # changed so this only enables the buffer & noise
@@ -84,7 +84,7 @@ class Go2Cfg( LeggedRobotCfg ):
         heading_command = False
         curriculum = False
         max_curriculum = 2.0
-        # user_command = [1.0, 0.0, 0.0, 0.0] # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]
+        # user_command = [1.0, 0.0, 0.0, 0.0] # [vel. x, vel. y, ang. vel (yaw), heading (dont use)]
     # =================================================
 
 
@@ -142,7 +142,7 @@ class Go2Cfg( LeggedRobotCfg ):
             orientation = -5.0  # orig: -5.0
             dof_error = -0.04   # orig: -0.04
             hip_pos = -0.5      # orig: -0.5
-            calf_pos = -0.1     # new
+            calf_pos = -0.025   # new
             base_height = -0.5  # new
 
 

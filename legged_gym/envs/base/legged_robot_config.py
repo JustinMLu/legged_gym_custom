@@ -63,7 +63,7 @@ class LeggedRobotCfg(BaseConfig):
         terrain_length = 8.
         terrain_width = 8.
         num_rows = 10 # number of terrain rows (levels of difficulty)
-        num_cols = 20 # number of terrain cols (types)
+        num_cols = 20 # number of terrain cols (max. number of terrain types)
         terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2, 0.0, 0.0] # see terrain.py for details
         
         # trimesh only:
@@ -87,7 +87,7 @@ class LeggedRobotCfg(BaseConfig):
             heading = [-3.14, 3.14]
 
     class init_state:
-        pos = [0.0, 0.0, 1.]        # x,y,z [m]
+        pos = [0.0, 0.0, 1.0]       # x,y,z [m]
         rot = [0.0, 0.0, 0.0, 1.0]  # x,y,z,w [quat]
         lin_vel = [0.0, 0.0, 0.0]   # x,y,z [m/s]
         ang_vel = [0.0, 0.0, 0.0]   # x,y,z [rad/s]
