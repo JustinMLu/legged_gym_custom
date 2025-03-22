@@ -187,9 +187,6 @@ if __name__ == "__main__":
             phase_fl = (phase + fl_offset) % 1
             phase_br = (phase + br_offset) % 1
 
-            # DEBUG: print phase values
-            print("phase_fr: ", phase_fr)
-
             # Calculate sine and cosine of phases for smooth transitions
             sin_phase_fl = np.sin(2 * np.pi * phase_fl)
             cos_phase_fl = np.cos(2 * np.pi * phase_fl)
@@ -199,6 +196,11 @@ if __name__ == "__main__":
             cos_phase_bl = np.cos(2 * np.pi * phase_bl)
             sin_phase_br = np.sin(2 * np.pi * phase_br)
             cos_phase_br = np.cos(2 * np.pi * phase_br)
+
+             # DEBUG: print phase values
+            # print("phase_fr: ", phase_fr)
+            # print("sin_phase_fr: ", sin_phase_fr)
+            # print("cos_phase_fr: ", cos_phase_fr)
         
             # Construct phase features - zero out if small command
             if cmd_norm < 0.2:
@@ -217,7 +219,7 @@ if __name__ == "__main__":
                 ], dtype=np.float32)
 
             # DEBUG: print base height
-            # print(f"Base height: {mj_data.qpos[2]:.3f} meters")
+            print(f"Base height: {mj_data.qpos[2]:.3f} meters")
 
             # Create observation list
             cur_obs = np.zeros(num_proprio, dtype=np.float32)

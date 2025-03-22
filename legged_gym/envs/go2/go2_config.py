@@ -20,7 +20,7 @@ class Go2Cfg( LeggedRobotCfg ):
         difficulty = 0.5
         step_height = 0.05 + 0.18 * difficulty
 
-        selected = True
+        selected = False
         terrain_kwargs = {
             "type": "terrain_utils.pyramid_stairs_terrain",
             "step_width": 0.31,
@@ -28,12 +28,12 @@ class Go2Cfg( LeggedRobotCfg ):
             "platform_size": 3.0,
         }
 
-        curriculum = False
+        curriculum = True
         terrain_proportions = [0.15,    # smooth slope
                                0.15,    # rough slope
                                0.40,    # stairs up
-                               0.30,    # stairs down
-                               0.00,    # discrete terrain
+                               0.20,    # stairs down
+                               0.10,    # discrete terrain
                                0.00,    # stepping stones
                                0.00]    # bumpy wave
 
@@ -142,8 +142,8 @@ class Go2Cfg( LeggedRobotCfg ):
             orientation = -5.0  # orig: -5.0
             dof_error = -0.04   # orig: -0.04
             hip_pos = -0.5      # orig: -0.5
-            calf_pos = -0.025   # new
-            base_height = -0.5  # new
+            base_height = -1.0  # new
+            # calf_pos = -0.025   # new
 
 
 
@@ -160,5 +160,5 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         run_name = 'rudolf11'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 10000
+        max_iterations = 50000
         save_interval = 100
