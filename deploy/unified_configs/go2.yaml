@@ -1,7 +1,7 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk11/4500.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_012.xml"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk11/EXPORTED.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_0075.xml"
 
 # Action & Observations
 num_actions: 12

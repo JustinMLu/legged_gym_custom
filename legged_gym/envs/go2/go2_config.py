@@ -22,7 +22,7 @@ class Go2Cfg( LeggedRobotCfg ):
         terrain_kwargs = {
             "type": "terrain_utils.pyramid_stairs_terrain",
             "step_width": 0.31,
-            "step_height": 0.17,
+            "step_height": -0.17,
             "platform_size": 3.0,
         }
 
