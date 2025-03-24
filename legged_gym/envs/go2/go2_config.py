@@ -21,9 +21,9 @@ class Go2Cfg( LeggedRobotCfg ):
         selected = False
         terrain_kwargs = {
             "type": "terrain_utils.pyramid_stairs_terrain",
-            "step_width": 0.31,
+            "step_width": 0.24,
             "step_height": -0.17,
-            "platform_size": 3.0,
+            "platform_size": 2.0,
         }
 
         curriculum = True
@@ -136,11 +136,11 @@ class Go2Cfg( LeggedRobotCfg ):
             delta_torques = -1.0e-7
             # ====================== 
             contact_phase_match = 1.0
-            stumble = -1.0          # orig: -1.0    
+            stumble = -10.0         # orig: -1.0    
             orientation = -2.0      # orig: -5.0
             dof_error = -0.04       # orig: -0.04
             hip_pos = -0.5          # orig: -0.5
-            base_height = -2.5      
+            base_height = -2.5      # CONSIDER CHANGING TO -10 TOO     
             # calf_pos = -0.025     
 
 
