@@ -136,7 +136,7 @@ class Terrain:
 
         
         slope = difficulty * 0.4
-        step_height = 0.05 + 0.075 * difficulty # Fucking stairs bro
+        step_height = 0.05 + 0.18 * difficulty # For stairs
         discrete_obstacles_height = 0.05 + difficulty * 0.2
         stepping_stones_size = 1.5 * (1.05 - difficulty)
         stone_distance = 0.05 if difficulty==0 else 0.1

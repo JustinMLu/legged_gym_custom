@@ -219,7 +219,7 @@ if __name__ == "__main__":
                 ], dtype=np.float32)
 
             # DEBUG: print base height
-            print(f"Base height: {mj_data.qpos[2]:.3f} meters")
+            # print(f"Base height: {mj_data.qpos[2]:.3f} meters")
 
             # Create observation list
             cur_obs = np.zeros(num_proprio, dtype=np.float32)

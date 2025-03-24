@@ -17,14 +17,12 @@ class Go2Cfg( LeggedRobotCfg ):
         mesh_type = 'trimesh'
         measure_heights = False # changed so this only enables the buffer & noise
         
-        difficulty = 0.5
-        step_height = 0.05 + 0.18 * difficulty
 
         selected = False
         terrain_kwargs = {
             "type": "terrain_utils.pyramid_stairs_terrain",
             "step_width": 0.31,
-            "step_height": step_height,
+            "step_height": 0.17,
             "platform_size": 3.0,
         }
 
@@ -79,13 +77,14 @@ class Go2Cfg( LeggedRobotCfg ):
 
 
 
-    # =================================================
     class commands ( LeggedRobotCfg.commands ):
         heading_command = False
         curriculum = False
         max_curriculum = 2.0
-        # user_command = [1.0, 0.0, 0.0, 0.0] # [vel. x, vel. y, ang. vel (yaw), heading (dont use)]
-    # =================================================
+        resampling_time = 25. # time before command are changed [s]
+        # # =================================================
+        # user_command = [1., 0., 0., 0.] # [v_x, v_y, w_yaw, heading]
+        # # =================================================
 
 
     class normalization( LeggedRobotCfg.normalization ):
@@ -106,18 +105,17 @@ class Go2Cfg( LeggedRobotCfg ):
 
         class noise_scales( LeggedRobotCfg.noise.noise_scales):
             lin_vel = 0.1   # (Deprecated)
-            # ang_vel = 0.2
-            # dof_pos = 0.01
-            # dof_vel = 1.5
-            # gravity = 0.05
-            # height_measurements = 0.1
-            
-            # From the hangman
             dof_pos = 0.01
             dof_vel = 0.05
             ang_vel = 0.05
             gravity = 0.02
             height_measurements = 0.02
+
+            # ang_vel = 0.2
+            # dof_pos = 0.01
+            # dof_vel = 1.5
+            # gravity = 0.05
+            # height_measurements = 0.1
         
 
     class rewards( LeggedRobotCfg.rewards ):
@@ -138,12 +136,12 @@ class Go2Cfg( LeggedRobotCfg ):
             delta_torques = -1.0e-7
             # ====================== 
             contact_phase_match = 1.0
-            stumble = -1.0          
-            orientation = -5.0  # orig: -5.0
-            dof_error = -0.04   # orig: -0.04
-            hip_pos = -0.5      # orig: -0.5
-            base_height = -1.0  # new
-            # calf_pos = -0.025   # new
+            stumble = -1.0          # orig: -1.0    
+            orientation = -2.0      # orig: -5.0
+            dof_error = -0.04       # orig: -0.04
+            hip_pos = -0.5          # orig: -0.5
+            base_height = -2.5      
+            # calf_pos = -0.025     
 
 
 
@@ -161,4 +159,4 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         experiment_name = 'go2'
         load_run = -1
         max_iterations = 50000
-        save_interval = 100
+        save_interval = 500
