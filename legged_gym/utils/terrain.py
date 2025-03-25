@@ -136,7 +136,7 @@ class Terrain:
 
         
         slope = difficulty * 0.4
-        step_height = 0.05 + 0.14 * difficulty # For stairs
+        step_height = 0.05 + 0.12 * difficulty # For stairs
         discrete_obstacles_height = 0.05 + difficulty * 0.2
         stepping_stones_size = 1.5 * (1.05 - difficulty)
         stone_distance = 0.05 if difficulty==0 else 0.1
@@ -160,7 +160,7 @@ class Terrain:
         elif choice < self.proportions[3]:
             if choice<self.proportions[2]:
                 step_height *= -1
-            terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.24, step_height=step_height, platform_size=2.)
+            terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.27, step_height=step_height, platform_size=2.)
         
         # 5. Discrete obstacles
         elif choice < self.proportions[4]:

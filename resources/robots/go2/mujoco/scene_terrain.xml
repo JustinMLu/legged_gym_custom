@@ -26,14 +26,14 @@
                 Z_top is the max height above 0 (after normalization),
                 Z_bottom is the thickness extending below 0.    -->
 
-        <hfield name="hfield_1" size="30.0 30.0 1.5 1.5" file="../hf_zoober.png" />
+        <hfield name="hfield_1" size="30.0 30.0 2.5 2.5" file="../hf_test.png" />
         
     </asset>
 
     <worldbody>
         <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
         
-        <geom name="floor_tile_1" type="hfield" hfield="hfield_1" pos="0.0 0.0 -5.0"/>
+        <geom name="floor_tile_1" type="hfield" hfield="hfield_1" pos="0.0 0.0 -2.0"/>
 
     </worldbody>
 </mujoco>

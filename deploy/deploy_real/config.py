@@ -54,7 +54,7 @@ class Config:
             self.rc_scale = np.array(config["rc_scale"], dtype=np.float32)
 
             # Phase
-            self.period = config["period"]
+            # self.period = config["period"]
             self.fr_offset = config["fr_offset"]
             self.bl_offset = config["bl_offset"]
             self.fl_offset = config["fl_offset"]

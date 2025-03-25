@@ -152,6 +152,11 @@ class Controller:
     def run(self):
         self.counter += 1
         self.real_time_s = self.counter * self.cfg.control_dt
+
+        # Get commands from remote controller
+        self.cmd[0] = self.remote_controller.ly
+        self.cmd[1] = self.remote_controller.lx * -1
+        self.cmd[2] = self.remote_controller.rx * -1
         
         # Get the current joint position and velocity
         for i in range(len(self.cfg.leg_joint2motor_idx)):
@@ -170,8 +175,14 @@ class Controller:
         # Get projected gravity
         projected_gravity = get_gravity_orientation(quat)
 
+        # Calculate gait period
+        cmd_norm = np.linalg.norm(self.cmd[:2])             # DOESN'T FACTOR IN ANG_VEL_YAW FOR NOW
+        period = 1.0 / (1.0 + cmd_norm)                     
+        period = (period * 2.0) * 0.66                      # Scale
+        period = np.clip(period, a_min=0.25, a_max=1.0)     # Clamp result
+
         # Prepare phase features
-        phase = (self.real_time_s % self.cfg.period) / self.cfg.period
+        phase = (self.real_time_s % period) / period
         phase_fr = (phase + self.cfg.fr_offset) % 1
         phase_bl = (phase + self.cfg.bl_offset) % 1
         phase_fl = (phase + self.cfg.fl_offset) % 1
@@ -186,18 +197,21 @@ class Controller:
         sin_phase_br = np.sin(2 * np.pi * phase_br)
         cos_phase_br = np.cos(2 * np.pi * phase_br)
 
-        # Construct phase features vector (*MATCH*)
-        phase_features = np.array([
-            sin_phase_fr, cos_phase_fr, 
-            sin_phase_fl, cos_phase_fl,
-            sin_phase_bl, cos_phase_bl,
-            sin_phase_br, cos_phase_br
-        ], dtype=np.float32)
-
-        # Get commands from remote controller
-        self.cmd[0] = self.remote_controller.ly
-        self.cmd[1] = self.remote_controller.lx * -1
-        self.cmd[2] = self.remote_controller.rx * -1
+        # Construct phase features - zero out if small command
+        if cmd_norm < 0.2:
+            phase_features = np.array([
+                0.0, 0.0, 
+                0.0, 0.0, 
+                0.0, 0.0, 
+                0.0, 0.0
+            ], dtype=np.float32)
+        else:
+            phase_features = np.array([
+                sin_phase_fr, cos_phase_fr, 
+                sin_phase_fl, cos_phase_fl,
+                sin_phase_bl, cos_phase_bl,
+                sin_phase_br, cos_phase_br
+            ], dtype=np.float32)
 
         # Create observation list
         num_actions = self.cfg.num_actions
@@ -233,8 +247,9 @@ class Controller:
                                   -self.cfg.clip_actions, 
                                   self.cfg.clip_actions).detach().numpy().squeeze()
         
-        # transform action to target_dof_pos
-        target_dof_pos = self.actions * self.cfg.action_scale + self.cfg.default_angles
+        # Update target dof positions
+        if cmd_norm >= 0.2: # Bandaid fix
+            target_dof_pos = self.actions * self.cfg.action_scale + self.cfg.default_angles
 
         # Build low cmd
         for i in range(len(self.cfg.leg_joint2motor_idx)):
