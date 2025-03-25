@@ -249,13 +249,13 @@ class Controller:
         
         # Update target dof positions
         if cmd_norm >= 0.2: # Bandaid fix
-            target_dof_pos = self.actions * self.cfg.action_scale + self.cfg.default_angles
+            self.target_dof_pos = self.actions * self.cfg.action_scale + self.cfg.default_angles
 
         # Build low cmd
         for i in range(len(self.cfg.leg_joint2motor_idx)):
             motor_idx = self.cfg.leg_joint2motor_idx[i]
             
-            self.low_cmd.motor_cmd[motor_idx].q = target_dof_pos[i]
+            self.low_cmd.motor_cmd[motor_idx].q = self.target_dof_pos[i]
             self.low_cmd.motor_cmd[motor_idx].qd = 0
             self.low_cmd.motor_cmd[motor_idx].kp = self.cfg.kps[i]
             self.low_cmd.motor_cmd[motor_idx].kd = self.cfg.kds[i]
