@@ -163,7 +163,6 @@ class Controller:
             self.qj[i] = self.low_state.motor_state[self.cfg.leg_joint2motor_idx[i]].q
             self.dqj[i] = self.low_state.motor_state[self.cfg.leg_joint2motor_idx[i]].dq
 
-
         # imu_state quaternion: w, x, y, z
         quat = self.low_state.imu_state.quaternion
         ang_vel = np.array([self.low_state.imu_state.gyroscope], dtype=np.float32)
@@ -248,8 +247,7 @@ class Controller:
                                   self.cfg.clip_actions).detach().numpy().squeeze()
         
         # Update target dof positions
-        if cmd_norm >= 0.2: # Bandaid fix
-            self.target_dof_pos = self.actions * self.cfg.action_scale + self.cfg.default_angles
+        self.target_dof_pos = self.actions * self.cfg.action_scale + self.cfg.default_angles
 
         # Build low cmd
         for i in range(len(self.cfg.leg_joint2motor_idx)):
@@ -299,6 +297,10 @@ if __name__ == "__main__":
 
             # Run (or step)
             controller.run()
+
+            if controller.projected_gravity[2] > 0.:
+                print("Warning: Robot is upside down!")
+                break
 
             # Timekeep
             time_elapsed_during_step = time.perf_counter() - step_start

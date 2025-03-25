@@ -82,15 +82,15 @@ class Go2Cfg( LeggedRobotCfg ):
         heading_command = False
         curriculum = False
         max_curriculum = 2.0
-        resampling_time = 25. # time before command are changed [s]
+        resampling_time = 30. # time before command are changed [s]
         # user_command = [1., 0., 0., 0.] # [v_x, v_y, w_yaw, heading]
         
 
         # Reduced curriculum for stairs
         class ranges:
-            lin_vel_x = [0.0, 1.5]     # min max [m/s]
-            lin_vel_y = [-0.2, 0.2]     # min max [m/s]
-            ang_vel_yaw = [-0.2, 0.2]   # min max [rad/s]
+            lin_vel_x = [-0.5, 1.5]     # min max [m/s]
+            lin_vel_y = [-0.8, 0.8]     # min max [m/s]
+            ang_vel_yaw = [-0.3, 0.3]   # min max [rad/s]
             heading = [-3.14, 3.14]
 
 
@@ -133,12 +133,12 @@ class Go2Cfg( LeggedRobotCfg ):
             torques = -0.00001
             dof_acc = -2.5e-7
             action_rate = -0.1
-            collision = -11.0
+            collision = -20.0
             delta_torques = -1.0e-7
             # ====================== 
             contact_phase_match = 1.0
             stumble = -1.0           
-            orientation = -1.0      # changed back to -1.0
+            orientation = -5.0      # -1.0 --> -5.0
             dof_error = -0.04       
             hip_pos = -0.5          
             base_height = -2.5      # CONSIDER CHANGING TO -5 or -10     
@@ -156,8 +156,8 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'rudolf12-mk2'
+        run_name = 'mk12v5'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 10000
+        max_iterations = 2000
         save_interval = 100

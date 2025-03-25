@@ -248,8 +248,7 @@ if __name__ == "__main__":
             actions = torch.clip(actions, -clip_actions, clip_actions).detach().numpy().squeeze()
 
             # Update target dof positions
-            if cmd_norm >= 0.2: # Bandaid fix
-                target_dof_pos = actions * action_scale + default_angles
+            target_dof_pos = actions * action_scale + default_angles
 
 
         # Pick up changes to the physics state, apply perturbations, update options from GUI.
