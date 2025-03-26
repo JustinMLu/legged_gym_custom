@@ -178,6 +178,8 @@ class LeggedRobot(BaseTask):
             self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
         if self.cfg.commands.curriculum:
             self.extras["episode"]["max_command_x"] = self.command_ranges["lin_vel_x"][1]
+            self.extras["episode"]["max_command_y"] = self.command_ranges["lin_vel_y"][1]
+            self.extras["episode"]["max_command_yaw"] = self.command_ranges["ang_vel_yaw"][1]
         # send timeout info to the algorithm
         if self.cfg.env.send_timeouts:
             self.extras["time_outs"] = self.time_out_buf
@@ -497,10 +499,29 @@ class LeggedRobot(BaseTask):
             env_ids (List[int]): ids of environments being reset
         """
         # If the tracking reward is above 80% of the maximum, increase the range of commands
-        if torch.mean(self.episode_sums["tracking_lin_vel"][env_ids]) / self.max_episode_length > 0.8 * self.reward_scales["tracking_lin_vel"]:
-            self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - 0.5, -self.cfg.commands.max_curriculum, 0.)
-            self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + 0.5, 0., self.cfg.commands.max_curriculum)
+        mean_lin_vel_reward = torch.mean(self.episode_sums["tracking_lin_vel"][env_ids]) / self.max_episode_length
+        mean_ang_vel_reward = torch.mean(self.episode_sums["tracking_ang_vel"][env_ids]) / self.max_episode_length
+        
+        # Linear velocities
+        if mean_lin_vel_reward > 0.8 * self.reward_scales["tracking_lin_vel"]:
+            self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - 0.1, -self.cfg.commands.max_curriculum, 0.)
+            self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + 0.1, 0., self.cfg.commands.max_curriculum)
 
+            self.command_ranges["lin_vel_y"][0] = np.clip(self.command_ranges["lin_vel_y"][0] - 0.1, -self.cfg.commands.max_curriculum, 0.)
+            self.command_ranges["lin_vel_y"][1] = np.clip(self.command_ranges["lin_vel_y"][1] + 0.1, 0., self.cfg.commands.max_curriculum)
+            
+
+        # Angular velocity
+        if mean_ang_vel_reward > 0.8 * self.reward_scales.get("tracking_ang_vel", 0):
+            if self.cfg.commands.heading_command:
+                # When heading_command is True, update heading (position 3)
+                self.command_ranges["heading"][0] = np.clip(self.command_ranges["heading"][0] - 0.1, -np.pi, 0.)
+                self.command_ranges["heading"][1] = np.clip(self.command_ranges["heading"][1] + 0.1, 0., np.pi)
+            else:
+                # When heading_command is False, update ang_vel_yaw (position 2)
+                self.command_ranges["ang_vel_yaw"][0] = np.clip(self.command_ranges["ang_vel_yaw"][0] - 0.1, -self.cfg.commands.max_curriculum, 0.)
+                self.command_ranges["ang_vel_yaw"][1] = np.clip(self.command_ranges["ang_vel_yaw"][1] + 0.1, 0., self.cfg.commands.max_curriculum)
+        
 
     # TODO WE NEED TO MAKE THIS COMPATIBLE W/ OBS HISTORY BUFFER - RIGHT NOW IT'S JUST OVERLOADED PER-ROBOT
     def _get_noise_scale_vec(self, cfg):

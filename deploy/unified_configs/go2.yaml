@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk12v5/EXPORTED.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk9/50000.pt"
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_015.xml"
 
 # Action & Observations
@@ -51,6 +51,11 @@ default_angles: [0.1, 1.0, -1.8,    # FL
                  0.1, 1.0, -1.8,    # RL
                 -0.1, 1.0, -1.8]    # RR
 
+stand_angles: [0.1, 0.8, -1.5,    # FL
+              -0.1, 0.8, -1.5,    # FR
+               0.1, 0.8, -1.5,    # RL
+              -0.1, 0.8, -1.5]    # RR
+
 # Scales
 ang_vel_scale: 0.25
 dof_pos_scale: 1.0
@@ -70,7 +75,7 @@ fl_offset: 0.5       # [%]
 br_offset: 0.5       # [%]
 
 # Remote controller scale
-rc_scale: [0.8, 0.5, 1.57]
+rc_scale: [0.8, 0.8, 1.57]
 
 # Mujoco command ([forward, lateral, yaw])
-command: [0.8, 0.0, 0.0]
+command: [0.0, 0.0, 0.0]

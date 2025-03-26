@@ -65,6 +65,13 @@ class Go2Robot(LeggedRobot):
         self.feet_pos = self.feet_state[:, :, :3]
         self.feet_vel = self.feet_state[:, :, 7:10]
 
+        # Init phase related variables
+        self.phase = torch.zeros(self.num_envs, device=self.device)
+        self.phase_fr = torch.zeros(self.num_envs, device=self.device)
+        self.phase_fl = torch.zeros(self.num_envs, device=self.device)
+        self.phase_bl = torch.zeros(self.num_envs, device=self.device)
+        self.phase_br = torch.zeros(self.num_envs, device=self.device)
+
         # I could put these into a vector but I am doing it this way for easier debug
         self.fl_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.fr_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
@@ -97,10 +104,10 @@ class Go2Robot(LeggedRobot):
         
         # =========================== GAIT CALCULATIONS ===========================
         # Calculate gait period
-        cmd_norm = torch.norm(self.commands[:, :2], dim=1) # NORM DOESN'T CONSIDER ANGULAR YAW VELOCITY
-        period = 1.0 / (1.0 + cmd_norm)          
+        xy_cmd_norm = torch.norm(self.commands[:, :2], dim=1) # NORM DOESN'T CONSIDER ANGULAR YAW VELOCITY
+        period = 1.0 / (1.0 + xy_cmd_norm)          
         period = (period * 2.0) * 0.66           # Scale
-        period = torch.clamp(period, 0.25, 1.0)  # Clamp result
+        period = torch.clamp(period, 0.4, 0.8)  # Clamp result
         
         # Specify per-leg period offsets
         fr_offset = 0.0
@@ -114,6 +121,13 @@ class Go2Robot(LeggedRobot):
         self.phase_bl = (self.phase + bl_offset) % 1
         self.phase_fl = (self.phase + fl_offset) % 1
         self.phase_br = (self.phase + br_offset) % 1
+
+        # Zero out phase variables if small command
+        mask = torch.norm(self.commands[:, :3], dim=1) < 0.15 # considers all 3 commands 
+        self.phase_fr *= torch.where(mask, 0.0, 1.0)
+        self.phase_fl *= torch.where(mask, 0.0, 1.0)
+        self.phase_bl *= torch.where(mask, 0.0, 1.0)
+        self.phase_br *= torch.where(mask, 0.0, 1.0)
 
         # =========================== CONTACT DETECTION ===========================
         # Check if feet are in contact currently
@@ -162,6 +176,7 @@ class Go2Robot(LeggedRobot):
     def compute_observations(self):
         """ Computes observations for the robot. Overloaded to include unique observations for Go2.
         """
+       
         # Calculate sine and cosine of phases for smooth transitions
         sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl).unsqueeze(1) # FL
         cos_phase_fl = torch.cos(2 * np.pi * self.phase_fl).unsqueeze(1)
@@ -172,7 +187,6 @@ class Go2Robot(LeggedRobot):
         sin_phase_br = torch.sin(2 * np.pi * self.phase_br).unsqueeze(1) # BR
         cos_phase_br = torch.cos(2 * np.pi * self.phase_br).unsqueeze(1)
 
-        
         # Construct phase features
         phase_features = torch.cat([
             sin_phase_fr, cos_phase_fr, 
@@ -180,12 +194,7 @@ class Go2Robot(LeggedRobot):
             sin_phase_bl, cos_phase_bl,
             sin_phase_br, cos_phase_br
         ], dim=1)
-
-        # Zero out if small command
-        mask = torch.norm(self.commands[:, :2], dim=1) < 0.2 # (num_envs,)
-        phase_features *= torch.where(mask.unsqueeze(1), 0.0, 1.0)
-
-        
+       
         # Construct observations       
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                      # (3,)
                                 self.projected_gravity,                                             # (3,)
@@ -251,10 +260,10 @@ class Go2Robot(LeggedRobot):
         """
 
         # Check if feet are supposed to be in stance
-        fl_stance = torch.sin(2*np.pi*self.phase_fl) < 0.0 # i locked da duty factor 
-        fr_stance = torch.sin(2*np.pi*self.phase_fr) < 0.0
-        bl_stance = torch.sin(2*np.pi*self.phase_bl) < 0.0
-        br_stance = torch.sin(2*np.pi*self.phase_br) < 0.0
+        fl_stance = torch.sin(2*np.pi*self.phase_fl) <= 0.0 # small cmd means True for all stance
+        fr_stance = torch.sin(2*np.pi*self.phase_fr) <= 0.0
+        bl_stance = torch.sin(2*np.pi*self.phase_bl) <= 0.0
+        br_stance = torch.sin(2*np.pi*self.phase_br) <= 0.0
         
 
         # Reward each foot for contact when it's meant to be stance
@@ -264,8 +273,6 @@ class Go2Robot(LeggedRobot):
         reward += torch.where(~(self.bl_contact ^ bl_stance), 0.25, 0.0)
         reward += torch.where(~(self.br_contact ^ br_stance), 0.25, 0.0)
         
-        cmd_norm = torch.norm(self.commands[:, :2], dim=1)
-        reward = reward * (cmd_norm >= 0.1)
         return reward
 
     def _reward_phase_match_foot_lift(self):
@@ -310,3 +317,18 @@ class Go2Robot(LeggedRobot):
 
 
 
+    def _reward_stand_still_v2(self):
+        """ Reward maintaining pose with zero commands """
+        small_command = torch.norm(self.commands[:, :3], dim=1) < 0.15
+        
+        # Reward joint positions matching default pose
+        pose_reward = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos), dim=1)
+        
+        # Reward minimal joint velocities
+        vel_reward = torch.sum(torch.abs(self.dof_vel), dim=1)
+        
+        # Reward minimal base movement
+        base_vel_reward = torch.sum(torch.abs(self.base_lin_vel), dim=1) + torch.sum(torch.abs(self.base_ang_vel), dim=1)
+        
+        # Only apply when commands are small
+        return (pose_reward + vel_reward + base_vel_reward) * small_command

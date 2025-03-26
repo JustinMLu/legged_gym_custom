@@ -47,6 +47,12 @@ class Controller:
         self.counter = 0
         self.real_time_s = 0.0 # total accumulated real time
         self.first_step_ever = True
+        self.projected_gravity = np.zeros(3, dtype=np.float32)
+        self.projected_gravity[2] = -1.0
+
+        # TEST
+        self.stand_counter = 0.0
+        self.standing_mode = False
 
         # Low command stuff
         self.low_cmd = unitree_go_msg_dds__LowCmd_()
@@ -172,11 +178,12 @@ class Controller:
         dqj_obs = self.dqj.copy()
         
         # Get projected gravity
-        projected_gravity = get_gravity_orientation(quat)
+        self.projected_gravity = get_gravity_orientation(quat)
 
         # Calculate gait period
-        cmd_norm = np.linalg.norm(self.cmd[:2])             # DOESN'T FACTOR IN ANG_VEL_YAW FOR NOW
-        period = 1.0 / (1.0 + cmd_norm)                     
+        cmd_norm = np.linalg.norm(self.cmd[:3])
+        xy_cmd_norm = np.linalg.norm(self.cmd[:2])          # only xy should affect gait
+        period = 1.0 / (1.0 + xy_cmd_norm)                     
         period = (period * 2.0) * 0.66                      # Scale
         period = np.clip(period, a_min=0.25, a_max=1.0)     # Clamp result
 
@@ -187,6 +194,13 @@ class Controller:
         phase_fl = (phase + self.cfg.fl_offset) % 1
         phase_br = (phase + self.cfg.br_offset) % 1
 
+        # Zero out all of them if small command
+        if cmd_norm < 0.15:
+            phase_fr *= 0.0
+            phase_bl *= 0.0
+            phase_fl *= 0.0
+            phase_br *= 0.0
+
         sin_phase_fl = np.sin(2 * np.pi * phase_fl)
         cos_phase_fl = np.cos(2 * np.pi * phase_fl)
         sin_phase_fr = np.sin(2 * np.pi * phase_fr)
@@ -196,27 +210,19 @@ class Controller:
         sin_phase_br = np.sin(2 * np.pi * phase_br)
         cos_phase_br = np.cos(2 * np.pi * phase_br)
 
-        # Construct phase features - zero out if small command
-        if cmd_norm < 0.2:
-            phase_features = np.array([
-                0.0, 0.0, 
-                0.0, 0.0, 
-                0.0, 0.0, 
-                0.0, 0.0
-            ], dtype=np.float32)
-        else:
-            phase_features = np.array([
-                sin_phase_fr, cos_phase_fr, 
-                sin_phase_fl, cos_phase_fl,
-                sin_phase_bl, cos_phase_bl,
-                sin_phase_br, cos_phase_br
-            ], dtype=np.float32)
+        # Construct phase features 
+        phase_features = np.array([
+            sin_phase_fr, cos_phase_fr, 
+            sin_phase_fl, cos_phase_fl,
+            sin_phase_bl, cos_phase_bl,
+            sin_phase_br, cos_phase_br
+        ], dtype=np.float32)
 
         # Create observation list
         num_actions = self.cfg.num_actions
         cur_obs = np.zeros(self.cfg.num_proprio, dtype=np.float32)
         cur_obs[:3] = ang_vel * self.cfg.ang_vel_scale
-        cur_obs[3:6] = projected_gravity
+        cur_obs[3:6] = self.projected_gravity
         cur_obs[6:9] = self.cmd * self.cfg.cmd_scale * self.cfg.rc_scale # controller
         cur_obs[9 : 9+num_actions] = (qj_obs - self.cfg.default_angles) * self.cfg.dof_pos_scale 
         cur_obs[9+num_actions : 9+2*num_actions] = dqj_obs * self.cfg.dof_vel_scale
@@ -248,6 +254,22 @@ class Controller:
         
         # Update target dof positions
         self.target_dof_pos = self.actions * self.cfg.action_scale + self.cfg.default_angles
+
+        # # Huge insane bandaid fix
+        # if cmd_norm < 0.15:
+        #     self.stand_counter += 1
+        # else:
+        #     self.stand_counter = 0
+
+        # if self.stand_counter >= 20:
+        #     self.stand_counter = 20
+        #     self.standing_mode = True
+        # else:
+        #     self.standing_mode = False
+            
+        # if self.standing_mode:
+        #     self.target_dof_pos = self.cfg.stand_angles
+
 
         # Build low cmd
         for i in range(len(self.cfg.leg_joint2motor_idx)):
@@ -322,4 +344,4 @@ if __name__ == "__main__":
 
 # IPV4: 192.168.123.222
 # Netmask: 255.255.255.0
-# Ping the Go2 at: 192.168.123.161
+# Ping the Go2 at: 192.168.123.161import time

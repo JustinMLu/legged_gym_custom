@@ -32,6 +32,7 @@ class Config:
             self.kps = config["kps"]
             self.kds = config["kds"]
             self.default_angles = np.array(config["default_angles"], dtype=np.float32)
+            self.stand_angles = np.array(config["stand_angles"], dtype=np.float32)
 
 
             # Scales

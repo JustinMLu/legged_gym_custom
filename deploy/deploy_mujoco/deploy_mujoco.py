@@ -68,6 +68,7 @@ if __name__ == "__main__":
         kps = np.array(config["kps"], dtype=np.float32) 
         kds = np.array(config["kds"], dtype=np.float32)
         default_angles = np.array(config["default_angles"], dtype=np.float32)
+        stand_angles = np.array(config["stand_angles"], dtype=np.float32)
         
         # Scales
         ang_vel_scale = config["ang_vel_scale"]
@@ -125,6 +126,10 @@ if __name__ == "__main__":
     counter = 0
     first_step_ever = True
 
+    # TEST
+    stand_counter = 0
+    standing_mode = False
+
     # Initialize Mujoco Viewer
     viewer = mujoco.viewer.launch_passive(mj_model, mj_data)
 
@@ -174,11 +179,13 @@ if __name__ == "__main__":
             # Get projected gravity
             projected_gravity = get_gravity_orientation(base_rot_quat)
             
+
             # Calculate gait period
-            cmd_norm = np.linalg.norm(cmd[:2])                  # DOESN'T FACTOR IN ANG_VEL_YAW FOR NOW
-            period = 1.0 / (1.0 + cmd_norm)                     
+            cmd_norm = np.linalg.norm(cmd[:3])
+            xy_cmd_norm = np.linalg.norm(cmd[:2])
+            period = 1.0 / (1.0 + xy_cmd_norm)                     
             period = (period * 2.0) * 0.66                      # Scale
-            period = np.clip(period, a_min=0.25, a_max=1.0)     # Clamp result
+            period = np.clip(period, a_min=0.4, a_max=0.8)     # Clamp result
 
             # Calculate per-leg phase
             phase = (sim_time_s % period) / period
@@ -186,6 +193,13 @@ if __name__ == "__main__":
             phase_bl = (phase + bl_offset) % 1
             phase_fl = (phase + fl_offset) % 1
             phase_br = (phase + br_offset) % 1
+
+            # Zero out phases if small command
+            if cmd_norm < 0.15:
+                phase_fr *= 0.0
+                phase_bl *= 0.0
+                phase_fl *= 0.0
+                phase_br *= 0.0
 
             # Calculate sine and cosine of phases for smooth transitions
             sin_phase_fl = np.sin(2 * np.pi * phase_fl)
@@ -197,24 +211,18 @@ if __name__ == "__main__":
             sin_phase_br = np.sin(2 * np.pi * phase_br)
             cos_phase_br = np.cos(2 * np.pi * phase_br)
         
-            # Construct phase features - zero out if small command
-            if cmd_norm < 0.2:
-                phase_features = np.array([
-                    0.0, 0.0, 
-                    0.0, 0.0, 
-                    0.0, 0.0, 
-                    0.0, 0.0
-                ], dtype=np.float32)
-            else:
-                phase_features = np.array([
-                    sin_phase_fr, cos_phase_fr, 
-                    sin_phase_fl, cos_phase_fl,
-                    sin_phase_bl, cos_phase_bl,
-                    sin_phase_br, cos_phase_br
-                ], dtype=np.float32)
+            # Construct phase features
+            phase_features = np.array([
+                sin_phase_fr, cos_phase_fr, 
+                sin_phase_fl, cos_phase_fl,
+                sin_phase_bl, cos_phase_bl,
+                sin_phase_br, cos_phase_br
+            ], dtype=np.float32)
+
+            # print(f"Phase features: {phase_features}")
 
             # DEBUG: print base height
-            print(f"Base height: {mj_data.qpos[2]:.3f} meters")
+            # print(f"Base height: {mj_data.qpos[2]:.3f} meters")
 
             # Create observation list
             cur_obs = np.zeros(num_proprio, dtype=np.float32)
@@ -249,6 +257,22 @@ if __name__ == "__main__":
 
             # Update target dof positions
             target_dof_pos = actions * action_scale + default_angles
+
+            # # Huge insane bandaid fix
+            # if cmd_norm < 0.1:
+            #     stand_counter += 1
+            # else:
+            #     stand_counter = 0
+
+            # if stand_counter >= 30:
+            #     stand_counter = 30
+            #     standing_mode = True
+            # else:
+            #     standing_mode = False
+
+            # if standing_mode:
+            #     target_dof_pos = stand_angles
+
 
 
         # Pick up changes to the physics state, apply perturbations, update options from GUI.
