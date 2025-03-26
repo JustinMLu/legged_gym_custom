@@ -1,7 +1,7 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk9/50000.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_015.xml"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk13_stairs_ii/2000.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_012.xml"
 
 # Action & Observations
 num_actions: 12
@@ -14,6 +14,7 @@ msg_type: "go"     # "hg" or "go"
 imu_type: "pelvis"    # "torso" or "pelvis"
 lowcmd_topic: "rt/lowcmd"
 lowstate_topic: "rt/lowstate"
+lidar_toggle_topic: "rt/utlidar/switch"
 
 
 # Timing
@@ -38,7 +39,6 @@ kps: [40.0, 40.0, 40.0,
       40.0, 40.0, 40.0,
       40.0, 40.0, 40.0]
 
-
     # hip, thigh, calf
 kds: [1.0, 1.0, 1.0,
       1.0, 1.0, 1.0,
@@ -51,11 +51,6 @@ default_angles: [0.1, 1.0, -1.8,    # FL
                  0.1, 1.0, -1.8,    # RL
                 -0.1, 1.0, -1.8]    # RR
 
-stand_angles: [0.1, 0.8, -1.5,    # FL
-              -0.1, 0.8, -1.5,    # FR
-               0.1, 0.8, -1.5,    # RL
-              -0.1, 0.8, -1.5]    # RR
-
 # Scales
 ang_vel_scale: 0.25
 dof_pos_scale: 1.0
@@ -65,7 +60,7 @@ cmd_scale: [2.0, 2.0, 0.25]
 
 # Clip values
 clip_observations: 100.
-clip_actions: 3.14   # Safe deploy
+clip_actions: 3.14   # Trained on 3.14
 
 # Phase Features
 # period: 0.66         # [sec]
@@ -75,7 +70,7 @@ fl_offset: 0.5       # [%]
 br_offset: 0.5       # [%]
 
 # Remote controller scale
-rc_scale: [0.8, 0.8, 1.57]
+rc_scale: [0.8, 1.0, 1.57]
 
 # Mujoco command ([forward, lateral, yaw])
 command: [0.0, 0.0, 0.0]

@@ -104,10 +104,7 @@ class Go2Robot(LeggedRobot):
         
         # =========================== GAIT CALCULATIONS ===========================
         # Calculate gait period
-        xy_cmd_norm = torch.norm(self.commands[:, :2], dim=1) # NORM DOESN'T CONSIDER ANGULAR YAW VELOCITY
-        period = 1.0 / (1.0 + xy_cmd_norm)          
-        period = (period * 2.0) * 0.66           # Scale
-        period = torch.clamp(period, 0.4, 0.8)  # Clamp result
+        period = 0.66
         
         # Specify per-leg period offsets
         fr_offset = 0.0

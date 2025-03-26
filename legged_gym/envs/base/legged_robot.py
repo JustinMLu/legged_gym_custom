@@ -477,13 +477,13 @@ class LeggedRobot(BaseTask):
         distance = torch.norm(self.root_states[env_ids, :2] - self.env_origins[env_ids, :2], dim=1)
 
         # WHOEVER WROTE THIS CODE NEEDS TO BE EXECUTED!
-        dist_thresh = 0.6
+        walk_threshold = 0.5 # [% terrain length] 
 
         # robots that walked far enough progress to harder terrains
-        move_up = distance > self.terrain.env_length * dist_thresh
+        move_up = distance > self.terrain.env_length * walk_threshold
         
         # robots that walked less than half of their required distance go to simpler terrains
-        move_down = (distance < torch.norm(self.commands[env_ids, :2], dim=1)*self.max_episode_length_s*dist_thresh) * ~move_up
+        move_down = (distance < torch.norm(self.commands[env_ids, :2], dim=1)*self.max_episode_length_s*walk_threshold) * ~move_up
         self.terrain_levels[env_ids] += 1 * move_up - 1 * move_down
         
         # robots that solve the last level are sent to a random one
@@ -504,23 +504,23 @@ class LeggedRobot(BaseTask):
         
         # Linear velocities
         if mean_lin_vel_reward > 0.8 * self.reward_scales["tracking_lin_vel"]:
-            self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - 0.1, -self.cfg.commands.max_curriculum, 0.)
-            self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + 0.1, 0., self.cfg.commands.max_curriculum)
+            self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
+            self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
 
-            self.command_ranges["lin_vel_y"][0] = np.clip(self.command_ranges["lin_vel_y"][0] - 0.1, -self.cfg.commands.max_curriculum, 0.)
-            self.command_ranges["lin_vel_y"][1] = np.clip(self.command_ranges["lin_vel_y"][1] + 0.1, 0., self.cfg.commands.max_curriculum)
+            self.command_ranges["lin_vel_y"][0] = np.clip(self.command_ranges["lin_vel_y"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
+            self.command_ranges["lin_vel_y"][1] = np.clip(self.command_ranges["lin_vel_y"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
             
 
         # Angular velocity
         if mean_ang_vel_reward > 0.8 * self.reward_scales.get("tracking_ang_vel", 0):
             if self.cfg.commands.heading_command:
                 # When heading_command is True, update heading (position 3)
-                self.command_ranges["heading"][0] = np.clip(self.command_ranges["heading"][0] - 0.1, -np.pi, 0.)
-                self.command_ranges["heading"][1] = np.clip(self.command_ranges["heading"][1] + 0.1, 0., np.pi)
+                self.command_ranges["heading"][0] = np.clip(self.command_ranges["heading"][0] - 0.05, -np.pi, 0.)
+                self.command_ranges["heading"][1] = np.clip(self.command_ranges["heading"][1] + 0.05, 0., np.pi)
             else:
                 # When heading_command is False, update ang_vel_yaw (position 2)
-                self.command_ranges["ang_vel_yaw"][0] = np.clip(self.command_ranges["ang_vel_yaw"][0] - 0.1, -self.cfg.commands.max_curriculum, 0.)
-                self.command_ranges["ang_vel_yaw"][1] = np.clip(self.command_ranges["ang_vel_yaw"][1] + 0.1, 0., self.cfg.commands.max_curriculum)
+                self.command_ranges["ang_vel_yaw"][0] = np.clip(self.command_ranges["ang_vel_yaw"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
+                self.command_ranges["ang_vel_yaw"][1] = np.clip(self.command_ranges["ang_vel_yaw"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
         
 
     # TODO WE NEED TO MAKE THIS COMPATIBLE W/ OBS HISTORY BUFFER - RIGHT NOW IT'S JUST OVERLOADED PER-ROBOT

@@ -28,13 +28,23 @@ class Go2Cfg( LeggedRobotCfg ):
         }
 
         curriculum = True
-        terrain_proportions = [0.15,    # smooth slope
+        terrain_default     = [0.10,    # smooth slope
                                0.15,    # rough slope
-                               0.40,    # stairs up
+                               0.30,    # stairs up
                                0.20,    # stairs down
                                0.10,    # discrete terrain
                                0.00,    # stepping stones
+                               0.15]    # bumpy wave
+        
+        terrain_stairs      = [0.00,    # smooth slope
+                               0.00,    # rough slope
+                               0.75,    # stairs up
+                               0.25,    # stairs down
+                               0.00,    # discrete terrain
+                               0.00,    # stepping stones
                                0.00]    # bumpy wave
+        
+        terrain_proportions = terrain_default
 
     class domain_rand:      
         randomize_friction = True
@@ -45,7 +55,7 @@ class Go2Cfg( LeggedRobotCfg ):
         
         push_robots = True
         push_interval_s = 8
-        max_push_vel_xy = 0.5
+        max_push_vel_xy = 0.75
     
 
     class init_state( LeggedRobotCfg.init_state ):
@@ -80,9 +90,23 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class commands ( LeggedRobotCfg.commands ):
         heading_command = False
-        curriculum = True
-        max_curriculum = 1.5
-        resampling_time = 25. # [s]
+        curriculum = False
+        max_curriculum = 1.25
+        resampling_time = 10. # [s] TODO: Mess with this
+        
+        class ranges:
+            # # 1. Default
+            lin_vel_x = [-1.25, 1.25]     # [m/s]
+            lin_vel_y = [-1.25, 1.25]     # [m/s]
+            ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
+            heading = [-3.14, 3.14]
+
+            # 2. Stairs (forward backwards)
+            # lin_vel_x = [-1.25, 1.25]   # [m/s]
+            # lin_vel_y = [-0.25, 0.25]   # [m/s]
+            # ang_vel_yaw = [-0.25, 0.25] # [rad/s]
+            # heading = [-3.14, 3.14]
+
         # user_command = [1., 0., 0., 0.] # [v_x, v_y, w_yaw, heading]
 
 
@@ -113,7 +137,7 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9
-        base_height_target = 0.26
+        base_height_target = 0.27
         only_positive_rewards = True
 
         class scales( LeggedRobotCfg.rewards.scales ):
@@ -125,16 +149,16 @@ class Go2Cfg( LeggedRobotCfg ):
             torques = -0.00001
             dof_acc = -2.5e-7
             action_rate = -0.1 
-            collision = -10.0
+            collision = -20.0  # orig: -10.0
             delta_torques = -1.0e-7
             # ====================== 
             contact_phase_match = 1.0
             stumble = -1.0           
-            orientation = -5.0      
+            orientation = -2.5      
             dof_error = -0.04       
             hip_pos = -0.5          
             base_height = -2.5
-            stand_still_v2 = -0.1 # new         
+            # stand_still_v2 = -0.1 # new         
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -147,8 +171,16 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'mk13'
+        run_name = 'mk14_part1'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 20000
+        max_iterations = 50000
         save_interval = 100
+
+    # recipe: 50k eps on normal terrain, ~1.5k eps on stairs mainly forwards, then ~150 eps on rehab
+
+    # STAIRS: Usually it's ~1000-2000, but really I just train until the mean terrain level
+            #   (i.e the difficulty) levels off. This usually occurs at around ~1500 episodes.
+
+    # REHAB: 150 seems to actually be the sweet spot for harder (i.e more steep) staircases.
+    #        The tradeoff seems to be between stairs performance and backwards performanceMar25_20-27-59_mk13

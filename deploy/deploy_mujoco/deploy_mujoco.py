@@ -7,6 +7,7 @@ from legged_gym import LEGGED_GYM_ROOT_DIR
 import torch
 import yaml
 import pdb
+from gamepad_reader import Gamepad
 
 
 # ========================================================
@@ -68,7 +69,6 @@ if __name__ == "__main__":
         kps = np.array(config["kps"], dtype=np.float32) 
         kds = np.array(config["kds"], dtype=np.float32)
         default_angles = np.array(config["default_angles"], dtype=np.float32)
-        stand_angles = np.array(config["stand_angles"], dtype=np.float32)
         
         # Scales
         ang_vel_scale = config["ang_vel_scale"]
@@ -96,7 +96,8 @@ if __name__ == "__main__":
         br_offset = config["br_offset"]
 
         # User command
-        cmd = np.array(config["command"], dtype=np.float32)
+        # cmd = np.array(config["command"], dtype=np.float32)
+        cmd = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
 
     # Initialize essential buffers
@@ -126,9 +127,9 @@ if __name__ == "__main__":
     counter = 0
     first_step_ever = True
 
-    # TEST
-    stand_counter = 0
-    standing_mode = False
+    # Init gamepad
+    gamepad = Gamepad(0.8, 1.0, 1.57)
+
 
     # Initialize Mujoco Viewer
     viewer = mujoco.viewer.launch_passive(mj_model, mj_data)
@@ -166,6 +167,10 @@ if __name__ == "__main__":
         # Apply control signal every (control_decimation) steps
         counter += 1
         if counter % control_decimation == 0:
+            # UPDATE USER COMMAND
+            cmd[0] = gamepad.vx
+            cmd[1] = gamepad.vy
+            cmd[2] = gamepad.wz
 
             # Prepare observation quantities
             qj = qj_pos                                         # joint positions 
@@ -181,11 +186,9 @@ if __name__ == "__main__":
             
 
             # Calculate gait period
-            cmd_norm = np.linalg.norm(cmd[:3])
-            xy_cmd_norm = np.linalg.norm(cmd[:2])
-            period = 1.0 / (1.0 + xy_cmd_norm)                     
-            period = (period * 2.0) * 0.66                      # Scale
-            period = np.clip(period, a_min=0.4, a_max=0.8)     # Clamp result
+
+            period = 0.66
+            print(f"Period: {period:.3f} seconds")
 
             # Calculate per-leg phase
             phase = (sim_time_s % period) / period
@@ -193,8 +196,10 @@ if __name__ == "__main__":
             phase_bl = (phase + bl_offset) % 1
             phase_fl = (phase + fl_offset) % 1
             phase_br = (phase + br_offset) % 1
-
+            
+            
             # Zero out phases if small command
+            cmd_norm = np.linalg.norm(cmd[:3])
             if cmd_norm < 0.15:
                 phase_fr *= 0.0
                 phase_bl *= 0.0
@@ -257,21 +262,6 @@ if __name__ == "__main__":
 
             # Update target dof positions
             target_dof_pos = actions * action_scale + default_angles
-
-            # # Huge insane bandaid fix
-            # if cmd_norm < 0.1:
-            #     stand_counter += 1
-            # else:
-            #     stand_counter = 0
-
-            # if stand_counter >= 30:
-            #     stand_counter = 30
-            #     standing_mode = True
-            # else:
-            #     standing_mode = False
-
-            # if standing_mode:
-            #     target_dof_pos = stand_angles
 
 
 

@@ -16,6 +16,7 @@ class Config:
             self.imu_type = config["imu_type"]
             self.lowcmd_topic = config["lowcmd_topic"]
             self.lowstate_topic = config["lowstate_topic"]
+            # self.lidar_toggle_topic = config["lidar_toggle_topic"]
 
             # No idea what this is (holdout from G1)
             self.weak_motor = []
@@ -32,7 +33,6 @@ class Config:
             self.kps = config["kps"]
             self.kds = config["kds"]
             self.default_angles = np.array(config["default_angles"], dtype=np.float32)
-            self.stand_angles = np.array(config["stand_angles"], dtype=np.float32)
 
 
             # Scales

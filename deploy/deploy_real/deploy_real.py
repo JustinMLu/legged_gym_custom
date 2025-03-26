@@ -22,6 +22,9 @@ from config import Config
 from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import MotionSwitcherClient
 from unitree_sdk2py.go2.sport.sport_client import SportClient
 
+from unitree_sdk2py.idl.std_msgs.msg.dds_ import String_
+from unitree_sdk2py.idl.default import std_msgs_msg_dds__String_
+
 
 
 class Controller:
@@ -50,10 +53,6 @@ class Controller:
         self.projected_gravity = np.zeros(3, dtype=np.float32)
         self.projected_gravity[2] = -1.0
 
-        # TEST
-        self.stand_counter = 0.0
-        self.standing_mode = False
-
         # Low command stuff
         self.low_cmd = unitree_go_msg_dds__LowCmd_()
         self.low_state = unitree_go_msg_dds__LowState_()
@@ -61,6 +60,13 @@ class Controller:
         self.lowcmd_publisher_.Init()
         self.lowstate_subscriber = ChannelSubscriber(config.lowstate_topic, LowStateGo)
         self.lowstate_subscriber.Init(self.LowStateGoHandler, 10)
+
+        # Turn off LiDAR
+        self.lidar_toggle_publisher_ = ChannelPublisher("rt/utlidar/switch", String_)
+        self.lidar_toggle_publisher_.Init()
+        self.lidar_off_cmd = std_msgs_msg_dds__String_()
+        self.lidar_off_cmd.data = "OFF"
+        self.lidar_toggle_publisher_.Write(self.lidar_off_cmd)
 
         # From sdk2py
         self.sc = SportClient()  
@@ -155,6 +161,11 @@ class Controller:
             self.send_cmd(self.low_cmd)
             time.sleep(self.cfg.control_dt)
     
+    def update_projected_gravity(self):
+        quat = self.low_state.imu_state.quaternion
+        self.projected_gravity = get_gravity_orientation(quat)
+
+
     def run(self):
         self.counter += 1
         self.real_time_s = self.counter * self.cfg.control_dt
@@ -163,6 +174,7 @@ class Controller:
         self.cmd[0] = self.remote_controller.ly
         self.cmd[1] = self.remote_controller.lx * -1
         self.cmd[2] = self.remote_controller.rx * -1
+
         
         # Get the current joint position and velocity
         for i in range(len(self.cfg.leg_joint2motor_idx)):
@@ -181,12 +193,8 @@ class Controller:
         self.projected_gravity = get_gravity_orientation(quat)
 
         # Calculate gait period
-        cmd_norm = np.linalg.norm(self.cmd[:3])
-        xy_cmd_norm = np.linalg.norm(self.cmd[:2])          # only xy should affect gait
-        period = 1.0 / (1.0 + xy_cmd_norm)                     
-        period = (period * 2.0) * 0.66                      # Scale
-        period = np.clip(period, a_min=0.25, a_max=1.0)     # Clamp result
-
+        period = 0.66
+       
         # Prepare phase features
         phase = (self.real_time_s % period) / period
         phase_fr = (phase + self.cfg.fr_offset) % 1
@@ -195,6 +203,7 @@ class Controller:
         phase_br = (phase + self.cfg.br_offset) % 1
 
         # Zero out all of them if small command
+        cmd_norm = np.linalg.norm(self.cmd[:3])
         if cmd_norm < 0.15:
             phase_fr *= 0.0
             phase_bl *= 0.0
@@ -255,21 +264,6 @@ class Controller:
         # Update target dof positions
         self.target_dof_pos = self.actions * self.cfg.action_scale + self.cfg.default_angles
 
-        # # Huge insane bandaid fix
-        # if cmd_norm < 0.15:
-        #     self.stand_counter += 1
-        # else:
-        #     self.stand_counter = 0
-
-        # if self.stand_counter >= 20:
-        #     self.stand_counter = 20
-        #     self.standing_mode = True
-        # else:
-        #     self.standing_mode = False
-            
-        # if self.standing_mode:
-        #     self.target_dof_pos = self.cfg.stand_angles
-
 
         # Build low cmd
         for i in range(len(self.cfg.leg_joint2motor_idx)):
@@ -312,27 +306,47 @@ if __name__ == "__main__":
     controller.default_pos_state()
 
     print("Running...")
+    sleep_mode = False
     while True:
         try:
-            # Start time of current run step
-            step_start = time.perf_counter()
 
-            # Run (or step)
-            controller.run()
-
+            # Enter sleep mode if robot flipped over
             if controller.projected_gravity[2] > 0.:
                 print("Warning: Robot is upside down!")
-                break
+                sleep_mode = True
 
-            # Timekeep
-            time_elapsed_during_step = time.perf_counter() - step_start
-            time_until_next_step = controller.cfg.control_dt - time_elapsed_during_step
-            if time_until_next_step > 0:
-                time.sleep(time_until_next_step)
+            # Enter sleep mode if down on Dpad is pressed
+            if controller.remote_controller.button[KeyMap.down] == 1:
+                sleep_mode = True
 
-            # Press the select key to exit
+            # If sleep mode, send damping command and await reawakening
+            if sleep_mode:
+                create_damping_cmd(controller.low_cmd)
+                controller.send_cmd(controller.low_cmd)
+                time.sleep(0.01)
+                
+                controller.update_projected_gravity()
+                if controller.remote_controller.button[KeyMap.up] == 1:
+                    sleep_mode = False
+                    print("Exiting sleep mode...")
+
+            else:
+                # Start time of current run step
+                step_start = time.perf_counter()
+
+                # Run the controller
+                controller.run()
+
+                # Timekeep
+                time_elapsed_during_step = time.perf_counter() - step_start
+                time_until_next_step = controller.cfg.control_dt - time_elapsed_during_step
+                if time_until_next_step > 0:
+                    time.sleep(time_until_next_step)
+
+
+            # Press the select key break out of the loop
             if controller.remote_controller.button[KeyMap.select] == 1:
-                break
+                break 
 
         except KeyboardInterrupt:
             break
@@ -344,4 +358,6 @@ if __name__ == "__main__":
 
 # IPV4: 192.168.123.222
 # Netmask: 255.255.255.0
-# Ping the Go2 at: 192.168.123.161import time
+# Ping the Go2 at: 192.168.123.161
+
+# ssh unitree@192.168.123.18

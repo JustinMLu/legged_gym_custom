@@ -78,8 +78,6 @@ class LeggedRobotCfg(BaseConfig):
                                         # if not empty: will override resampling logic
         user_command = []               # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]             
         
-        
-
         class ranges:
             lin_vel_x = [-1.0, 1.0]     # min max [m/s]
             lin_vel_y = [-1.0, 1.0]     # min max [m/s]
