@@ -1,7 +1,7 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk13_stairs_ii/2000.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_012.xml"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk14/3500.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_012.xml" # (SIM ONLY)
 
 # Action & Observations
 num_actions: 12
@@ -9,22 +9,24 @@ num_proprio: 53
 enable_history: True
 buffer_length: 9
 
-# Protocols
+# Protocols (REAL ONLY)
 msg_type: "go"     # "hg" or "go"
-imu_type: "pelvis"    # "torso" or "pelvis"
+imu_type: "pelvis"    # "torso" or "pelvis" --> I think this is deprecated
 lowcmd_topic: "rt/lowcmd"
 lowstate_topic: "rt/lowstate"
 lidar_toggle_topic: "rt/utlidar/switch"
 
 
-# Timing
+# Timing (SIM ONLY)
 simulation_duration: 200.0 # [sec]
 run_forever: True
 simulation_dt: 0.005  
 control_decimation: 4   # Controller update frequency (simulation_dt * control_decimation=0.02; 50Hz)
 
 
-# LEG 2 JOINT MOTOR INDEX: fixes the order of the motors in the observation
+
+# LEG 2 JOINT MOTOR INDEX (REAL ONLY)
+# fixes the order of the motors in the observation
 # (e.g: Isaac and Mujoco are L-R-L-R, but Unitree Go2's joint order is R-L-R-L)
 
                     # hip, thigh, calf
@@ -63,14 +65,14 @@ clip_observations: 100.
 clip_actions: 3.14   # Trained on 3.14
 
 # Phase Features
-# period: 0.66         # [sec]
+period: 0.66         # [sec]
 fr_offset: 0.0       # [%]
 bl_offset: 0.0       # [%]
 fl_offset: 0.5       # [%]
 br_offset: 0.5       # [%]
 
-# Remote controller scale
+# Remote controller scale ("REAL ONLY", but should be used by both RC and gamepad actually)
 rc_scale: [0.8, 1.0, 1.57]
 
-# Mujoco command ([forward, lateral, yaw])
+# Mujoco command ([forward, lateral, yaw]) ("SIM ONLY" but will be deprecated soon)
 command: [0.0, 0.0, 0.0]

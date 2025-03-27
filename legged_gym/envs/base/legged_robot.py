@@ -192,7 +192,7 @@ class LeggedRobot(BaseTask):
         # Build reward function
         self.rew_buf[:] = 0.
         for i in range(len(self.reward_functions)):
-            name = self.reward_names[i]
+            name = self.reward_names[i] # e.g: "tracking_ang_vel" -> these DON'T have "_reward_" prefix
             rew = self.reward_functions[i]() * self.reward_scales[name]
             self.rew_buf += rew
             self.episode_sums[name] += rew
@@ -476,7 +476,7 @@ class LeggedRobot(BaseTask):
             return
         distance = torch.norm(self.root_states[env_ids, :2] - self.env_origins[env_ids, :2], dim=1)
 
-        # WHOEVER WROTE THIS CODE NEEDS TO BE EXECUTED!
+        # Threshold of distance to walk before moving up a level
         walk_threshold = 0.5 # [% terrain length] 
 
         # robots that walked far enough progress to harder terrains
@@ -499,6 +499,7 @@ class LeggedRobot(BaseTask):
             env_ids (List[int]): ids of environments being reset
         """
         # If the tracking reward is above 80% of the maximum, increase the range of commands
+        # TODO: Split tracking lin velocity into tracking_x_vel and tracking_y_vel
         mean_lin_vel_reward = torch.mean(self.episode_sums["tracking_lin_vel"][env_ids]) / self.max_episode_length
         mean_ang_vel_reward = torch.mean(self.episode_sums["tracking_ang_vel"][env_ids]) / self.max_episode_length
         
@@ -659,7 +660,7 @@ class LeggedRobot(BaseTask):
                 continue
             self.reward_names.append(name)
             name = '_reward_' + name
-            self.reward_functions.append(getattr(self, name))
+            self.reward_functions.append(getattr(self, name)) # getattr used on self since the rew. function is in this file
 
         # reward episode sums
         self.episode_sums = {name: torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False)

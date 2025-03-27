@@ -186,9 +186,8 @@ if __name__ == "__main__":
             
 
             # Calculate gait period
-
             period = 0.66
-            print(f"Period: {period:.3f} seconds")
+        
 
             # Calculate per-leg phase
             phase = (sim_time_s % period) / period
@@ -227,7 +226,7 @@ if __name__ == "__main__":
             # print(f"Phase features: {phase_features}")
 
             # DEBUG: print base height
-            # print(f"Base height: {mj_data.qpos[2]:.3f} meters")
+            print(f"Base height: {mj_data.qpos[2]:.3f} meters")
 
             # Create observation list
             cur_obs = np.zeros(num_proprio, dtype=np.float32)

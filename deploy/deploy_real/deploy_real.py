@@ -15,7 +15,7 @@ from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowState_ as LowStateGo
 from unitree_sdk2py.utils.crc import CRC
 
 from common.command_helper import create_damping_cmd, create_zero_cmd, init_cmd_hg, init_cmd_go, MotorMode
-from common.rotation_helper import get_gravity_orientation, transform_imu_data
+from common.rotation_helper import get_gravity_orientation
 from common.remote_controller import RemoteController, KeyMap
 from config import Config
 
@@ -289,7 +289,7 @@ if __name__ == "__main__":
 
     # Load config from path
     config_path = f"{LEGGED_GYM_ROOT_DIR}/deploy/unified_configs/{args.config}"
-    cfg_object = Config(config_path)
+    cfg_object = Config(config_path) # initialize config object
 
     # Initialize DDS communication
     ChannelFactoryInitialize(0, args.net)
@@ -315,17 +315,18 @@ if __name__ == "__main__":
                 print("Warning: Robot is upside down!")
                 sleep_mode = True
 
-            # Enter sleep mode if down on Dpad is pressed
+            # Enter sleep mode if key pressed
             if controller.remote_controller.button[KeyMap.down] == 1:
                 sleep_mode = True
 
-            # If sleep mode, send damping command and await reawakening
+            # If sleep, damp and await reawakening
             if sleep_mode:
                 create_damping_cmd(controller.low_cmd)
                 controller.send_cmd(controller.low_cmd)
                 time.sleep(0.01)
                 
-                controller.update_projected_gravity()
+                controller.update_projected_gravity() # Keep updating IMU data
+
                 if controller.remote_controller.button[KeyMap.up] == 1:
                     sleep_mode = False
                     print("Exiting sleep mode...")

@@ -72,13 +72,13 @@ class Go2Robot(LeggedRobot):
         self.phase_bl = torch.zeros(self.num_envs, device=self.device)
         self.phase_br = torch.zeros(self.num_envs, device=self.device)
 
-        # I could put these into a vector but I am doing it this way for easier debug
+        # Stores the contact status of each foot (bools)
         self.fl_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.fr_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.bl_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.br_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
 
-        # This will be updated by update_feet_states
+        # Stores the heights of each foot when it was last in contact with the ground
         self.last_contact_heights = torch.zeros(self.num_envs, self.feet_num, device=self.device)
 
 
@@ -297,7 +297,7 @@ class Go2Robot(LeggedRobot):
            If the foot is properly following the phase, it should be lifting
            when the sin dt is positive and moving down when the dt is negative.
 
-           So then, the reward can be...
+           So then, the reward can be...TODO!
         """
          # Sine wave foot height trajectories
         fl = torch.sin(2*np.pi*self.phase_fl) # less than 0.0 means stance
@@ -319,7 +319,7 @@ class Go2Robot(LeggedRobot):
         small_command = torch.norm(self.commands[:, :3], dim=1) < 0.15
         
         # Reward joint positions matching default pose
-        pose_reward = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos), dim=1)
+        dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
         
         # Reward minimal joint velocities
         vel_reward = torch.sum(torch.abs(self.dof_vel), dim=1)
@@ -328,4 +328,4 @@ class Go2Robot(LeggedRobot):
         base_vel_reward = torch.sum(torch.abs(self.base_lin_vel), dim=1) + torch.sum(torch.abs(self.base_ang_vel), dim=1)
         
         # Only apply when commands are small
-        return (pose_reward + vel_reward + base_vel_reward) * small_command
+        return (dof_error + vel_reward + base_vel_reward) * small_command
