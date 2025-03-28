@@ -11,7 +11,7 @@ class ConfigParser:
             self.msg_type = cfg["msg_type"]
             self.lowcmd_topic = cfg["lowcmd_topic"]
             self.lowstate_topic = cfg["lowstate_topic"]
-            self.leg2motor_idx = cfg["leg_joint2motor_idx"]
+            self.leg_joint2motor_idx = cfg["leg_joint2motor_idx"]
             self.weak_motor = [] # Deprecated but required for lowcmd
             if "weak_motor" in cfg:
                 self.weak_motor = cfg["weak_motor"]

@@ -1,5 +1,4 @@
 import time
-
 import mujoco.viewer
 import mujoco
 import numpy as np
@@ -7,278 +6,93 @@ from legged_gym import LEGGED_GYM_ROOT_DIR
 import torch
 import yaml
 import pdb
+from deploy.deploy_base.deploy_base import BaseController, ConfigParser
 from gamepad_reader import Gamepad
 
+class MujocoController(BaseController):
+    
+    def __init__(self, cfg: ConfigParser) -> None:
+        super().__init__(cfg)
 
-# ========================================================
-def get_gravity_orientation(quaternion):
-    """ Returns gravity orientation in the frame specified by the quaternion.
+        # Initialize Mujoco, otherwise we can't get robot data when refreshing
+        self.gamepad = Gamepad(cfg.rc_scale[0], cfg.rc_scale[1], cfg.rc_scale[2])
+        self.mj_model = mujoco.MjModel.from_xml_path(cfg.xml_path)
+        self.mj_data = mujoco.MjData(self.mj_model)
+        self.mj_model.opt.timestep = cfg.simulation_dt
+        mujoco.mj_resetDataKeyframe(self.mj_model, self.mj_data, 0)
 
-    Args:
-        quaternion (np.array): A quaternion representing the orientation of the
-        base of the robot w.r.t. the world frame.
+    def refresh_robot_states(self):
+        """ Retrieve the latest robot state (joints, velocities, orientation, etc.) from 
+            the environment and store it in this controller's internal buffers. 
+        
+            Should update the following data:
+                - qj (joint pos.)
+                - dqj (joint vel.)
+                - ang_vel (in the local frame)
+                - base_quat (base orientation quaternion)
+        """
+        self.cmd[0] = self.gamepad.vx
+        self.cmd[1] = self.gamepad.vy
+        self.cmd[2] = self.gamepad.wz
 
-    Returns:
-        np.array: A 3D vector representing the MuJoCo unit gravity vector ([0, 0, -1])
-        projected onto the base frame.
-    """
-    qw = quaternion[0]
-    qx = quaternion[1]
-    qy = quaternion[2]
-    qz = quaternion[3]
+        self.qj = self.mj_data.qpos[7:]          # joint pos
+        self.dqj = self.mj_data.qvel[6:]         # joint vel
+        self.ang_vel = self.mj_data.qvel[3:6]    # angular vel (local frame)
+        self.base_quat = self.mj_data.qpos[3:7]  # base rot. in quaternion
 
-    gravity_orientation = np.zeros(3)
-    gravity_orientation[0] = 2 * (-qz * qx + qw * qy)
-    gravity_orientation[1] = -2 * (qz * qy + qw * qx)
-    gravity_orientation[2] = 1 - 2 * (qw * qw + qz * qz)
-
-    return gravity_orientation
-# ========================================================
-def get_pd_control(target_q, q, kp, target_dq, dq, kd):
-    """Calculates torques from position commands"""
-    return kp*(target_q-q) + kd*(target_dq-dq)
-# ========================================================
+    def get_pd_control(self, target_q, q, kp, target_dq, dq, kd):
+        """ Calculates torques from position commands using PD position control.
+        """
+        return kp*(target_q-q) + kd*(target_dq-dq)
 
 
 if __name__ == "__main__":
-    # INSANE BANDAID FIX
-    stand_counter = 0
-    standing_mode = False
-    stand_policy = torch.jit.load(f"{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk14/finetune_500.pt")
-
-    # (For debug) round print statements
-    np.set_printoptions(formatter={'float': lambda x: f"{x:.3g}"})
-
-    # Get name of YAML config file from command line
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("config_file", type=str, help="Specify the name of the YAML config file to use.")
     args = parser.parse_args()
-    config_file = args.config_file
 
-    # Load config file
-    with open(f"{LEGGED_GYM_ROOT_DIR}/deploy/unified_configs/{config_file}", "r") as f:
-        cfg = yaml.load(f, Loader=yaml.FullLoader)
+    # Load config from path
+    file_path = f"{LEGGED_GYM_ROOT_DIR}/deploy/configs/{args.config_file}"
 
-        # Paths
-        policy_path = cfg["policy_path"].replace("{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
-        xml_path = cfg["xml_path"].replace("{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
-        
-        # Timing
-        simulation_duration = cfg["simulation_duration"]
-        run_forever = cfg["run_forever"]
-        simulation_dt = cfg["simulation_dt"]
-        control_decimation = cfg["control_decimation"]
-        
-        # Motor-related
-        kps = np.array(cfg["kps"], dtype=np.float32) 
-        kds = np.array(cfg["kds"], dtype=np.float32)
-        default_angles = np.array(cfg["default_angles"], dtype=np.float32)
-        
-        # Scales
-        ang_vel_scale = cfg["ang_vel_scale"]
-        dof_pos_scale = cfg["dof_pos_scale"]
-        dof_vel_scale = cfg["dof_vel_scale"]
-        action_scale = cfg["action_scale"]
-        rc_scale = cfg["rc_scale"]
-        cmd_scale = np.array(cfg["cmd_scale"], dtype=np.float32)
+    # Initialize config parser and controller
+    cfg = ConfigParser(file_path)
+    controller = MujocoController(cfg)
 
-        # Clipping
-        clip_obs = cfg["clip_observations"]
-        clip_actions = cfg["clip_actions"]
-        
-        # Actions & Observations
-        num_actions = cfg["num_actions"]
-        num_proprio = cfg["num_proprio"]
-        enable_history = cfg["enable_history"]
-        buffer_length = cfg["buffer_length"]
-        num_obs = num_proprio+(num_proprio*buffer_length) if enable_history else num_proprio
-
-        # Phase
-        period = cfg["period"]
-        fr_offset = cfg["fr_offset"]
-        bl_offset = cfg["bl_offset"]
-        fl_offset = cfg["fl_offset"]
-        br_offset = cfg["br_offset"]
-
-        # User command [forward, lateral, yaw]
-        cmd = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-
-
-    # Initialize essential buffers
-    actions = np.zeros(num_actions, dtype=np.float32)
-    target_dof_pos = default_angles.copy()
-    obs = np.zeros(num_obs, dtype=np.float32)
-    obs_history = np.zeros((buffer_length, num_proprio), dtype=np.float32)
-
-    # Init gamepad
-    gamepad = Gamepad(rc_scale[0], rc_scale[1], rc_scale[2])
-
-    """
-    https://mujoco.readthedocs.io/en/stable/APIreference/APItypes.html#mjmodel
-    https://mujoco.readthedocs.io/en/stable/APIreference/APItypes.html#mjdata
-    """
-
-    # Load robot model
-    mj_model = mujoco.MjModel.from_xml_path(xml_path)
-    mj_data = mujoco.MjData(mj_model)
-    mj_model.opt.timestep = simulation_dt
-
-    # Load policy file
-    policy = torch.jit.load(policy_path)
-    mujoco.mj_resetDataKeyframe(mj_model, mj_data, 0)
-
-    # Initialize phase-related variables
+    # Intialize time counters
     sim_time_s = 0.0
+    decimation_counter = 0.0
 
-    # Start simulation
-    decimation_counter = 0
-    first_step_ever = True
-
-
-
-    # Initialize Mujoco Viewer
-    viewer = mujoco.viewer.launch_passive(mj_model, mj_data)
-
-    # Have camera track the robot base
+    # Initialize Mujoco viewer
+    viewer = mujoco.viewer.launch_passive(controller.mj_model, controller.mj_data)
     viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
     viewer.cam.trackbodyid = 0
-
-    # Set some visualization flags
     viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
     viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = False
 
 
-    # Start the sim loop
     while viewer.is_running():
         
         # Start time of current step
         step_start = time.perf_counter()
         
         # Step simulation
-        mujoco.mj_step(mj_model, mj_data)
-
-        # Update time
-        sim_time_s += simulation_dt
+        mujoco.mj_step(controller.mj_model, controller.mj_data)
+        
+        # Update time counters
+        sim_time_s += cfg.simulation_dt
         decimation_counter += 1
 
-         # Get the current joint position and velocity
-        cur_qj = mj_data.qpos[7:] # 19 --> 12
-        cur_dqj = mj_data.qvel[6:] # 18 --> 12
-
         # Apply control signal every (control_decimation) steps
-        if decimation_counter % control_decimation == 0:
-            
-            # ======================================================================
-            # ===================================
-            # Get commands from remote controller
-            cmd[0] = gamepad.vx
-            cmd[1] = gamepad.vy
-            cmd[2] = gamepad.wz
-
-            # Prepare observation quantities
-            qj = cur_qj                                         # joint positions 
-            dqj = cur_dqj                                       # joint velocities
-            ang_vel = mj_data.qvel[3:6]                         # angular vel. (local frame)
-            base_quat = mj_data.qpos[3:7]                       # base rot. in quaternion
-            # ===================================
-
-            # Get projected gravity
-            projected_gravity = get_gravity_orientation(base_quat)
-     
-
-            # Calculate per-leg phase
-            phase = (sim_time_s % period) / period
-            phase_fr = (phase + fr_offset) % 1
-            phase_bl = (phase + bl_offset) % 1
-            phase_fl = (phase + fl_offset) % 1
-            phase_br = (phase + br_offset) % 1
-            
-            
-            # Zero out phases if small command
-            cmd_norm = np.linalg.norm(cmd[:3])
-            if cmd_norm < 0.15:
-                phase_fr *= 0.0
-                phase_bl *= 0.0
-                phase_fl *= 0.0
-                phase_br *= 0.0
-
-            # Construct phase features
-            sin_phase_fl = np.sin(2 * np.pi * phase_fl)
-            cos_phase_fl = np.cos(2 * np.pi * phase_fl)
-            sin_phase_fr = np.sin(2 * np.pi * phase_fr)
-            cos_phase_fr = np.cos(2 * np.pi * phase_fr)
-            sin_phase_bl = np.sin(2 * np.pi * phase_bl)
-            cos_phase_bl = np.cos(2 * np.pi * phase_bl)
-            sin_phase_br = np.sin(2 * np.pi * phase_br)
-            cos_phase_br = np.cos(2 * np.pi * phase_br)
-
-            phase_features = np.array([
-                sin_phase_fr, cos_phase_fr, 
-                sin_phase_fl, cos_phase_fl,
-                sin_phase_bl, cos_phase_bl,
-                sin_phase_br, cos_phase_br
-            ], dtype=np.float32)
-
-            # print(f"Phase features: {phase_features}")
+        if decimation_counter % cfg.control_decimation == 0:
+            controller.step(sim_time_s)
 
             # DEBUG: print base height
-            print(f"Base height: {mj_data.qpos[2]:.3f} meters")
+            print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
 
-            # Create observation list
-            cur_obs = np.zeros(num_proprio, dtype=np.float32)
-            cur_obs[:3] = ang_vel * ang_vel_scale
-            cur_obs[3:6] = projected_gravity
-            cur_obs[6:9] = cmd * cmd_scale 
-            cur_obs[9 : 9+num_actions] = (qj - default_angles) * dof_pos_scale
-            cur_obs[9+num_actions : 9+2*num_actions] = dqj * dof_vel_scale
-            cur_obs[9+2*num_actions : 9+3*num_actions] = actions
-            cur_obs[9+3*num_actions:9+3*num_actions+8] = phase_features
-
-            # Concatenate obs history if enabled
-            if enable_history:
-                obs[:] = np.concatenate([obs_history.flatten(), cur_obs])
-                # Then, add current observation to history
-                if first_step_ever:
-                    first_step_ever = False
-                    obs_history = np.tile(cur_obs, (buffer_length, 1))  # (4x1, 1x53)
-                else:
-                    obs_history = np.roll(obs_history, -1, axis=0)
-                    obs_history[-1] = cur_obs
-            else:
-                obs[:] = cur_obs
-            
-            # Convert to tensor, clip 
-            obs_tensor = torch.from_numpy(obs).unsqueeze(0)
-            obs_tensor = torch.clip(obs_tensor, -clip_obs, clip_obs)
-            
-            # Get actions from policy network, clip
-            actions = policy(obs_tensor)
-            actions = torch.clip(actions, -clip_actions, clip_actions).detach().numpy().squeeze()
-
-            # INSANE BANDAID FIX
-            if cmd_norm < 0.15:
-                stand_counter += 1
-            else:
-                stand_counter = 0
-            
-            if stand_counter >= 10:
-                stand_counter = 10
-                standing_mode = True
-            else:
-                standing_mode = False
-            
-            if standing_mode:
-                actions = stand_policy(obs_tensor)
-                actions = torch.clip(actions, -clip_actions, clip_actions).detach().numpy().squeeze()
-
-            # Update target dof positions
-            target_dof_pos = actions * action_scale + default_angles
-            # ======================================================================    
-
-        # Joint torque PD control outside of control decimation I
-        tau = get_pd_control(target_dof_pos, cur_qj, kps, np.zeros_like(kds), cur_dqj, kds)
-        mj_data.ctrl[:] = tau
+        # Joint torque PD control outside of control decimation 
+        tau = controller.get_pd_control(controller.target_dof_pos, controller.qj, cfg.kps, np.zeros_like(cfg.kds), controller.dqj, cfg.kds)
+        controller.mj_data.ctrl[:] = tau
 
 
         # Pick up changes to the physics state, apply perturbations, update options from GUI.
@@ -286,6 +100,12 @@ if __name__ == "__main__":
 
         # Modified timekeeping
         time_elapsed_during_step = time.perf_counter() - step_start # wall-time elapsed in this step
-        time_until_next_step = mj_model.opt.timestep - time_elapsed_during_step
+        time_until_next_step = controller.mj_model.opt.timestep - time_elapsed_during_step
         if time_until_next_step > 0:
             time.sleep(time_until_next_step)
+        
+
+
+
+
+

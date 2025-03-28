@@ -14,56 +14,32 @@ from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowState_ as LowStateHG
 from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowState_ as LowStateGo
 from unitree_sdk2py.utils.crc import CRC
 
-from common.command_helper import create_damping_cmd, create_zero_cmd, init_cmd_hg, init_cmd_go, MotorMode
-from common.rotation_helper import get_gravity_orientation
-from common.remote_controller import RemoteController, KeyMap
-from config import Config
-
 from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import MotionSwitcherClient
 from unitree_sdk2py.go2.sport.sport_client import SportClient
 
 from unitree_sdk2py.idl.std_msgs.msg.dds_ import String_
 from unitree_sdk2py.idl.default import std_msgs_msg_dds__String_
 
+from deploy.deploy_base.deploy_base import BaseController, ConfigParser
+from command_helper import create_damping_cmd, create_zero_cmd, init_cmd_hg, init_cmd_go, MotorMode
+from remote_controller import RemoteController, KeyMap
 
 
-class RobotController:
-    def __init__(self, config: Config) -> None:
+class RobotController(BaseController):
+    def __init__(self, cfg: ConfigParser) -> None:
+        super().__init__(cfg)
         
-        # INSANE BANDAID FIX
-        self.stand_counter = 0
-        self.standing_mode = False
-        self.stand_policy = torch.jit.load(f"{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk14/finetune_200.pt")
-        
-        # Initialize config and controller objects
-        self.cfg = config
-        self.remote_controller = RemoteController() # PUT INTO CHILD CLASSES!
-
-        # Initialize policy network by loading it
-        self.policy = torch.jit.load(config.policy_path)
-        
-        # Initialize essential buffers
-        self.qj = np.zeros(config.num_actions, dtype=np.float32)        # joint pos.
-        self.dqj = np.zeros(config.num_actions, dtype=np.float32)       # joint vel.
-        self.actions = np.zeros(config.num_actions, dtype=np.float32)
-        self.target_dof_pos = config.default_angles.copy()   
-        self.obs = np.zeros(config.num_obs, dtype=np.float32)
-        self.obs_history = np.zeros((config.buffer_length, config.num_proprio), dtype=np.float32)
-        self.cmd = np.array([0.0, 0.0, 0.0])
-        
-        # Timing
+        # Child-specific initializations
         self.counter = 0
         self.real_time_s = 0.0 # total accumulated real time
-        self.first_step_ever = True
-        self.projected_gravity = np.zeros(3, dtype=np.float32)
-        self.projected_gravity[2] = -1.0
-
+        self.remote_controller = RemoteController()
+        
         # Low command stuff
         self.low_cmd = unitree_go_msg_dds__LowCmd_()
         self.low_state = unitree_go_msg_dds__LowState_()
-        self.lowcmd_publisher_ = ChannelPublisher(config.lowcmd_topic, LowCmdGo)
+        self.lowcmd_publisher_ = ChannelPublisher(cfg.lowcmd_topic, LowCmdGo)
         self.lowcmd_publisher_.Init()
-        self.lowstate_subscriber = ChannelSubscriber(config.lowstate_topic, LowStateGo)
+        self.lowstate_subscriber = ChannelSubscriber(cfg.lowstate_topic, LowStateGo)
         self.lowstate_subscriber.Init(self.LowStateGoHandler, 10)
 
         # Turn off LiDAR
@@ -73,6 +49,7 @@ class RobotController:
         self.lidar_off_cmd.data = "OFF"
         self.lidar_toggle_publisher_.Write(self.lidar_off_cmd)
 
+        # Sport client mode handler
         self.sc = SportClient()  
         self.sc.SetTimeout(5.0)
         self.sc.Init()
@@ -86,12 +63,33 @@ class RobotController:
             status, result = self.msc.CheckMode()
             time.sleep(1)
             
-        # wait for the subscriber to receive data
+        # Wait for the subscriber to receive data
         self.wait_for_low_state()
         
         # Initialize low command
         init_cmd_go(self.low_cmd, weak_motor=self.cfg.weak_motor)
 
+    def refresh_robot_states(self):
+        """ Retrieve the latest robot state (joints, velocities, orientation, etc.) from 
+            the environment and store it in this controller's internal buffers. 
+        
+            Should update the following data:
+                - qj (joint pos.)
+                - dqj (joint vel.)
+                - ang_vel (in the local frame)
+                - base_quat (base orientation quaternion)
+        """
+        self.cmd[0] = self.remote_controller.ly
+        self.cmd[1] = self.remote_controller.lx * -1
+        self.cmd[2] = self.remote_controller.rx * -1
+
+        for i in range(len(self.cfg.leg_joint2motor_idx)):
+            self.qj[i] = self.low_state.motor_state[self.cfg.leg_joint2motor_idx[i]].q
+            self.dqj[i] = self.low_state.motor_state[self.cfg.leg_joint2motor_idx[i]].dq
+
+        # imu_state quaternion: w, x, y, z
+        self.base_quat = self.low_state.imu_state.quaternion
+        self.ang_vel = np.array([self.low_state.imu_state.gyroscope], dtype=np.float32)
 
     def LowStateHgHandler(self, msg: LowStateHG):
         self.low_state = msg
@@ -120,10 +118,11 @@ class RobotController:
             time.sleep(self.cfg.control_dt)
 
     def move_to_default_pos(self):
-        print("===== MOVING TO DEFAULT POSITION... =====")
-        # move time 2s
-        total_time = 3.0 # seconds
-        num_step = int(total_time / self.cfg.control_dt)
+        move_time = 3.0 # seconds
+        num_step = int(move_time / self.cfg.control_dt)
+        
+        print("Moving to default position...")
+        print("move_time: ", move_time, "seconds")
         
         dof_idx = self.cfg.leg_joint2motor_idx
         kps = self.cfg.kps
@@ -148,7 +147,7 @@ class RobotController:
                 self.low_cmd.motor_cmd[motor_idx].kd = kds[j]
                 self.low_cmd.motor_cmd[motor_idx].tau = 0
             self.send_cmd(self.low_cmd)
-            time.sleep(self.cfg.control_dt) # should be correct
+            time.sleep(self.cfg.control_dt)
 
     def default_pos_state(self):
         print("default_pos_state() invoked...")
@@ -166,125 +165,16 @@ class RobotController:
             time.sleep(self.cfg.control_dt)
     
     def update_projected_gravity(self):
+        """ Update the projected gravity separately. This is useful when the robot is in sleep mode. """
         quat = self.low_state.imu_state.quaternion
-        self.projected_gravity = get_gravity_orientation(quat)
-
+        self.projected_gravity = self.get_gravity_orientation(quat)
 
     def run(self):
         # Update time
         self.counter += 1
         self.real_time_s = self.counter * self.cfg.control_dt
         
-        # Get commands from remote controller
-        self.cmd[0] = self.remote_controller.ly
-        self.cmd[1] = self.remote_controller.lx * -1
-        self.cmd[2] = self.remote_controller.rx * -1
-
-        # Get the current joint position and velocity
-        for i in range(len(self.cfg.leg_joint2motor_idx)):
-            self.qj[i] = self.low_state.motor_state[self.cfg.leg_joint2motor_idx[i]].q
-            self.dqj[i] = self.low_state.motor_state[self.cfg.leg_joint2motor_idx[i]].dq
-
-        # imu_state quaternion: w, x, y, z
-        base_quat = self.low_state.imu_state.quaternion
-        ang_vel = np.array([self.low_state.imu_state.gyroscope], dtype=np.float32)
-
-        # COPIES NO LONGER USED - make sure this doesn't lead to issues
-        # qj_obs = self.qj.copy()
-        # dqj_obs = self.dqj.copy()
-        
-
-        # Get projected gravity
-        self.projected_gravity = get_gravity_orientation(base_quat)
-       
-        # Calculate per-leg phase
-        phase = (self.real_time_s % self.cfg.period) / self.cfg.period
-        phase_fr = (phase + self.cfg.fr_offset) % 1
-        phase_bl = (phase + self.cfg.bl_offset) % 1
-        phase_fl = (phase + self.cfg.fl_offset) % 1
-        phase_br = (phase + self.cfg.br_offset) % 1
-
-
-        # Zero out all of them if small command
-        cmd_norm = np.linalg.norm(self.cmd[:3])
-        if cmd_norm < 0.15:
-            phase_fr *= 0.0
-            phase_bl *= 0.0
-            phase_fl *= 0.0
-            phase_br *= 0.0
-
-        # Construct phase features 
-        sin_phase_fl = np.sin(2 * np.pi * phase_fl)
-        cos_phase_fl = np.cos(2 * np.pi * phase_fl)
-        sin_phase_fr = np.sin(2 * np.pi * phase_fr)
-        cos_phase_fr = np.cos(2 * np.pi * phase_fr)
-        sin_phase_bl = np.sin(2 * np.pi * phase_bl)
-        cos_phase_bl = np.cos(2 * np.pi * phase_bl)
-        sin_phase_br = np.sin(2 * np.pi * phase_br)
-        cos_phase_br = np.cos(2 * np.pi * phase_br)
-
-        phase_features = np.array([
-            sin_phase_fr, cos_phase_fr, 
-            sin_phase_fl, cos_phase_fl,
-            sin_phase_bl, cos_phase_bl,
-            sin_phase_br, cos_phase_br
-        ], dtype=np.float32)
-
-        # Create observation list
-        num_actions = self.cfg.num_actions
-        cur_obs = np.zeros(self.cfg.num_proprio, dtype=np.float32)
-        cur_obs[:3] = ang_vel * self.cfg.ang_vel_scale
-        cur_obs[3:6] = self.projected_gravity
-        cur_obs[6:9] = self.cmd * self.cfg.cmd_scale * self.cfg.rc_scale # controller
-        cur_obs[9 : 9+num_actions] = (self.qj - self.cfg.default_angles) * self.cfg.dof_pos_scale 
-        cur_obs[9+num_actions : 9+2*num_actions] = self.dqj * self.cfg.dof_vel_scale
-        cur_obs[9+2*num_actions : 9+3*num_actions] = self.actions
-        cur_obs[9+3*num_actions:9+3*num_actions+8] = phase_features
-
-        # Concatenate obs history if enabled
-        if self.cfg.enable_history:
-            self.obs[:] = np.concatenate([self.obs_history.flatten(), cur_obs])
-            # Then, add current observation to history
-            if self.first_step_ever:
-                self.first_step_ever = False
-                self.obs_history = np.tile(cur_obs, (self.cfg.buffer_length, 1))  # (4x1, 1x53)
-            else:
-                self.obs_history = np.roll(self.obs_history, -1, axis=0)
-                self.obs_history[-1] = cur_obs
-        else:
-            self.obs[:] = cur_obs
-
-        # Convert to tensor, clip
-        obs_tensor = torch.from_numpy(self.obs).unsqueeze(0)
-        obs_tensor = torch.clip(obs_tensor, -self.cfg.clip_obs, self.cfg.clip_obs)
-
-        # Get actions from policy network, clip
-        self.actions = self.policy(obs_tensor)
-        self.actions = torch.clip(self.actions, 
-                                  -self.cfg.clip_actions, 
-                                  self.cfg.clip_actions).detach().numpy().squeeze()
-        
-        # INSANE BANDAID FIX
-        if cmd_norm < 0.15:
-            self.stand_counter += 1
-        else:
-            self.stand_counter = 0
-
-        if self.stand_counter >= 10:
-            self.stand_counter = 10
-            self.standing_mode = True
-        else:
-            self.standing_mode = False
-
-        if self.standing_mode:
-            self.actions = self.stand_policy(obs_tensor)
-            self.actions = torch.clip(self.actions, 
-                -self.cfg.clip_actions, 
-                self.cfg.clip_actions).detach().numpy().squeeze()
-            
-        # Update target dof positions
-        self.target_dof_pos = self.actions * self.cfg.action_scale + self.cfg.default_angles
-        # ======================================================================
+        self.step(self.real_time_s)
 
         # Build low cmd
         for i in range(len(self.cfg.leg_joint2motor_idx)):
@@ -302,20 +192,20 @@ class RobotController:
 
 if __name__ == "__main__":
     import argparse
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("net", type=str, help="network interface", default="eno1")
-    parser.add_argument("config", type=str, help="config file name in the configs folder", default="go2.yaml")
+    parser.add_argument("net", type=str, nargs='?', default="eno1", help="Specify the network interface ('eth0', 'eno1', etc.)")
+    parser.add_argument("config_file", type=str, help="Specify the name of the YAML config file to use.")
     args = parser.parse_args()
 
     # Load config from path
-    config_path = f"{LEGGED_GYM_ROOT_DIR}/deploy/unified_configs/{args.config}"
-    cfg_object = Config(config_path) # initialize config object
-
+    file_path = f"{LEGGED_GYM_ROOT_DIR}/deploy/configs/{args.config_file}"
+    
     # Initialize DDS communication
     ChannelFactoryInitialize(0, args.net)
 
-    controller = RobotController(cfg_object)
+    # Initialize config parser and controller
+    cfg = ConfigParser(file_path)
+    controller = RobotController(cfg)
 
     # Enter the zero torque state, press the start key to continue executing
     controller.zero_torque_state()
@@ -330,7 +220,6 @@ if __name__ == "__main__":
     sleep_mode = False
     while True:
         try:
-
             # Enter sleep mode if robot flipped over
             if controller.projected_gravity[2] > 0.:
                 print("Warning: Robot is upside down!")
@@ -349,10 +238,10 @@ if __name__ == "__main__":
                 controller.update_projected_gravity() # Keep updating IMU data
 
                 if controller.remote_controller.button[KeyMap.up] == 1:
-                    sleep_mode = False
                     print("Exiting sleep mode...")
+                    sleep_mode = False
                     controller.move_to_default_pos()
-
+                    time.sleep(1.0) # Wait for the robot to stabilize
 
             else:
                 # Start time of current run step
