@@ -160,7 +160,7 @@ class Terrain:
         elif choice < self.proportions[3]:
             if choice<self.proportions[2]:
                 step_height *= -1
-            terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.27, step_height=step_height, platform_size=2.)
+            terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.25, step_height=step_height, platform_size=2.)
         
         # 5. Discrete obstacles
         elif choice < self.proportions[4]:
@@ -173,17 +173,13 @@ class Terrain:
         elif choice < self.proportions[5]:
             terrain_utils.stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=stone_distance, max_height=0., platform_size=4.)
         
-        # 7. # Bumpy Wave
+        # 7. # Random Uniform
         elif choice < self.proportions[6]:
-            terrain_utils.wave_terrain(terrain, num_waves=1, amplitude=amplitude)
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.045, max_height=0.045, step=0.01, downsampled_scale=0.15)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.06, max_height=0.06, step=0.005, downsampled_scale=0.2)
         
-        # Else random uniform (this one is pretty good)
+        # Else pit of death
         else:
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005, downsampled_scale=0.05)
-            
-            # Gap terrain: 
-            # gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
+            gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
             
             # Bumpy hole
             # terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1.2, platform_size=3.)

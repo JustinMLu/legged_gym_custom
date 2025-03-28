@@ -21,20 +21,21 @@ class Go2Cfg( LeggedRobotCfg ):
 
         selected = False
         terrain_kwargs = {
-            "type": "terrain_utils.pyramid_stairs_terrain",
-            "step_width": 0.24,
-            "step_height": -0.17,
-            "platform_size": 2.0,
+            "type": "terrain_utils.random_uniform_terrain",
+            "min_height": -0.05,
+            "max_height": 0.05,
+            "step": 0.005,
+            "downsampled_scale": 0.2
         }
 
         curriculum = True
-        terrain_default     = [0.15,    # smooth slope
-                               0.15,    # rough slope
-                               0.30,    # stairs up
-                               0.20,    # stairs down
-                               0.15,    # discrete terrain
+        terrain_default     = [0.20,    # smooth slope
+                               0.20,    # rough slope
+                               0.10,    # stairs up
+                               0.15,    # stairs down
+                               0.25,    # discrete terrain
                                0.00,    # stepping stones
-                               0.05]    # bumpy wave
+                               0.10]    # random uniform
         
         terrain_stairs      = [0.00,    # smooth slope
                                0.00,    # rough slope
@@ -42,30 +43,30 @@ class Go2Cfg( LeggedRobotCfg ):
                                0.25,    # stairs down
                                0.00,    # discrete terrain
                                0.00,    # stepping stones
-                               0.00]    # bumpy wave
+                               0.00]    # random unifrom
         
         terrain_proportions = terrain_default
 
     class domain_rand:      
         randomize_friction = True
-        friction_range = [0.1, 1.5]
+        friction_range = [0.1, 1.0]
 
         randomize_base_mass = True
         added_mass_range = [-1.1, 1.1]
         
         push_robots = True
         push_interval_s = 8
-        max_push_vel_xy = 0.5
+        max_push_vel_xy = 1.5
     
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
         
         default_joint_angles = {
-            'FL_hip_joint':  0.1, 'FL_thigh_joint': 1.0, 'FL_calf_joint': -1.8, 
-            'FR_hip_joint': -0.1, 'FR_thigh_joint': 1.0, 'FR_calf_joint': -1.8,
-            'RL_hip_joint':  0.1, 'RL_thigh_joint': 1.0, 'RL_calf_joint': -1.8, 
-            'RR_hip_joint': -0.1, 'RR_thigh_joint': 1.0, 'RR_calf_joint': -1.8
+            'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.8, 'FL_calf_joint': -1.5, 
+            'FR_hip_joint': -0.1, 'FR_thigh_joint': 0.8, 'FR_calf_joint': -1.5,
+            'RL_hip_joint':  0.1, 'RL_thigh_joint': 1.0, 'RL_calf_joint': -1.5, 
+            'RR_hip_joint': -0.1, 'RR_thigh_joint': 1.0, 'RR_calf_joint': -1.5
         }
 
 
@@ -90,7 +91,7 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class commands ( LeggedRobotCfg.commands ):
         heading_command = False
-        resampling_time = 10. # [s] TODO: Mess with this
+        resampling_time = 10.
         
         curriculum = False
         max_curriculum = 1.25
@@ -99,14 +100,8 @@ class Go2Cfg( LeggedRobotCfg ):
             # Default
             lin_vel_x = [-1.0, 1.0]         # [m/s]
             lin_vel_y = [-1.0, 1.0]         # [m/s]
-            ang_vel_yaw = [-1.57, 1.57]     # [rad/s]
+            ang_vel_yaw = [-1.0, 1.0]     # [rad/s]
             heading = [-3.14, 3.14]
-
-            # Curriculum (horrible)
-            # lin_vel_x = [-0.25, 0.25]     # [m/s]
-            # lin_vel_y = [-0.25, 0.25]     # [m/s]
-            # ang_vel_yaw = [-0.25, 0.25]   # [rad/s]
-            # heading = [-3.14, 3.14]
 
             # Stairs (forward backwards)
             # lin_vel_x = [-1.25, 1.25]   # [m/s]
@@ -120,7 +115,7 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class normalization( LeggedRobotCfg.normalization ):
         clip_observations = 100.
-        clip_actions = 3.14
+        clip_actions = 10.0 # NEW FOR MK5
         
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
             lin_vel = 2.0   # (Deprecated)
@@ -136,16 +131,16 @@ class Go2Cfg( LeggedRobotCfg ):
 
         class noise_scales( LeggedRobotCfg.noise.noise_scales):
             lin_vel = 0.1   # (Deprecated)
-            dof_pos = 0.01*2
-            dof_vel = 0.05*2
-            ang_vel = 0.05*2
+            dof_pos = 0.01
+            dof_vel = 0.05
+            ang_vel = 0.05
             gravity = 0.02
             height_measurements = 0.02
         
 
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9
-        base_height_target = 0.28 # originally 0.26
+        base_height_target = 0.26 # originally 0.26
         only_positive_rewards = True
 
         class scales( LeggedRobotCfg.rewards.scales ):
@@ -153,20 +148,19 @@ class Go2Cfg( LeggedRobotCfg ):
             tracking_ang_vel = 1.0
             # ======================
             lin_vel_z = -1.0
-            ang_vel_xy = -0.05  # orig: -0.01, -0.75 for stairs
+            ang_vel_xy = -0.01  # -0.01 for base policy, -0.75 for stairs
             torques = -0.00001
             dof_acc = -2.5e-7
             action_rate = -0.1 
-            collision = -20.0  # orig: -10.0
+            collision = -10.0   # -10.0 for base policy, -20.0 for stairs
             delta_torques = -1.0e-7
             # ====================== 
             contact_phase_match = 1.0
             stumble = -1.0           
             orientation = -2.5      
-            dof_error = -0.04       
+            dof_error = -0.04   # orig: -0.04      
             hip_pos = -0.5          
-            base_height = -5.0 # orig: -2.5
-            # stand_still_v2 = -0.1     
+            base_height = -2.5  # orig: -2.5 
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -179,10 +173,10 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'mk14'
+        run_name = 'mk15_default'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 5000
+        max_iterations = 10000
         save_interval = 100
 
     # recipe: 50k eps on normal terrain, ~1.5-2k eps on stairs (constraining fwd and backwards) 

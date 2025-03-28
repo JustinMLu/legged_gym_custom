@@ -1,7 +1,7 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk14/3500.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_012.xml" # (SIM ONLY)
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk14/finetune_1500.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_015.xml" # (SIM ONLY)
 
 # Action & Observations
 num_actions: 12
@@ -9,31 +9,28 @@ num_proprio: 53
 enable_history: True
 buffer_length: 9
 
-# Protocols (REAL ONLY)
-msg_type: "go"     # "hg" or "go"
-imu_type: "pelvis"    # "torso" or "pelvis" --> I think this is deprecated
-lowcmd_topic: "rt/lowcmd"
-lowstate_topic: "rt/lowstate"
-lidar_toggle_topic: "rt/utlidar/switch"
+# Protocols
+msg_type: "go" # "hg" or "go" # (REAL ONLY)
+lowcmd_topic: "rt/lowcmd"     # (REAL ONLY)
+lowstate_topic: "rt/lowstate" # (REAL ONLY)
 
 
-# Timing (SIM ONLY)
-simulation_duration: 200.0 # [sec]
-run_forever: True
+# Timing
+simulation_duration: 200.0    # (MJ ONLY)
+run_forever: True             # (MJ ONLY) 
 simulation_dt: 0.005  
-control_decimation: 4   # Controller update frequency (simulation_dt * control_decimation=0.02; 50Hz)
+control_decimation: 4   # Controller update freq (simulation_dt * control_decimation=0.02; 50Hz)
 
 
 
-# LEG 2 JOINT MOTOR INDEX (REAL ONLY)
-# fixes the order of the motors in the observation
-# (e.g: Isaac and Mujoco are L-R-L-R, but Unitree Go2's joint order is R-L-R-L)
-
+# (REAL ONLY)
                     # hip, thigh, calf
 leg_joint2motor_idx: [3, 4, 5,      # FL
                       0, 1, 2,      # FR
                       9, 10, 11,    # BL
                       6, 7, 8]      # BR
+# fixes the order of the motors in the observation
+# (e.g: Isaac and Mujoco are L-R-L-R, but Unitree Go2's joint order is R-L-R-L)
 
     # hip, thigh, calf
 kps: [40.0, 40.0, 40.0,
@@ -48,10 +45,10 @@ kds: [1.0, 1.0, 1.0,
       1.0, 1.0, 1.0]
 
                # hip, thigh, calf
-default_angles: [0.1, 1.0, -1.8,    # FL
-                -0.1, 1.0, -1.8,    # FR
-                 0.1, 1.0, -1.8,    # RL
-                -0.1, 1.0, -1.8]    # RR
+default_angles: [0.1, 0.8, -1.5,    # FL
+                -0.1, 0.8, -1.5,    # FR
+                 0.1, 1.0, -1.5,    # RL
+                -0.1, 1.0, -1.5]    # RR
 
 # Scales
 ang_vel_scale: 0.25
@@ -71,8 +68,5 @@ bl_offset: 0.0       # [%]
 fl_offset: 0.5       # [%]
 br_offset: 0.5       # [%]
 
-# Remote controller scale ("REAL ONLY", but should be used by both RC and gamepad actually)
+# Remote controller scale
 rc_scale: [0.8, 1.0, 1.57]
-
-# Mujoco command ([forward, lateral, yaw]) ("SIM ONLY" but will be deprecated soon)
-command: [0.0, 0.0, 0.0]
