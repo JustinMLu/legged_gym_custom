@@ -178,5 +178,3 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         load_run = -1
         max_iterations = 10000
         save_interval = 100
-
-    # recipe: 50k eps on normal terrain, ~1.5-2k eps on stairs (constraining fwd and backwards) 

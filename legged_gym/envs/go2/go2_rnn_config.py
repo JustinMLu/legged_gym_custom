@@ -156,27 +156,32 @@ class Go2RnnCfg( LeggedRobotCfg ):
             delta_torques = -1.0e-7
             # ====================== 
             contact_phase_match = 1.0
-            stumble = -1.0           
-            orientation = -2.5      
-            dof_error = -0.04   # orig: -0.04      
-            hip_pos = -0.5          
-            base_height = -2.5  # orig: -2.5 
+            stumble = -1.0
+            orientation = -2.5
+            dof_error = -0.04
+            hip_pos = -0.5   
+            base_height = -2.5
 
 
 class Go2RnnCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
-        actor_hidden_dims = [512, 256, 128]
-        critic_hidden_dims = [512, 256, 128]
+        actor_hidden_dims = [256, 256, 256]
+        critic_hidden_dims = [256, 256, 256]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
+
+        # This is just the defaults for RNN from rsl_rl
+        rnn_type = 'lstm'
+        rnn_hidden_size = 256
+        rnn_num_layers = 1
+        init_noise_std = 1.0
 
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'mk15_default'
-        experiment_name = 'go2'
+        policy_class_name = 'ActorCriticRecurrent'
+        run_name = 'rnn_mk1'
+        experiment_name = 'go2_rnn' # AKA --task_name=...
         load_run = -1
         max_iterations = 10000
         save_interval = 100
-
-    # recipe: 50k eps on normal terrain, ~1.5-2k eps on stairs (constraining fwd and backwards) 

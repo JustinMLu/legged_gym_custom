@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk14/finetune_200.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk14/finetune_2500.pt"
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_015.xml" # (SIM ONLY)
 
 # Action & Observations
