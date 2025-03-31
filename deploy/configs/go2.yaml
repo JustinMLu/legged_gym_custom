@@ -1,13 +1,20 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/mk14/finetune_2500.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_015.xml" # (SIM ONLY)
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/skipper_v5/3000.pt"
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml" 
 
 # Action & Observations
 num_actions: 12
 num_proprio: 53
 enable_history: True
 buffer_length: 9
+
+# Phase Features
+period: 0.32                # TODO: Put Isaac period into config!!!!
+fr_offset: 0.0 
+bl_offset: 0.0
+fl_offset: 0.25
+br_offset: 0.25
 
 # Protocols
 msg_type: "go" # "hg" or "go" # (REAL ONLY)
@@ -16,21 +23,18 @@ lowstate_topic: "rt/lowstate" # (REAL ONLY)
 
 
 # Timing
-simulation_duration: 200.0    # (MJ ONLY)
-run_forever: True             # (MJ ONLY) 
 simulation_dt: 0.005  
 control_decimation: 4   # Controller update freq (simulation_dt * control_decimation=0.02; 50Hz)
 
 
+# leg_joint2motor_idx: fixes the order of the motors in the observation
+# (e.g: Isaac and Mujoco are L-R-L-R, but Unitree Go2's joint order is R-L-R-L)
 
-# (REAL ONLY)
                     # hip, thigh, calf
 leg_joint2motor_idx: [3, 4, 5,      # FL
                       0, 1, 2,      # FR
                       9, 10, 11,    # BL
                       6, 7, 8]      # BR
-# fixes the order of the motors in the observation
-# (e.g: Isaac and Mujoco are L-R-L-R, but Unitree Go2's joint order is R-L-R-L)
 
     # hip, thigh, calf
 kps: [40.0, 40.0, 40.0,
@@ -58,15 +62,8 @@ action_scale: 0.25
 cmd_scale: [2.0, 2.0, 0.25]
 
 # Clip values
-clip_observations: 100.
-clip_actions: 3.14   # Trained on 3.14
-
-# Phase Features
-period: 0.66         # [sec]
-fr_offset: 0.0       # [%]
-bl_offset: 0.0       # [%]
-fl_offset: 0.5       # [%]
-br_offset: 0.5       # [%]
+clip_observations: 100.0
+clip_actions: 20.0          # NEW - Remember to match this!!!!
 
 # Remote controller scale
-rc_scale: [0.8, 1.0, 1.57]
+rc_scale: [2.0, 1.0, 1.57]

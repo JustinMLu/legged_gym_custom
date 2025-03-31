@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from deploy.deploy_base.config_parser import ConfigParser
+from deploy.base.config_parser import ConfigParser
 
 class BaseController:
     def __init__(self, cfg: ConfigParser) -> None:

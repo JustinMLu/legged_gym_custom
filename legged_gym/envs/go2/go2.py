@@ -103,21 +103,22 @@ class Go2Robot(LeggedRobot):
         self.feet_vel = self.feet_states[:, :, 7:10]
         
         # =========================== GAIT CALCULATIONS ===========================
-        # Calculate gait period
-        period = 0.66
+
+        # # Calculate gait period --> TODO: ADD NOISE TO THIS & PUT INTO CONFIG!!!!!!!!! IMPORTANT!!!
+        # period = 0.32
         
-        # Specify per-leg period offsets
-        fr_offset = 0.0
-        bl_offset = 0.0
-        fl_offset = 0.5
-        br_offset = 0.5
+        # # Specify per-leg period offsets
+        # fr_offset = 0.0
+        # bl_offset = 0.0
+        # fl_offset = 0.25
+        # br_offset = 0.25
 
         # Calculate per-leg phase
-        self.phase = (self.episode_length_buf * self.dt) % period / period 
-        self.phase_fr = (self.phase + fr_offset) % 1
-        self.phase_bl = (self.phase + bl_offset) % 1
-        self.phase_fl = (self.phase + fl_offset) % 1
-        self.phase_br = (self.phase + br_offset) % 1
+        self.phase = (self.episode_length_buf * self.dt) % self.cfg.env.period / self.cfg.env.period 
+        self.phase_fr = (self.phase + self.cfg.env.fr_offset) % 1
+        self.phase_bl = (self.phase + self.cfg.env.bl_offset) % 1
+        self.phase_fl = (self.phase + self.cfg.env.fl_offset) % 1
+        self.phase_br = (self.phase + self.cfg.env.br_offset) % 1
 
         # Zero out phase variables if small command
         mask = torch.norm(self.commands[:, :3], dim=1) < 0.15 # considers all 3 commands 
@@ -250,17 +251,17 @@ class Go2Robot(LeggedRobot):
             For a trot gait:
             - FR and BL feet should contact when phase < 0.5
             - FL and BR feet should contact when phase >= 0.5
-
-            FOR NOW, DO NOT ENABLE BOTH THIS AND _REWARD_FEET_AIR_TIME SIMULTANEOUSLY!
-            BOTH OF THEM USE self.last_contacts AND WILL OVERWRITE ONE ANOTHER'S STORED
-            PREVIOUS CONTACT INFORMATION!
         """
+        percent_time_on_ground = 0.20
+        
+        # 1 is 100% on ground, 0 is 50% on ground, -1 is 0% on ground
+        stance_threshold = 2.0 * percent_time_on_ground - 1.0
 
         # Check if feet are supposed to be in stance
-        fl_stance = torch.sin(2*np.pi*self.phase_fl) <= 0.0 # small cmd means True for all stance
-        fr_stance = torch.sin(2*np.pi*self.phase_fr) <= 0.0
-        bl_stance = torch.sin(2*np.pi*self.phase_bl) <= 0.0
-        br_stance = torch.sin(2*np.pi*self.phase_br) <= 0.0
+        fl_stance = torch.sin(2*np.pi*self.phase_fl) <= stance_threshold
+        fr_stance = torch.sin(2*np.pi*self.phase_fr) <= stance_threshold
+        bl_stance = torch.sin(2*np.pi*self.phase_bl) <= stance_threshold
+        br_stance = torch.sin(2*np.pi*self.phase_br) <= stance_threshold
         
 
         # Reward each foot for contact when it's meant to be stance
@@ -274,6 +275,11 @@ class Go2Robot(LeggedRobot):
 
     def _reward_phase_match_foot_lift(self):
         """Reward proper foot lifting based on gait phase.
+
+            FOR NOW, DO NOT ENABLE BOTH THIS AND _REWARD_FEET_AIR_TIME SIMULTANEOUSLY!
+            BOTH OF THEM USE self.last_contacts AND WILL OVERWRITE ONE ANOTHER'S STORED
+            PREVIOUS CONTACT INFORMATION!
+
             NOTE:
             I don't think using last_contact_heights is a good idea.
             On stairs, the feet will constantly be at different heights
@@ -310,7 +316,6 @@ class Go2Robot(LeggedRobot):
         fr_delta = self.feet_pos[:, 1, 2] - self.last_contact_heights[:, 1]  # FR
         bl_delta = self.feet_pos[:, 2, 2] - self.last_contact_heights[:, 2]  # BL
         br_delta = self.feet_pos[:, 3, 2] - self.last_contact_heights[:, 3]  # BR
-
 
 
 

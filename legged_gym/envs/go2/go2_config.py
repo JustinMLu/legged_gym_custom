@@ -10,14 +10,21 @@ class Go2Cfg( LeggedRobotCfg ):
         num_envs = 4096
         num_actions = 12
 
+        # Phase features here so i dont ahve to make a new class
+        period = 0.32
+        fr_offset = 0.0 
+        bl_offset = 0.0
+        fl_offset = 0.25
+        br_offset = 0.25
+
+
     class terrain( LeggedRobotCfg.terrain ):
         num_rows = 20 # num. difficulties       ->    (0/n, 1/n, 2/n ... (n-1)/n)
         num_cols = 20 # max. terrain choices    ->    affects terrain_proportions "accuracy"
 
-        mesh_type = 'trimesh'
+        mesh_type = 'plane'
         measure_heights = False     # changed so this only enables the buffer & noise
         max_init_terrain_level = 2  # starting curriculum state
-        
 
         selected = False
         terrain_kwargs = {
@@ -31,11 +38,11 @@ class Go2Cfg( LeggedRobotCfg ):
         curriculum = True
         terrain_default     = [0.20,    # smooth slope
                                0.20,    # rough slope
-                               0.10,    # stairs up
-                               0.15,    # stairs down
+                               0.05,    # stairs up
+                               0.10,    # stairs down
                                0.25,    # discrete terrain
-                               0.00,    # stepping stones
-                               0.10]    # random uniform
+                               0.05,    # stepping stones
+                               0.15]    # random uniform
         
         terrain_stairs      = [0.00,    # smooth slope
                                0.00,    # rough slope
@@ -52,11 +59,11 @@ class Go2Cfg( LeggedRobotCfg ):
         friction_range = [0.1, 1.0]
 
         randomize_base_mass = True
-        added_mass_range = [-1.1, 1.1]
+        added_mass_range = [0., 3.]
         
         push_robots = True
         push_interval_s = 8
-        max_push_vel_xy = 1.5
+        max_push_vel_xy = 1.0
     
 
     class init_state( LeggedRobotCfg.init_state ):
@@ -92,30 +99,22 @@ class Go2Cfg( LeggedRobotCfg ):
     class commands ( LeggedRobotCfg.commands ):
         heading_command = False
         resampling_time = 10.
-        
-        curriculum = False
-        max_curriculum = 1.25
+        zero_command_prob = 0.10 # prob. of randomly resampling a zero command
+
+        curriculum = True
+        max_curriculum = 3.5 # [m/s]
         
         class ranges:
-            # Default
-            lin_vel_x = [-1.0, 1.0]         # [m/s]
-            lin_vel_y = [-1.0, 1.0]         # [m/s]
-            ang_vel_yaw = [-1.0, 1.0]     # [rad/s]
+            lin_vel_x = [-0.3, 1.0]     # [m/s]
+            lin_vel_y = [-0.5, 0.5]     # [m/s]
+            ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
             heading = [-3.14, 3.14]
-
-            # Stairs (forward backwards)
-            # lin_vel_x = [-1.25, 1.25]   # [m/s]
-            # lin_vel_y = [-0.25, 0.25]   # [m/s]
-            # ang_vel_yaw = [-0.25, 0.25] # [rad/s]
-            # heading = [-3.14, 3.14]
-        
-        #               [vx, vy, yaw, heading]
         # user_command = [1., 0., 0., 0.]
 
 
     class normalization( LeggedRobotCfg.normalization ):
         clip_observations = 100.
-        clip_actions = 10.0 # NEW FOR MK5
+        clip_actions = 20.0 # NEW
         
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
             lin_vel = 2.0   # (Deprecated)
@@ -139,8 +138,8 @@ class Go2Cfg( LeggedRobotCfg ):
         
 
     class rewards( LeggedRobotCfg.rewards ):
-        soft_dof_pos_limit = 0.9
-        base_height_target = 0.26 # originally 0.26
+        soft_dof_pos_limit = 0.9  # originally 0.9, or 90% of the actual limit
+        base_height_target = 0.26
         only_positive_rewards = True
 
         class scales( LeggedRobotCfg.rewards.scales ):
@@ -148,19 +147,19 @@ class Go2Cfg( LeggedRobotCfg ):
             tracking_ang_vel = 1.0
             # ======================
             lin_vel_z = -1.0
-            ang_vel_xy = -0.01  # -0.01 for base policy, -0.75 for stairs
+            ang_vel_xy = -0.1  # -0.01 for base policy, -0.75 for stairs
             torques = -0.00001
             dof_acc = -2.5e-7
             action_rate = -0.1 
-            collision = -10.0   # -10.0 for base policy, -20.0 for stairs
+            collision = -20.0   # -10.0 for base policy, -20.0 for stairs
             delta_torques = -1.0e-7
             # ====================== 
             contact_phase_match = 1.0
             stumble = -1.0           
-            orientation = -2.5      
+            orientation = -5.0      
             dof_error = -0.04   # orig: -0.04      
             hip_pos = -0.5          
-            base_height = -2.5  # orig: -2.5 
+            # base_height = -2.5  # orig: -2.5 
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -173,8 +172,8 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         entropy_coef = 0.01
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'mk15_default'
+        run_name = 'skipper_v5'
         experiment_name = 'go2'
         load_run = -1
-        max_iterations = 10000
+        max_iterations = 5000
         save_interval = 100

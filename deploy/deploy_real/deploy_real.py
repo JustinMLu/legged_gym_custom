@@ -20,7 +20,8 @@ from unitree_sdk2py.go2.sport.sport_client import SportClient
 from unitree_sdk2py.idl.std_msgs.msg.dds_ import String_
 from unitree_sdk2py.idl.default import std_msgs_msg_dds__String_
 
-from deploy.deploy_base.deploy_base import BaseController, ConfigParser
+from deploy.base.deploy_base import BaseController
+from deploy.base.config_parser import ConfigParser
 from command_helper import create_damping_cmd, create_zero_cmd, init_cmd_hg, init_cmd_go, MotorMode
 from remote_controller import RemoteController, KeyMap
 
@@ -241,7 +242,7 @@ if __name__ == "__main__":
                     print("Exiting sleep mode...")
                     sleep_mode = False
                     controller.move_to_default_pos()
-                    time.sleep(1.0) # Wait for the robot to stabilize
+                    time.sleep(0.1) # Wait for the robot to stabilize
 
             else:
                 # Start time of current run step

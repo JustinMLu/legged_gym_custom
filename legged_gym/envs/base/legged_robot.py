@@ -395,6 +395,12 @@ class LeggedRobot(BaseTask):
         # Set small commands to zero
         self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
 
+        # Randomly zero out some commands
+        zero_mask = torch.rand(len(env_ids), device=self.device) < self.cfg.commands.zero_command_prob
+        selected_env_ids = env_ids[zero_mask]
+        self.commands[selected_env_ids, :] *= 0.0
+
+
     def _compute_torques(self, actions):
         """ Compute torques from actions.
             Actions can be interpreted as position or velocity targets given to a PD controller, or directly as scaled torques.
@@ -493,39 +499,27 @@ class LeggedRobot(BaseTask):
         self.env_origins[env_ids] = self.terrain_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
     
     def update_command_curriculum(self, env_ids):
+        # TODO: Split tracking lin velocity into tracking_x_vel and tracking_y_vel!!!
         """ Implements a curriculum of increasing commands
 
         Args:
             env_ids (List[int]): ids of environments being reset
         """
+
         # If the tracking reward is above 80% of the maximum, increase the range of commands
-        # TODO: Split tracking lin velocity into tracking_x_vel and tracking_y_vel
         mean_lin_vel_reward = torch.mean(self.episode_sums["tracking_lin_vel"][env_ids]) / self.max_episode_length
-        mean_ang_vel_reward = torch.mean(self.episode_sums["tracking_ang_vel"][env_ids]) / self.max_episode_length
         
         # Linear velocities
         if mean_lin_vel_reward > 0.8 * self.reward_scales["tracking_lin_vel"]:
             self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
             self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
 
-            self.command_ranges["lin_vel_y"][0] = np.clip(self.command_ranges["lin_vel_y"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
-            self.command_ranges["lin_vel_y"][1] = np.clip(self.command_ranges["lin_vel_y"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
-            
-
-        # Angular velocity
-        if mean_ang_vel_reward > 0.8 * self.reward_scales.get("tracking_ang_vel", 0):
-            if self.cfg.commands.heading_command:
-                # When heading_command is True, update heading (position 3)
-                self.command_ranges["heading"][0] = np.clip(self.command_ranges["heading"][0] - 0.05, -np.pi, 0.)
-                self.command_ranges["heading"][1] = np.clip(self.command_ranges["heading"][1] + 0.05, 0., np.pi)
-            else:
-                # When heading_command is False, update ang_vel_yaw (position 2)
-                self.command_ranges["ang_vel_yaw"][0] = np.clip(self.command_ranges["ang_vel_yaw"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
-                self.command_ranges["ang_vel_yaw"][1] = np.clip(self.command_ranges["ang_vel_yaw"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
+            # This wasn't originally in the curriculum...it used to just be lin_vel_x
+            # self.command_ranges["lin_vel_y"][0] = np.clip(self.command_ranges["lin_vel_y"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
+            # self.command_ranges["lin_vel_y"][1] = np.clip(self.command_ranges["lin_vel_y"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
         
-
-    # TODO WE NEED TO MAKE THIS COMPATIBLE W/ OBS HISTORY BUFFER - RIGHT NOW IT'S JUST OVERLOADED PER-ROBOT
     def _get_noise_scale_vec(self, cfg):
+    # TODO Need to ENSURE compatibility with the history obs. buffer implementation in the future
         """ Sets a vector used to scale the noise added to the observations.
             [NOTE]: Must be adapted when changing the observations structure
 
@@ -921,7 +915,6 @@ class LeggedRobot(BaseTask):
         heights3 = self.height_samples[px, py+1]
         heights = torch.min(heights1, heights2)
         heights = torch.min(heights, heights3)
-
         return heights.view(self.num_envs, -1) * self.terrain.cfg.vertical_scale
 
     #------------ reward functions----------------

@@ -67,7 +67,7 @@ In addition, lots of custom rewards from papers like "Extreme Parkour" and "Deep
 
 #### 💾 Export Network
 Play exports the Actor network, saving it in `logs/{experiment_name}/exported/policies`:
-- Standard networks (MLP) are exported as `EXPORTED.pt`.
+- Standard networks (MLP) are exported as `exported_policy.pt` or `exported_policy_lstm.pt` for ActorCriticRecurrent.
 - RNN networks are exported as `policy_lstm_1.pt`.
 
 ---

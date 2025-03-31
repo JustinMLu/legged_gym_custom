@@ -10,6 +10,13 @@ class Go2RnnCfg( LeggedRobotCfg ):
         num_envs = 4096
         num_actions = 12
 
+        # Phase features
+        period: 0.32
+        fr_offset: 0.0 
+        bl_offset: 0.0
+        fl_offset: 0.25
+        br_offset: 0.25
+
     class terrain( LeggedRobotCfg.terrain ):
         num_rows = 20 # num. difficulties       ->    (0/n, 1/n, 2/n ... (n-1)/n)
         num_cols = 20 # max. terrain choices    ->    affects terrain_proportions "accuracy"
@@ -165,14 +172,14 @@ class Go2RnnCfg( LeggedRobotCfg ):
 
 class Go2RnnCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
-        actor_hidden_dims = [256, 256, 256]
-        critic_hidden_dims = [256, 256, 256]
+        actor_hidden_dims = [256]
+        critic_hidden_dims = [256]
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
         # This is just the defaults for RNN from rsl_rl
         rnn_type = 'lstm'
         rnn_hidden_size = 256
-        rnn_num_layers = 1
+        rnn_num_layers = 2
         init_noise_std = 1.0
 
     class algorithm( LeggedRobotCfgPPO.algorithm ):

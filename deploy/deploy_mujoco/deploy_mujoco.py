@@ -6,7 +6,7 @@ from legged_gym import LEGGED_GYM_ROOT_DIR
 import torch
 import yaml
 import pdb
-from deploy.deploy_base.deploy_base import BaseController, ConfigParser
+from deploy.base.deploy_base import BaseController, ConfigParser
 from gamepad_reader import Gamepad
 
 class MujocoController(BaseController):
@@ -83,12 +83,14 @@ if __name__ == "__main__":
         sim_time_s += cfg.simulation_dt
         decimation_counter += 1
 
+        # DEBUG: print stuff!
+        if decimation_counter % 250 == 0:
+            # print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
+            print("Mean join torques: ", np.mean(np.abs(controller.mj_data.ctrl[:])))
+
         # Apply control signal every (control_decimation) steps
         if decimation_counter % cfg.control_decimation == 0:
             controller.step(sim_time_s)
-
-            # DEBUG: print base height
-            print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
 
         # Joint torque PD control outside of control decimation 
         tau = controller.get_pd_control(controller.target_dof_pos, controller.qj, cfg.kps, np.zeros_like(cfg.kds), controller.dqj, cfg.kds)
