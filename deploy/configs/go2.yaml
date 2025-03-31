@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/skipper_v5/3000.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/skipper_v6/3000.pt"
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml" 
 
 # Action & Observations
@@ -66,4 +66,4 @@ clip_observations: 100.0
 clip_actions: 20.0          # NEW - Remember to match this!!!!
 
 # Remote controller scale
-rc_scale: [2.0, 1.0, 1.57]
+rc_scale: [2.1, 0.5, 1.57]
