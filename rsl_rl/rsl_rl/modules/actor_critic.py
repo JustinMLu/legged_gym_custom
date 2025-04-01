@@ -149,6 +149,9 @@ class ActorCritic(nn.Module):
 
 def get_activation(act_name):
     """ Returns the specified activation function.
+        
+        Supported activations: 'elu', 'selu', 'relu', 'crelu', 'lrelu', 'tanh', 'sigmoid'.
+        Note: 'crelu' is not implemented in this version, but is included for future use.
     """
     if act_name == "elu":
         return nn.ELU()
