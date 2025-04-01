@@ -102,19 +102,19 @@ class ActorCritic(nn.Module):
     
     @property
     def action_mean(self):
-        """ Return the mean of the action distribution.
+        """ Returns the mean of the action distribution.
         """
         return self.distribution.mean
 
     @property
     def action_std(self):
-        """ Return the standard deviation of the action distribution.
+        """ Returns the standard deviation of the action distribution.
         """
         return self.distribution.stddev
     
     @property
     def entropy(self):
-        """ Compute the entropy of the action distribution.
+        """ Returns the entropy of the action distribution.
         """
         return self.distribution.entropy().sum(dim=-1)
 
@@ -125,7 +125,7 @@ class ActorCritic(nn.Module):
         self.distribution = Normal(mean, mean*0. + self.std) # Gaussian distribution with learnable std
 
     def act(self, observations, **kwargs):
-        """ Forward pass, update action distribution, and sample an action.
+        """ Returns an action sampled from the action distribution. Calls update_distribution() first.
         """
         self.update_distribution(observations)
         return self.distribution.sample()
@@ -136,13 +136,13 @@ class ActorCritic(nn.Module):
         return self.distribution.log_prob(actions).sum(dim=-1)
 
     def act_inference(self, observations):
-        """ Forward pass through the actor network, without updating action distribution. 
+        """ Return result of a forward pass through the actor network (action means).
         """
         actions_mean = self.actor(observations)
         return actions_mean
 
     def evaluate(self, critic_observations, **kwargs):
-        """ Forward pass through the critic network - returns value.
+        """ Returns value of the critic network for the given observations.
         """
         value = self.critic(critic_observations)
         return value
