@@ -5,8 +5,6 @@ class Go2RnnCfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         buffer_length = 9 # number of previous obs to keep in buffer
         num_proprio = 53 
-        # enable_history = True
-        # num_observations = num_proprio+(num_proprio*buffer_length) if enable_history else num_proprio
         num_observations = num_proprio+(num_proprio*buffer_length)
         num_envs = 4096
         num_actions = 12

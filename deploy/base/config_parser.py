@@ -52,8 +52,6 @@ class ConfigParser:
             self.num_actions = cfg["num_actions"]
             self.num_proprio = cfg["num_proprio"]
             self.buffer_length = cfg["buffer_length"]
-            # self.enable_history = cfg["enable_history"]
-            # self.num_obs = self.num_proprio+(self.num_proprio*self.buffer_length) if self.enable_history else self.num_proprio
             self.num_obs = self.num_proprio+(self.num_proprio*self.buffer_length)
 
             # Phase features

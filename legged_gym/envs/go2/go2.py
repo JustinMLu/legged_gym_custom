@@ -209,8 +209,7 @@ class Go2Robot(LeggedRobot):
         if self.add_noise:
             cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
 
-        # Update and use history buffer TODO: move cur_obs_buf to front of self.obs_buf
-        # if self.cfg.env.enable_history:
+        # TODO: move cur_obs_buf to front of self.obs_buf
         # Update self.obs_buf
         self.obs_buf = torch.cat([
             self.obs_history_buf.view(self.num_envs, -1),  # Flattened history

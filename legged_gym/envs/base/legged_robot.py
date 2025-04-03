@@ -160,10 +160,7 @@ class LeggedRobot(BaseTask):
         self.last_root_vel[env_ids] = 0.
         self.last_base_lin_vel[env_ids] = 0.
         self.last_torques[env_ids] = 0. 
-
-        # if self.cfg.env.enable_history:
         self.obs_history_buf[env_ids, :, :] = 0.  # reset obs history buffer
-
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
@@ -229,7 +226,6 @@ class LeggedRobot(BaseTask):
         if self.add_noise:
             cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
         
-        # if self.cfg.env.enable_history:
         # Update self.obs_buf
         self.obs_buf = torch.cat([
             self.obs_history_buf.view(self.num_envs, -1),  # Flattened history
@@ -602,8 +598,7 @@ class LeggedRobot(BaseTask):
         self.height_points = self._init_height_points()
         self.measured_heights = 0
 
-        # Init history buffer (if used)
-        # if self.cfg.env.enable_history:
+        # Init history buffer
         self.obs_history_buf = torch.zeros(
             self.num_envs,
             self.cfg.env.buffer_length, # minus current observation
