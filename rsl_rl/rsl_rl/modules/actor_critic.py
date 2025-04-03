@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from torch.distributions import Normal
 from torch.nn.modules import rnn
+from rsl_rl.modules.encoders import PrivilegedEncoder, AdaptationEncoder
 
 class ActorCritic(nn.Module):
     """ Actor-Critic architecture for continuous control reinforcement learning.
@@ -11,18 +12,21 @@ class ActorCritic(nn.Module):
     """
 
     is_recurrent = False
-    def __init__(self,  num_actor_obs,
-                        num_critic_obs,
-                        num_actions,
+    def __init__(self,  num_base_obs,                       # NEW (renamed)       
+                        num_privileged_obs,                 # NEW
+                        num_critic_obs,                     
+                        num_actions,                          
+                        history_buffer_length,              # NEW
                         actor_hidden_dims=[256, 256, 256],
                         critic_hidden_dims=[256, 256, 256],
+                        latent_encoder_output_dim=20,       # NEW
                         activation='elu',
                         init_noise_std=1.0,
                         **kwargs):
         """ Initialize an ActorCritic instance.
         
             Args:
-                num_actor_obs: Dimension of actor observation space
+                num_base_obs: The number of base observations (without history, without privileged info, no bullshit)
                 num_critic_obs: Dimension of critic observation space (can differ from actor - e.g privileged info)
                 num_actions: Dimension of action space
                 actor_hidden_dims: List of hidden layer sizes for actor network
@@ -38,9 +42,15 @@ class ActorCritic(nn.Module):
         # Call nn.Module constructor
         super(ActorCritic, self).__init__()
 
+        self.num_base_obs = num_base_obs
+        self.num_privileged_obs = num_privileged_obs
+        self.history_buffer_length = history_buffer_length
+        self.num_critic_obs = num_critic_obs # this can differ from num_base_obs if we rawdog privileged info into critic
+        self.num_actions = num_actions
+
         # Get specified activation function, set MLP input dimensions
         activation = get_activation(activation)
-        mlp_input_dim_a = num_actor_obs
+        mlp_input_dim_a = num_base_obs + latent_encoder_output_dim # Actor accepts actor & 
         mlp_input_dim_c = num_critic_obs
 
         # Build the actor network
@@ -67,6 +77,17 @@ class ActorCritic(nn.Module):
                 critic_layers.append(activation)
         self.critic = nn.Sequential(*critic_layers)
 
+        # Build encoders
+        self.adaptation_encoder_ = AdaptationEncoder(num_base_obs=self.num_base_obs, 
+                                                     history_buffer_length=self.history_buffer_length, 
+                                                     output_layer_dim=self.latent_encoder_output_dim, 
+                                                     activation='elu')
+        
+        self.privileged_encoder_ = PrivilegedEncoder(num_privileged_obs=self.num_privileged_obs, 
+                                                     encoder_hidden_dims=[64, 20], 
+                                                     output_layer_dim=self.latent_encoder_output_dim, 
+                                                     activation='elu') 
+
         # Print the network architecture
         print(f"Actor MLP: {self.actor}")
         print(f"Critic MLP: {self.critic}")
@@ -77,18 +98,6 @@ class ActorCritic(nn.Module):
         # disable args validation for speedup
         Normal.set_default_validate_args = False
         
-        # seems that we get better performance without init
-        # self.init_memory_weights(self.memory_a, 0.001, 0.)
-        # self.init_memory_weights(self.memory_c, 0.001, 0.)
-
-    @staticmethod
-    def init_weights(sequential, scales):
-        """ To be honest with you I have no idea what this does.
-            "not used at the moment" - ETH Zurich nerds
-        """
-        [torch.nn.init.orthogonal_(module.weight, gain=scales[idx]) for idx, module in
-         enumerate(mod for mod in sequential if isinstance(mod, nn.Linear))]
-
 
     def reset(self, dones=None):
         """ Reset the actor and critic networks. Currently a no-op.
@@ -117,30 +126,53 @@ class ActorCritic(nn.Module):
         """ Returns the entropy of the action distribution.
         """
         return self.distribution.entropy().sum(dim=-1)
+    
+    # ==================================================================================================
+    def privileged_encoder(self, observations):
+        """ Forward pass through the privileged encoder.
+            Input: FULL observation tensor (this method will auto-extract privileged observations)
+            Returns: Latent vector encoding
+        """
+        priv = observations[:, self.num_base_obs : self.num_base_obs+self.num_privileged_obs]
+        return self.privileged_encoder_(priv)
+    
+    def adaptation_encoder(self, observations):
+        """ Forward pass through the adaptation encoder.
+            Input: FULL observation tensor (this method will auto-extract history observations)
+            Returns: Latent vector encoding
+        """
+        hist = observations[:, -self.num_hist*self.num_base_obs:]
+        return self.adaptation_encoder_(hist.reshape(-1, self.history_buffer_length, self.num_base_obs))
+    # ==================================================================================================
 
+    def get_actions_log_prob(self, actions):
+        """ Return the log probability of the given actions (under the current distribution).
+        """
+        return self.distribution.log_prob(actions).sum(dim=-1)
+
+    # TODO Need to rewrite using hist_encoding swapping
     def update_distribution(self, observations):
         """ Forward pass through the actor network, updating the action distribution.
         """
         mean = self.actor(observations)
         self.distribution = Normal(mean, mean*0. + self.std) # Gaussian distribution with learnable std
 
+    # TODO Need to rewrite using hist_encoding swapping
     def act(self, observations, **kwargs):
         """ Returns an action sampled from the action distribution. Calls update_distribution() first.
         """
         self.update_distribution(observations)
+        
         return self.distribution.sample()
-    
-    def get_actions_log_prob(self, actions):
-        """ Return the log probability of the given actions (under the current distribution).
-        """
-        return self.distribution.log_prob(actions).sum(dim=-1)
 
+    # TODO Need to rewrite using hist_encoding swapping
     def act_inference(self, observations):
         """ Return result of a forward pass through the actor network (action means).
         """
         actions_mean = self.actor(observations)
         return actions_mean
 
+    # TODO Need to add logic to make critic see base_obs + priv_obs
     def evaluate(self, critic_observations, **kwargs):
         """ Returns value of the critic network for the given observations.
         """

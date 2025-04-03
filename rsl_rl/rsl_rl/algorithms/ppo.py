@@ -37,6 +37,9 @@ class PPO:
         self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=learning_rate)
         self.transition = RolloutStorage.Transition()
 
+        # Adaptation module (WIP)
+        self.adaptation_optimizer = optim.Adam(self.actor_critic.adaptation_encoder_.parameters(), lr=learning_rate) # AdaptationEncoder object parameters()
+
         # PPO parameters
         self.clip_param = clip_param
         self.num_learning_epochs = num_learning_epochs

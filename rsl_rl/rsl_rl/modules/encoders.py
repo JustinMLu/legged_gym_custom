@@ -7,32 +7,36 @@ from torch.nn.modules import rnn
 
 class PrivilegedEncoder(nn.Module):
 
-    def __init__(self, num_privileged, output_dim, encoder_hidden_dims=[64, 20], activation='elu'):
+    def __init__(self, num_privileged_obs, encoder_hidden_dims=[64, 20], output_layer_dim=20, activation='elu'):
         """ Initialize a PrivilegedEncoder instance.
         
             Args:
-                num_privileged: Number of privileged observations
+                num_privileged_obs: Number of privileged observations
                 output_dim: Dimensionality of the output features
                 activation: Activation function to use ('elu', 'relu', 'tanh', etc.)
         """
         
         super().__init__()
         self.activation = get_activation(activation)
+        self.num_privileged = num_privileged_obs
+        self.output_dim = output_layer_dim
+        self.encoder_hidden_dims = encoder_hidden_dims
+
         priv_layers = []
-        priv_layers.append(nn.Linear(num_privileged, encoder_hidden_dims[0]))
+        priv_layers.append(nn.Linear(num_privileged_obs, encoder_hidden_dims[0]))
         priv_layers.append(activation)
         for l in range(len(encoder_hidden_dims)):
             if l == len(encoder_hidden_dims) - 1:
-                priv_layers.append(nn.Linear(encoder_hidden_dims[l], output_dim)) # Last layer
+                priv_layers.append(nn.Linear(encoder_hidden_dims[l], output_layer_dim)) # Last layer
             else:
                 priv_layers.append(nn.Linear(encoder_hidden_dims[l], encoder_hidden_dims[l + 1]))
                 priv_layers.append(activation)
         self.priv_encoder = nn.Sequential(*priv_layers)
 
-    def forward(self, obs):
+    def forward(self, privileged_obs):
         """ Forward pass through the privileged obs. encoder.
         """
-        return self.priv_encoder(obs)
+        return self.priv_encoder(privileged_obs)
     
     def __str__(self):
         """ Returns a string representation of the PrivilegedEncoder instance.
@@ -41,24 +45,27 @@ class PrivilegedEncoder(nn.Module):
                 
 
 
-class HistoryEncoder(nn.Module):
+class AdaptationEncoder(nn.Module):
 
-    def __init__(self, history_buffer_length, num_obs, output_dim, activation='elu'):
-        """ Initialize a HistoryEncoder instance.
+    def __init__(self, num_base_obs, history_buffer_length, output_layer_dim=20, activation='elu'):
+        """ Initialize an AdaptationEncoder instance.
         
             Args:
+                num_base_obs: Size of an individual observation (WITHOUT history stuff)
                 history_buffer_length: Length of the history buffer
-                num_obs: Number of observations (non-privileged)
                 output_dim: Dimensionality of the output features
                 activation: Activation function to use ('elu', 'relu', 'tanh', etc.)
         """
         
         super().__init__()
         self.activation = get_activation(activation)
+        self.history_buffer_length = history_buffer_length
+        self.num_base_obs = num_base_obs
+        self.output_dim = output_layer_dim
         channel_size = 10
 
         # First part: linear layer that encodes each observation 
-        self.fc_encoder = nn.Sequential(nn.Linear(num_obs, 3*channel_size), activation)
+        self.fc_encoder = nn.Sequential(nn.Linear(num_base_obs, 3*channel_size), activation)
         
         # Second part: convolutional layers that process the history buffer
         if history_buffer_length == 10:
@@ -112,13 +119,15 @@ class HistoryEncoder(nn.Module):
             raise ValueError("history buffer length must be 10, 20 or 50")
         
         # Third part: final linear layer that maps to the output size
-        self.fc_final = nn.Sequential(nn.Linear(3*channel_size, output_dim), self.activation)
+        self.fc_final = nn.Sequential(nn.Linear(3*channel_size, output_layer_dim), self.activation)
     
-    def forward(self, obs):
-        """ https://pytorch.org/docs/stable/generated/torch.nn.Linear.html
-            Input: (*, H_in) where * means any number of dimensions including none and H_in = in_features
+    def forward(self, obs_history):
+        """ Forward pass through the adaptation encoder. Expects UN-FLATTENED obs_history of dimension (batch_size, history_buffer_length, num_base_obs).
+        
+            NOTE: https://pytorch.org/docs/stable/generated/torch.nn.Linear.html
+                  Input: (*, H_in) where * means any number of dimensions including none and H_in = in_features
         """
-        projected_obs = self.fc_encoder(obs)
+        projected_obs = self.fc_encoder(obs_history)
         output = self.conv_layers(projected_obs.permute(0, 2, 1)) # permute to (batch_size, channels, seq_len)
         output = self.fc_final(output)
         return output
@@ -126,7 +135,7 @@ class HistoryEncoder(nn.Module):
     def __str__(self):
         """ Returns a string representation of the HistoryEncoder instance.
         """
-        return f"HistoryEncoder(history_buffer_length={self.history_buffer_length}, num_obs={self.num_obs}, output_dim={self.output_dim}, activation={self.activation})"
+        return f"HistoryEncoder(num_base_obs={self.num_base_obs}, history_buffer_length={self.history_buffer_length}, output_dim={self.output_dim}, activation={self.activation})"
 
 
 def get_activation(act_name):
