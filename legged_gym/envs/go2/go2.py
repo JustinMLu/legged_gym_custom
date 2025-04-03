@@ -146,7 +146,7 @@ class Go2Robot(LeggedRobot):
                                           cur_bl, 
                                           cur_br], dim=1)
         
-        # TODO: Update last contact heights
+        # Update last contact heights
         foot_height_update_mask = torch.stack([
             self.fl_contact, self.fr_contact, self.bl_contact, self.br_contact
         ], dim=1)
@@ -209,7 +209,6 @@ class Go2Robot(LeggedRobot):
         if self.add_noise:
             cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
 
-        # TODO: move cur_obs_buf to front of self.obs_buf
         # Update self.obs_buf
         self.obs_buf = torch.cat([
             self.obs_history_buf.view(self.num_envs, -1),  # Flattened history
@@ -222,6 +221,11 @@ class Go2Robot(LeggedRobot):
             torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
+
+        # Update privileged observation buffer
+        self.privileged_obs_buf = torch.cat((self.mass_params_tensor,
+                                             self.friction_coeffs_tensor,
+                                             self.motor_strength - 1), dim=-1)
 
 
     # =========================== NEW REWARD FUNCTIONS ===========================
@@ -270,52 +274,6 @@ class Go2Robot(LeggedRobot):
         reward += torch.where(~(self.br_contact ^ br_stance), 0.25, 0.0)
         
         return reward
-
-    def _reward_phase_match_foot_lift(self):
-        """Reward proper foot lifting based on gait phase.
-
-            FOR NOW, DO NOT ENABLE BOTH THIS AND _REWARD_FEET_AIR_TIME SIMULTANEOUSLY!
-            BOTH OF THEM USE self.last_contacts AND WILL OVERWRITE ONE ANOTHER'S STORED
-            PREVIOUS CONTACT INFORMATION!
-
-            NOTE:
-            I don't think using last_contact_heights is a good idea.
-            On stairs, the feet will constantly be at different heights
-            and even if I clip the deltas to a zero mininum, it means
-            that sliding the feet on a slope is going to still incur a reward...
-
-            What we should be doing is this: 
-            1. drawing out a 'plane' that is like 0.15m below the robot's base 
-            (or whatever the actual dist. between the base and feet are at 
-            NEUTRAL STANCE).
-             
-            2. Every physics step we take the robot's orientation quaternion
-            and rotate the plane to match the robot's orientation. Then, we
-            calculate our deltas as self.feet_pos - plane. 
-            
-           OR:
-           We know the that the the sin of each leg > 0.0 means the leg should
-           be in the air. Then we calculate the derivative of the sine wave, then
-           calculate the dz (or just velocity in the z-axis) of the foot.
-
-           If the foot is properly following the phase, it should be lifting
-           when the sin dt is positive and moving down when the dt is negative.
-
-           So then, the reward can be...TODO!
-        """
-         # Sine wave foot height trajectories
-        fl = torch.sin(2*np.pi*self.phase_fl) # less than 0.0 means stance
-        fr = torch.sin(2*np.pi*self.phase_fr)
-        bl = torch.sin(2*np.pi*self.phase_bl)
-        br = torch.sin(2*np.pi*self.phase_br)
-
-        # Reward (or penalize) each foot for height (TODO!!!)
-        fl_delta = self.feet_pos[:, 0, 2] - self.last_contact_heights[:, 0]  # FL
-        fr_delta = self.feet_pos[:, 1, 2] - self.last_contact_heights[:, 1]  # FR
-        bl_delta = self.feet_pos[:, 2, 2] - self.last_contact_heights[:, 2]  # BL
-        br_delta = self.feet_pos[:, 3, 2] - self.last_contact_heights[:, 3]  # BR
-
-
 
     def _reward_stand_still_v2(self):
         """ Reward maintaining pose with zero commands """

@@ -76,7 +76,7 @@ class BaseTask():
             self.privileged_obs_buf = torch.zeros(self.num_envs, self.num_privileged_obs, device=self.device, dtype=torch.float)
         else: 
             self.privileged_obs_buf = None
-            # self.num_privileged_obs = self.num_obs
+            # self.num_privileged_obs = self.num_obs # Who the hell needs this?
 
         self.extras = {}
 
