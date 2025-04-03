@@ -161,8 +161,8 @@ class LeggedRobot(BaseTask):
         self.last_base_lin_vel[env_ids] = 0.
         self.last_torques[env_ids] = 0. 
 
-        if self.cfg.env.enable_history:
-            self.obs_history[env_ids, :, :] = 0.  # reset obs history buffer
+        # if self.cfg.env.enable_history:
+        self.obs_history_buf[env_ids, :, :] = 0.  # reset obs history buffer
 
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
@@ -229,22 +229,20 @@ class LeggedRobot(BaseTask):
         if self.add_noise:
             cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
         
-        # Update and use history buffer
-        if self.cfg.env.enable_history:
+        # if self.cfg.env.enable_history:
+        # Update self.obs_buf
+        self.obs_buf = torch.cat([
+            self.obs_history_buf.view(self.num_envs, -1),  # Flattened history
+            cur_obs_buf                                # Current observation
+        ], dim=-1)
 
-            # Update self.obs_buf
-            self.obs_buf = torch.cat([
-                self.obs_history.view(self.num_envs, -1),  # Flattened history
-                cur_obs_buf                                # Current observation
-            ], dim=-1)
-
-            # Update history buffer 
-            self.obs_history = torch.where(
-                (self.episode_length_buf <= 1)[:, None, None],
-                torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
-                torch.cat([self.obs_history[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
-            )
-            
+        # Update history buffer 
+        self.obs_history_buf = torch.where(
+            (self.episode_length_buf <= 1)[:, None, None],
+            torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
+            torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
+        )
+        
 
     def create_sim(self):
         """ Creates simulation, terrain and evironments
@@ -605,15 +603,15 @@ class LeggedRobot(BaseTask):
         self.measured_heights = 0
 
         # Init history buffer (if used)
-        if self.cfg.env.enable_history:
-            self.obs_history = torch.zeros(
-                self.num_envs,
-                self.cfg.env.buffer_length, # minus current observation
-                self.cfg.env.num_proprio,
-                device=self.device,
-                dtype=torch.float
-            )
-            print("Obs history initialized with shape: ", self.obs_history.shape)
+        # if self.cfg.env.enable_history:
+        self.obs_history_buf = torch.zeros(
+            self.num_envs,
+            self.cfg.env.buffer_length, # minus current observation
+            self.cfg.env.num_proprio,
+            device=self.device,
+            dtype=torch.float
+        )
+        print("Obs history initialized with shape: ", self.obs_history_buf.shape)
 
         # Init joint positions offsets and PD gains
         self.default_dof_pos = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)

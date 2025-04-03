@@ -209,21 +209,20 @@ class Go2Robot(LeggedRobot):
         if self.add_noise:
             cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
 
-        # Update and use history buffer
-        if self.cfg.env.enable_history:
+        # Update and use history buffer TODO: move cur_obs_buf to front of self.obs_buf
+        # if self.cfg.env.enable_history:
+        # Update self.obs_buf
+        self.obs_buf = torch.cat([
+            self.obs_history_buf.view(self.num_envs, -1),  # Flattened history
+            cur_obs_buf                                # Current observation
+        ], dim=-1)
 
-            # Update self.obs_buf
-            self.obs_buf = torch.cat([
-                self.obs_history.view(self.num_envs, -1),  # Flattened history
-                cur_obs_buf                                # Current observation
-            ], dim=-1)
-
-            # Update history buffer 
-            self.obs_history = torch.where((
-                self.episode_length_buf <= 1)[:, None, None],
-                torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
-                torch.cat([self.obs_history[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
-            )
+        # Update history buffer 
+        self.obs_history_buf = torch.where((
+            self.episode_length_buf <= 1)[:, None, None],
+            torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
+            torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
+        )
 
 
     # =========================== NEW REWARD FUNCTIONS ===========================

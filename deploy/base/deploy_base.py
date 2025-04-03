@@ -116,18 +116,20 @@ class BaseController:
         cur_obs[9+2*num_actions : 9+3*num_actions] = self.actions
         cur_obs[9+3*num_actions:9+3*num_actions+8] = phase_features
 
-        # Concatenate obs history if enabled
-        if self.cfg.enable_history:
-            self.obs[:] = np.concatenate([self.obs_history.flatten(), cur_obs])
-            # Then, add current observation to history
-            if self.first_step_ever:
-                self.first_step_ever = False
-                self.obs_history = np.tile(cur_obs, (self.cfg.buffer_length, 1))  # (4x1, 1x53)
-            else:
-                self.obs_history = np.roll(self.obs_history, -1, axis=0)
-                self.obs_history[-1] = cur_obs
+        # if self.cfg.enable_history:
+
+        # Concatenate obs history
+        self.obs[:] = np.concatenate([self.obs_history.flatten(), cur_obs])
+        # Then, add current observation to history
+        if self.first_step_ever:
+            self.first_step_ever = False
+            self.obs_history = np.tile(cur_obs, (self.cfg.buffer_length, 1))  # (4x1, 1x53)
         else:
-            self.obs[:] = cur_obs
+            self.obs_history = np.roll(self.obs_history, -1, axis=0)
+            self.obs_history[-1] = cur_obs
+            
+        # else:
+        #     self.obs[:] = cur_obs
 
         # Convert observations to tensor, clip
         obs_tensor = torch.from_numpy(self.obs).unsqueeze(0)
