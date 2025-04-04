@@ -238,6 +238,8 @@ class LeggedRobot(BaseTask):
             torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
+
+        # TODO Put privileged observations in a separate buffer
         
 
     def create_sim(self):
@@ -293,7 +295,7 @@ class LeggedRobot(BaseTask):
 
     def _process_dof_props(self, props, env_id):
         """ Callback allowing to store/change/randomize the DOF properties of each environment.
-            Called During environment creation.
+            Called during environment creation.
             Base behavior: stores position, velocity and torques limits defined in the URDF
 
         Args:
@@ -320,13 +322,8 @@ class LeggedRobot(BaseTask):
         return props
 
     def _process_rigid_body_props(self, props, env_id):
-        # if env_id==0:
-        #     sum = 0
-        #     for i, p in enumerate(props):
-        #         sum += p.mass
-        #         print(f"Mass of body {i}: {p.mass} (before randomization)")
-        #     print(f"Total mass {sum} (before randomization)")
-        # randomize base mass
+        """ Callback allowing to store/change/randomize the rigid body properties of each environment.
+        """
         if self.cfg.domain_rand.randomize_base_mass:
             rng = self.cfg.domain_rand.added_mass_range
             props[0].mass += np.random.uniform(rng[0], rng[1])

@@ -103,16 +103,6 @@ class Go2Robot(LeggedRobot):
         self.feet_vel = self.feet_states[:, :, 7:10]
         
         # =========================== GAIT CALCULATIONS ===========================
-
-        # # Calculate gait period --> TODO: ADD NOISE TO THIS & PUT INTO CONFIG!!!!!!!!! IMPORTANT!!!
-        # period = 0.32
-        
-        # # Specify per-leg period offsets
-        # fr_offset = 0.0
-        # bl_offset = 0.0
-        # fl_offset = 0.25
-        # br_offset = 0.25
-
         # Calculate per-leg phase
         self.phase = (self.episode_length_buf * self.dt) % self.cfg.env.period / self.cfg.env.period 
         self.phase_fr = (self.phase + self.cfg.env.fr_offset) % 1
@@ -222,7 +212,7 @@ class Go2Robot(LeggedRobot):
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
 
-        # Update privileged observation buffer
+        # TODO Update privileged observation buffer
         self.privileged_obs_buf = torch.cat((self.mass_params_tensor,
                                              self.friction_coeffs_tensor,
                                              self.motor_strength - 1), dim=-1)
