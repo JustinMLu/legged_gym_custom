@@ -78,9 +78,16 @@ class OnPolicyRunner:
         self.tot_time = 0
         self.current_learning_iteration = 0
 
-        _, _ = self.env.reset()
+        # Reset environment
+        _, _, _ = self.env.reset()
     
     def learn(self, num_learning_iterations, init_at_random_ep_len=False):
+        # Init these for Tensorboard logging
+        mean_value_loss = 0.0
+        mean_surrogate_loss = 0.0
+        mean_regularization_loss = 0.0
+        mean_adaptation_loss = 0.0
+        
         # initialize writer
         if self.log_dir is not None and self.writer is None:
             self.writer = SummaryWriter(log_dir=self.log_dir, flush_secs=10)
@@ -89,12 +96,13 @@ class OnPolicyRunner:
         if init_at_random_ep_len:
             self.env.episode_length_buf = torch.randint_like(self.env.episode_length_buf, high=int(self.env.max_episode_length))
         
-        # Get observations
+        # Get observations, move to device
         obs = self.env.get_observations()
         privileged_obs = self.env.get_privileged_observations()
         critic_obs = self.env.get_critic_observations()
-
         obs, privileged_obs, critic_obs = obs.to(self.device), privileged_obs.to(self.device), critic_obs.to(self.device)
+
+        # Set up training mode
         self.alg.actor_critic.train() # switch to train mode (for dropout for example)
 
         ep_infos = []
@@ -112,15 +120,11 @@ class OnPolicyRunner:
             # Rollout
             with torch.inference_mode():
                 for i in range(self.num_steps_per_env):
+                    # Sample and perform action to get next observation
                     actions = self.alg.act(obs, privileged_obs, critic_obs, adaptation_mode=use_adaptation_mode)
-                    
-                    obs, privileged_obs, rewards, dones, infos = self.env.step(actions) # legged_robot.py env step
-                    
-                    critic_obs = self.env.get_critic_observations() # HOPEFULLY updates critic obs?
-                    
-                    obs, critic_obs, rewards, dones = obs.to(self.device), critic_obs.to(self.device), rewards.to(self.device), dones.to(self.device)
-                    
-                    self.alg.process_env_step(rewards, dones, infos)
+                    obs, privileged_obs, critic_obs, rewards, dones, infos = self.env.step(actions) # legged_robot.py env step
+                    obs, privileged_obs, critic_obs, rewards, dones = obs.to(self.device), privileged_obs.to(self.device), critic_obs.to(self.device), rewards.to(self.device), dones.to(self.device)
+                    self.alg.process_env_step(rewards, dones, infos) # Handles transition for rewards, dones, infos
                     
                     if self.log_dir is not None:
                         # Book keeping
@@ -141,14 +145,12 @@ class OnPolicyRunner:
                 start = stop
                 self.alg.compute_returns(critic_obs)
 
-            mean_value_loss = -1
-            mean_surrogate_loss = -1
-            mean_regularization_loss = -1
-
             if use_adaptation_mode:
                 mean_adaptation_loss = self.alg.update_dagger()
+                
             else:
                 mean_value_loss, mean_surrogate_loss, mean_regularization_loss = self.alg.update()
+
 
 
             stop = time.time()

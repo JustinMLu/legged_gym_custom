@@ -65,8 +65,8 @@ def play(args):
     # export policy as a jit module (used to run it from C++)
     if EXPORT_POLICY:
         path = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'policies')
-        export_policy_as_jit(ppo_runner.alg.actor_critic, path)
-        print('Exported policy as jit script to: ', path)
+        export_policy_as_jit(ppo_runner.alg.actor_critic, path, save_adaptation_module=True)
+        # print('Exported policy as jit script to: ', path)
 
     logger = Logger(env.dt)
     robot_index = 0 # which robot is used for logging
@@ -83,7 +83,7 @@ def play(args):
         full_obs = env.get_observations()
     
         actions = inference_policy(full_obs.detach(), None, adaptation_mode=True) # use adaption module
-        obs, privileged_obs, rews, dones, infos = env.step(actions.detach())
+        obs, privileged_obs, critic_obs, rews, dones, infos = env.step(actions.detach())
 
         if RECORD_FRAMES:
             if i % 2:

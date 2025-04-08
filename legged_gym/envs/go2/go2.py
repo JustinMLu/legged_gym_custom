@@ -192,16 +192,14 @@ class Go2Robot(LeggedRobot):
                                 self.actions                                                        # (12,) last actions
                                 ),dim=-1)                                                           # total: (45,)
         
-        # Add phase info to observations
-        # cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
+        # Add phase features
+        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
 
-        # Add noise
+        # Add noise vector
         if self.add_noise:
             cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
-
-        self.obs_buf = cur_obs_buf.clone()
         
-        # Concatenate
+        # Concatenate with history 
         self.obs_buf = torch.cat([
             self.obs_history_buf.view(self.num_envs, -1),  # Flattened history
             cur_obs_buf                                # Current observation
@@ -214,18 +212,21 @@ class Go2Robot(LeggedRobot):
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
 
-        # TODO Update privileged observation buffer
+        # TODO: This is the actual privileged observation buffer that I gotta implement
         # self.privileged_obs_buf = torch.cat((self.mass_params_tensor,
         #                                      self.friction_coeffs_tensor,
         #                                      self.motor_strength - 1), dim=-1)
         
+        # Get heights
+        # heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
+        
         # Update privileged observation buffer
         self.privileged_obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel,
-                                             self.base_lin_vel * self.obs_scales.lin_vel), dim=-1)
+                                             phase_features,
+                                             ), dim=-1) # 3 + 8 + 187
         
         # Update critic observation buffer
-        self.critic_obs_buf = torch.cat((cur_obs_buf,
-                                         self.privileged_obs_buf), dim=-1)
+        self.critic_obs_buf = self.obs_buf.clone()
         
 
     # =========================== NEW REWARD FUNCTIONS ===========================

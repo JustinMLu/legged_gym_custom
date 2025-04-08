@@ -177,20 +177,35 @@ def get_args():
         args.sim_device += f":{args.sim_device_id}"
     return args
 
-def export_policy_as_jit(actor_critic, path):
+def export_policy_as_jit(actor_critic, path, save_adaptation_module=False):
     if hasattr(actor_critic, 'memory_a'):
         # assumes LSTM: TODO add GRU
         exporter = PolicyExporterLSTM(actor_critic)
         exporter.export(path)
     else: 
         os.makedirs(path, exist_ok=True)
-        path = os.path.join(path, 'exported_policy.pt')
+        
+        policy_path = os.path.join(path, 'exported_policy.pt')
         model = copy.deepcopy(actor_critic.actor).to('cpu')
         traced_script_module = torch.jit.script(model)
-        traced_script_module.save(path)
+        traced_script_module.save(policy_path)
+        print(f"Exported policy saved to: {policy_path}")
+
+
+        if save_adaptation_module:
+            encoder_path = os.path.join(path, 'exported_encoder.pt')
+            module = copy.deepcopy(actor_critic.adaptation_encoder_).to('cpu')
+            traced_script_module = torch.jit.script(module)
+            traced_script_module.save(encoder_path)
+            print(f"Exported adaptation module saved to: {encoder_path}")
+
+
+    
 
 
 class PolicyExporterLSTM(torch.nn.Module):
+    """ Don't use this it's mega broken 
+    """
     def __init__(self, actor_critic):
         super().__init__()
         self.actor = copy.deepcopy(actor_critic.actor)

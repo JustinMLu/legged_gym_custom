@@ -58,6 +58,7 @@ class PPO:
         self.lam = lam
         self.max_grad_norm = max_grad_norm
         self.use_clipped_value_loss = use_clipped_value_loss
+        self.total_updates = 0.0 # number of total updates - either update() or update_dagger()
 
     def init_storage(self, num_envs, num_transitions_per_env, total_obs_shape, privileged_obs_shape, critic_obs_shape, action_shape):
         self.storage = RolloutStorage(num_envs, num_transitions_per_env, total_obs_shape, privileged_obs_shape, critic_obs_shape, action_shape, self.device)
@@ -133,8 +134,13 @@ class PPO:
                 with torch.inference_mode():
                     adaptation_latent_batch = self.actor_critic.adaptation_encoder(obs_batch)
 
-                mean_regularization_loss = (privileged_latent_batch - adaptation_latent_batch.detach()).norm(p=2, dim=1).mean()
-                regularization_coef = 0.1  # Replaced by some esoteric staging variable
+                regularization_loss = (privileged_latent_batch - adaptation_latent_batch.detach()).norm(p=2, dim=1).mean()
+
+                # ================= Regularization coefficient schedule =================
+                start_val, end_val, start_step, duration = 0.0, 0.1, 3000, 7000           # Define schedule parameters
+                stage = min(max((self.total_updates - start_step) / duration, 0.0), 1.0)  # Calculate stage (0 to 1)
+                regularization_coef = start_val + stage * (end_val - start_val)           # Interpolate coefficient
+                # =======================================================================
 
                 # KL
                 if self.desired_kl != None and self.schedule == 'adaptive':
@@ -169,9 +175,16 @@ class PPO:
                 else:
                     value_loss = (returns_batch - value_batch).pow(2).mean()
 
-                # added regularization loss
-                # loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean()
-                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean() + mean_regularization_loss * regularization_coef
+                # # DEBUG PRINTS
+                # print(f"Returns batch mean: {returns_batch.mean().item()}")
+                # print(f"Value batch mean: {value_batch.mean().item()}")
+                # print(f"Value loss: {value_loss.item()}")
+
+                # Compute loss - privileged encoder should mimic adaptation encoder
+                loss = surrogate_loss \
+                     + self.value_loss_coef * value_loss \
+                     - self.entropy_coef * entropy_batch.mean() \
+                     + regularization_coef * regularization_loss
 
                 # Gradient step
                 self.optimizer.zero_grad()
@@ -179,20 +192,29 @@ class PPO:
                 nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.max_grad_norm)
                 self.optimizer.step()
 
+                # Update mean loss metrics (numerator)
                 mean_value_loss += value_loss.item()
                 mean_surrogate_loss += surrogate_loss.item()
-                mean_regularization_loss += mean_regularization_loss.item()
+                mean_regularization_loss += regularization_loss.item()
 
+        # Update mean loss metrics (denominator)
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_value_loss /= num_updates
         mean_surrogate_loss /= num_updates
         mean_regularization_loss /= num_updates
         self.storage.clear()
+        self.increase_update_count()
 
         return mean_value_loss, mean_surrogate_loss, mean_regularization_loss
 
+    def increase_update_count(self):
+        """ Increase the counter that tracks the total number of updates 
+        """
+        self.total_updates += 1
+
     def update_dagger(self):
-        """Update only the adaptation encoder to mimic the privileged encoder"""
+        """ Update only the adaptation encoder to mimic the privileged encoder 
+        """
         mean_adaptation_loss = 0
 
         # Get minibatch generator
@@ -227,5 +249,6 @@ class PPO:
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_adaptation_loss /= num_updates
         self.storage.clear()
+        self.increase_update_count()
         
         return mean_adaptation_loss
