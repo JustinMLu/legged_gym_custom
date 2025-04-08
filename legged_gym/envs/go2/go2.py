@@ -218,13 +218,14 @@ class Go2Robot(LeggedRobot):
         #                                      self.motor_strength - 1), dim=-1)
         
         # Get heights
-        # heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
+        heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
         
         # Update privileged observation buffer
         self.privileged_obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel,
-                                             phase_features,
-                                             ), dim=-1) # 3 + 8 + 187
+                                             heights
+                                             ), dim=-1) # 3 + 187
         
+
         # Update critic observation buffer
         self.critic_obs_buf = self.obs_buf.clone()
         

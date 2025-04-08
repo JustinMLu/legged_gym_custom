@@ -5,7 +5,7 @@ class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
         num_proprio = 45+8
-        num_privileged_obs = 3+8 # + 187
+        num_privileged_obs = 3+187
         history_buffer_length = 9
         num_observations = num_proprio+(num_proprio*history_buffer_length)
         num_critic_obs = num_proprio+(num_proprio*history_buffer_length)
@@ -23,7 +23,7 @@ class Go2Cfg( LeggedRobotCfg ):
         num_rows = 20 # num. difficulties       ->    (0/n, 1/n, 2/n ... (n-1)/n)
         num_cols = 20 # max. terrain choices    ->    affects terrain_proportions "accuracy"
 
-        mesh_type = 'plane'
+        mesh_type = 'trimesh'
         measure_heights = False     # changed so this only enables the buffer & noise
         max_init_terrain_level = 2  # starting curriculum state
 
@@ -155,13 +155,13 @@ class Go2Cfg( LeggedRobotCfg ):
             collision = -10.0
             delta_torques = -1.0e-7
             # ====================== 
-            contact_phase_match = 1.0
+            contact_phase_match = 1.0*0.1
             stumble = -1.0           
             orientation = -5.0      
             dof_error = -0.04 
             hip_pos = -0.5          
             # base_height = -1.0
-            dof_vel = -0.0005
+            # dof_vel = -0.0001
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
