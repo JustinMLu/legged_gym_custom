@@ -40,7 +40,6 @@ from .a1.a1_config import A1RoughCfg, A1RoughCfgPPO
 
 from .go2.go2 import Go2Robot
 from .go2.go2_config import Go2Cfg, Go2CfgPPO
-from .go2.go2_rnn_config import Go2RnnCfg, Go2RnnCfgPPO
 
 
 import os
@@ -52,4 +51,3 @@ task_registry.register( "anymal_c_flat", Anymal, AnymalCFlatCfg(), AnymalCFlatCf
 task_registry.register( "a1", LeggedRobot, A1RoughCfg(), A1RoughCfgPPO() )
 task_registry.register( "cassie", Cassie, CassieRoughCfg(), CassieRoughCfgPPO() )
 task_registry.register( "go2", Go2Robot, Go2Cfg(), Go2CfgPPO() )
-task_registry.register( "go2_rnn", Go2Robot, Go2RnnCfg(), Go2RnnCfgPPO() )

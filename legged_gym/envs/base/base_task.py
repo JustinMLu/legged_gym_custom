@@ -57,9 +57,13 @@ class BaseTask():
         if self.headless == True:
             self.graphics_device_id = -1
 
+        # SUPER important attributes, inherited by all tasks
         self.num_envs = cfg.env.num_envs
+        self.num_proprio = cfg.env.num_proprio
         self.num_obs = cfg.env.num_observations
         self.num_privileged_obs = cfg.env.num_privileged_obs
+        self.num_critic_obs = cfg.env.num_critic_obs
+        self.history_buffer_length = cfg.env.history_buffer_length
         self.num_actions = cfg.env.num_actions
 
         # optimization flags for pytorch JIT
@@ -68,14 +72,17 @@ class BaseTask():
 
         # allocate buffers
         self.obs_buf = torch.zeros(self.num_envs, self.num_obs, device=self.device, dtype=torch.float)
+        self.privileged_obs_buf = torch.zeros(self.num_envs, self.num_privileged_obs, device=self.device, dtype=torch.float)
+        self.critic_obs_buf = torch.zeros(self.num_envs, self.num_critic_obs, device=self.device, dtype=torch.float)
+        self.obs_history_buf = torch.zeros(self.num_envs, self.history_buffer_length, self.num_obs, device=self.device, dtype=torch.float)
         self.rew_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self.reset_buf = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
         self.time_out_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
-        if self.num_privileged_obs is not None:
-            self.privileged_obs_buf = torch.zeros(self.num_envs, self.num_privileged_obs, device=self.device, dtype=torch.float)
-        else: 
-            self.privileged_obs_buf = None
+        
+        # if self.num_privileged_obs is not None:
+        #     self.privileged_obs_buf = torch.zeros(self.num_envs, self.num_privileged_obs, device=self.device, dtype=torch.float)
+        # else: 
             # self.num_privileged_obs = self.num_obs # Who the hell needs this?
 
         self.extras = {}
@@ -103,6 +110,9 @@ class BaseTask():
     
     def get_privileged_observations(self):
         return self.privileged_obs_buf
+    
+    def get_critic_observations(self):
+        return self.critic_obs_buf
 
     def reset_idx(self, env_ids):
         """Reset selected robots"""

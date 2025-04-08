@@ -24,13 +24,13 @@ class PrivilegedEncoder(nn.Module):
 
         priv_layers = []
         priv_layers.append(nn.Linear(num_privileged_obs, encoder_hidden_dims[0]))
-        priv_layers.append(activation)
+        priv_layers.append(self.activation)
         for l in range(len(encoder_hidden_dims)):
             if l == len(encoder_hidden_dims) - 1:
                 priv_layers.append(nn.Linear(encoder_hidden_dims[l], output_layer_dim)) # Last layer
             else:
                 priv_layers.append(nn.Linear(encoder_hidden_dims[l], encoder_hidden_dims[l + 1]))
-                priv_layers.append(activation)
+                priv_layers.append(self.activation)
         self.priv_encoder = nn.Sequential(*priv_layers)
 
     def forward(self, privileged_obs):
@@ -38,10 +38,10 @@ class PrivilegedEncoder(nn.Module):
         """
         return self.priv_encoder(privileged_obs)
     
-    def __str__(self):
-        """ Returns a string representation of the PrivilegedEncoder instance.
-        """
-        return f"PrivilegedEncoder(num_privileged={self.num_privileged}, output_dim={self.output_dim}, encoder_hidden_dims={self.encoder_hidden_dims}, activation={self.activation})"
+    # def __str__(self):
+    #     """ Returns a string representation of the PrivilegedEncoder instance.
+    #     """
+    #     return f"PrivilegedEncoder(num_privileged={self.num_privileged}, output_dim={self.output_dim}, encoder_hidden_dims={self.encoder_hidden_dims}, activation={self.activation})"
                 
 
 
@@ -63,16 +63,16 @@ class AdaptationEncoder(nn.Module):
         self.num_base_obs = num_base_obs
         self.output_dim = output_layer_dim
         channel_size = 10
-
+        
         # First part: linear layer that encodes each observation 
-        self.fc_encoder = nn.Sequential(nn.Linear(num_base_obs, 3*channel_size), activation)
+        self.fc_encoder = nn.Sequential(nn.Linear(num_base_obs, 3*channel_size), self.activation)
         
         # Second part: convolutional layers that process the history buffer
-        if history_buffer_length == 10:
+        if history_buffer_length == 9:
             self.conv_layers = nn.Sequential(
                 nn.Conv1d(in_channels = 3*channel_size, 
                           out_channels = 2*channel_size, 
-                          kernel_size = 4, 
+                          kernel_size = 3, 
                           stride = 2), 
                           self.activation,
                 nn.Conv1d(in_channels = 2*channel_size, 
@@ -81,42 +81,9 @@ class AdaptationEncoder(nn.Module):
                           stride = 1), 
                           self.activation,
                 nn.Flatten())
-        
-        elif history_buffer_length == 20:
-            self.conv_layers = nn.Sequential(
-                nn.Conv1d(in_channels = 3*channel_size, 
-                          out_channels = 2*channel_size, 
-                          kernel_size = 6, 
-                          stride = 2), 
-                          self.activation,
-                nn.Conv1d(in_channels = 2*channel_size, 
-                          out_channels = channel_size, 
-                          kernel_size = 4, 
-                          stride = 2), 
-                          self.activation,
-                nn.Flatten())
-        
-        elif history_buffer_length == 50:
-            self.conv_layers = nn.Sequential(
-                nn.Conv1d(in_channels = 3*channel_size, 
-                          out_channels = 2*channel_size, 
-                          kernel_size = 8, 
-                          stride = 4), 
-                          self.activation,
-                nn.Conv1d(in_channels = 2*channel_size, 
-                          out_channels = channel_size, 
-                          kernel_size = 5, 
-                          stride = 1), 
-                          self.activation,
-                nn.Conv1d(in_channels = channel_size, 
-                          out_channels = channel_size, 
-                          kernel_size = 5, 
-                          stride = 1), 
-                          self.activation, 
-                nn.Flatten())
             
         else:
-            raise ValueError("history buffer length must be 10, 20 or 50")
+            raise ValueError("history buffer length fixed to 9 for now")
         
         # Third part: final linear layer that maps to the output size
         self.fc_final = nn.Sequential(nn.Linear(3*channel_size, output_layer_dim), self.activation)
@@ -132,10 +99,10 @@ class AdaptationEncoder(nn.Module):
         output = self.fc_final(output)
         return output
 
-    def __str__(self):
-        """ Returns a string representation of the HistoryEncoder instance.
-        """
-        return f"HistoryEncoder(num_base_obs={self.num_base_obs}, history_buffer_length={self.history_buffer_length}, output_dim={self.output_dim}, activation={self.activation})"
+    # def __str__(self):
+    #     """ Returns a string representation of the HistoryEncoder instance.
+    #     """
+    #     return f"HistoryEncoder(num_base_obs={self.num_base_obs}, history_buffer_length={self.history_buffer_length}, output_dim={self.output_dim}, activation={self.activation})"
 
 
 def get_activation(act_name):

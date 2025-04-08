@@ -32,11 +32,13 @@ from .base_config import BaseConfig
 
 class LeggedRobotCfg(BaseConfig):
     class env:
-        buffer_length = 5 # number of previous obs to keep in buffer
+        history_buffer_length = 5 # number of previous obs to keep in buffer
         num_proprio = 235 # number of proprio. obs
-        num_observations = num_proprio+(num_proprio*buffer_length)
+        num_observations = num_proprio+(num_proprio*history_buffer_length)
         num_envs = 4096
-        num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
+        num_privileged_obs = 6 
+        num_critic_obs = num_proprio + num_privileged_obs 
+        
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
         send_timeouts = True # send time out information to the algorithm
@@ -212,14 +214,12 @@ class LeggedRobotCfgPPO(BaseConfig):
         init_noise_std = 1.0
         actor_hidden_dims = [512, 256, 128]
         critic_hidden_dims = [512, 256, 128]
+        latent_encoder_output_dim = 20
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
-        # only for 'ActorCriticRecurrent':
-        # rnn_type = 'lstm'
-        # rnn_hidden_size = 512
-        # rnn_num_layers = 1
         
     class algorithm:
         # training params
+        dagger_update_freq = 20
         value_loss_coef = 1.0
         use_clipped_value_loss = True
         clip_param = 0.2

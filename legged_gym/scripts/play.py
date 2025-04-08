@@ -53,11 +53,14 @@ def play(args):
     # prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
 
-    obs = env.get_observations()
-    # load policy
+    # obs = env.get_observations()
+    # privileged_obs = env.get_privileged_observations()
+    # critic_obs = env.get_critic_observations()
+
+    # load inference policy
     train_cfg.runner.resume = True
     ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args, train_cfg=train_cfg)
-    policy = ppo_runner.get_inference_policy(device=env.device)
+    inference_policy = ppo_runner.get_inference_policy(device=env.device)
     
     # export policy as a jit module (used to run it from C++)
     if EXPORT_POLICY:
@@ -76,8 +79,12 @@ def play(args):
     img_idx = 0
 
     for i in range(10*int(env.max_episode_length)):
-        actions = policy(obs.detach())
-        obs, _, rews, dones, infos = env.step(actions.detach())
+        # actions = policy(obs.detach())
+        full_obs = env.get_observations()
+    
+        actions = inference_policy(full_obs.detach(), None, adaptation_mode=True) # use adaption module
+        obs, privileged_obs, rews, dones, infos = env.step(actions.detach())
+
         if RECORD_FRAMES:
             if i % 2:
                 filename = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'frames', f"{img_idx}.png")

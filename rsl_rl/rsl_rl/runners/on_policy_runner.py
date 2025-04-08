@@ -1,3 +1,4 @@
+# on_policy_runner.py
 import time
 import os
 from collections import deque
@@ -24,22 +25,51 @@ class OnPolicyRunner:
         self.policy_cfg = train_cfg["policy"]
         self.device = device
         self.env = env
-        if self.env.num_privileged_obs is not None:
-            num_critic_obs = self.env.num_privileged_obs 
-        else:
-            num_critic_obs = self.env.num_obs
-        actor_critic_class = eval(self.cfg["policy_class_name"]) # ActorCritic
-        actor_critic: ActorCritic = actor_critic_class( self.env.num_obs,
-                                                        num_critic_obs,
-                                                        self.env.num_actions,
-                                                        **self.policy_cfg).to(self.device)
-        alg_class = eval(self.cfg["algorithm_class_name"]) # PPO
-        self.alg: PPO = alg_class(actor_critic, device=self.device, **self.alg_cfg)
+        
+        # =========================================================================
+        # Instantiate ActorCritic class instance
+        actor_critic = ActorCritic(num_proprio=self.env.num_proprio,
+                                   num_privileged_obs=self.env.num_privileged_obs,
+                                   num_critic_obs=self.env.num_critic_obs,
+                                   num_actions=self.env.num_actions,
+                                   history_buffer_length=self.env.history_buffer_length,
+                                   actor_hidden_dims=self.policy_cfg["actor_hidden_dims"],
+                                   critic_hidden_dims=self.policy_cfg["critic_hidden_dims"],
+                                   latent_encoder_output_dim=self.policy_cfg["latent_encoder_output_dim"],
+                                   activation=self.policy_cfg["activation"],
+                                   init_noise_std=self.policy_cfg["init_noise_std"])
+        
+
+        self.alg = PPO(actor_critic=actor_critic,
+                       num_learning_epochs=self.alg_cfg["num_learning_epochs"],
+                       num_mini_batches=self.alg_cfg["num_mini_batches"],
+                       clip_param=self.alg_cfg["clip_param"],
+                       gamma=self.alg_cfg["gamma"],
+                       lam=self.alg_cfg["lam"],
+                       value_loss_coef=self.alg_cfg["value_loss_coef"],
+                       entropy_coef=self.alg_cfg["entropy_coef"],
+                       learning_rate=self.alg_cfg["learning_rate"],
+                       max_grad_norm=self.alg_cfg["max_grad_norm"],
+                       use_clipped_value_loss=self.alg_cfg["use_clipped_value_loss"],
+                       schedule=self.alg_cfg["schedule"],
+                       desired_kl=self.alg_cfg["desired_kl"],
+                       device=self.device,
+                       )
+        
+        self.dagger_update_freq = self.alg_cfg["dagger_update_freq"]
+        # =========================================================================
+
         self.num_steps_per_env = self.cfg["num_steps_per_env"]
         self.save_interval = self.cfg["save_interval"]
 
         # init storage and model
-        self.alg.init_storage(self.env.num_envs, self.num_steps_per_env, [self.env.num_obs], [self.env.num_privileged_obs], [self.env.num_actions])
+        self.alg.init_storage(num_envs=self.env.num_envs, 
+                              num_transitions_per_env=self.num_steps_per_env, 
+                              total_obs_shape=[self.env.num_obs], 
+                              privileged_obs_shape=[self.env.num_privileged_obs],
+                              critic_obs_shape=[self.env.num_critic_obs], 
+                              action_shape=[self.env.num_actions],
+                              )
 
         # Log
         self.log_dir = log_dir
@@ -54,12 +84,17 @@ class OnPolicyRunner:
         # initialize writer
         if self.log_dir is not None and self.writer is None:
             self.writer = SummaryWriter(log_dir=self.log_dir, flush_secs=10)
+        
+        # init at random episode length
         if init_at_random_ep_len:
             self.env.episode_length_buf = torch.randint_like(self.env.episode_length_buf, high=int(self.env.max_episode_length))
+        
+        # Get observations
         obs = self.env.get_observations()
         privileged_obs = self.env.get_privileged_observations()
-        critic_obs = privileged_obs if privileged_obs is not None else obs
-        obs, critic_obs = obs.to(self.device), critic_obs.to(self.device)
+        critic_obs = self.env.get_critic_observations()
+
+        obs, privileged_obs, critic_obs = obs.to(self.device), privileged_obs.to(self.device), critic_obs.to(self.device)
         self.alg.actor_critic.train() # switch to train mode (for dropout for example)
 
         ep_infos = []
@@ -70,14 +105,21 @@ class OnPolicyRunner:
 
         tot_iter = self.current_learning_iteration + num_learning_iterations
         for it in range(self.current_learning_iteration, tot_iter):
+            
             start = time.time()
+            use_adaptation_mode = it % self.dagger_update_freq == 0 # Determines when to swap encoders
+
             # Rollout
             with torch.inference_mode():
                 for i in range(self.num_steps_per_env):
-                    actions = self.alg.act(obs, critic_obs)
-                    obs, privileged_obs, rewards, dones, infos = self.env.step(actions)
-                    critic_obs = privileged_obs if privileged_obs is not None else obs
+                    actions = self.alg.act(obs, privileged_obs, critic_obs, adaptation_mode=use_adaptation_mode)
+                    
+                    obs, privileged_obs, rewards, dones, infos = self.env.step(actions) # legged_robot.py env step
+                    
+                    critic_obs = self.env.get_critic_observations() # HOPEFULLY updates critic obs?
+                    
                     obs, critic_obs, rewards, dones = obs.to(self.device), critic_obs.to(self.device), rewards.to(self.device), dones.to(self.device)
+                    
                     self.alg.process_env_step(rewards, dones, infos)
                     
                     if self.log_dir is not None:
@@ -98,8 +140,17 @@ class OnPolicyRunner:
                 # Learning step
                 start = stop
                 self.alg.compute_returns(critic_obs)
-            
-            mean_value_loss, mean_surrogate_loss = self.alg.update()
+
+            mean_value_loss = -1
+            mean_surrogate_loss = -1
+            mean_regularization_loss = -1
+
+            if use_adaptation_mode:
+                mean_adaptation_loss = self.alg.update_dagger()
+            else:
+                mean_value_loss, mean_surrogate_loss, mean_regularization_loss = self.alg.update()
+
+
             stop = time.time()
             learn_time = stop - start
             if self.log_dir is not None:
@@ -196,8 +247,20 @@ class OnPolicyRunner:
         self.current_learning_iteration = loaded_dict['iter']
         return loaded_dict['infos']
 
-    def get_inference_policy(self, device=None):
-        self.alg.actor_critic.eval() # switch to evaluation mode (dropout for example)
+    # def get_inference_policy(self, device=None):
+    #     self.alg.actor_critic.eval() # switch to evaluation mode (dropout for example)
+    #     if device is not None:
+    #         self.alg.actor_critic.to(device)
+    #     return self.alg.actor_critic.act_inference
+
+    def get_inference_policy(self, device=None, stochastic=False):
+        self.alg.actor_critic.eval()  # Switch to evaluation mode
         if device is not None:
             self.alg.actor_critic.to(device)
-        return self.alg.actor_critic.act_inference
+        
+        if stochastic:
+            # Return full policy that samples from distribution
+            return self.alg.actor_critic.act
+        else:
+            # Return deterministic policy that returns mean actions
+            return self.alg.actor_critic.act_inference

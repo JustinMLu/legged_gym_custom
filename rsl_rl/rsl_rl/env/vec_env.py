@@ -7,11 +7,18 @@ from typing import Tuple, Union
 class VecEnv(ABC):
     num_envs: int
     num_obs: int
+    num_proprio: int
     num_privileged_obs: int
+    num_critic_obs: int
+    history_buffer_length: int
+
     num_actions: int
     max_episode_length: int
+    # =========================
+    obs_buf: torch.Tensor
     privileged_obs_buf: torch.Tensor
-    obs_buf: torch.Tensor 
+    obs_history_buf: torch.Tensor
+    # =========================
     rew_buf: torch.Tensor
     reset_buf: torch.Tensor
     episode_length_buf: torch.Tensor # current episode duration

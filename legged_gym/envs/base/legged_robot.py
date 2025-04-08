@@ -235,7 +235,7 @@ class LeggedRobot(BaseTask):
         # Update history buffer 
         self.obs_history_buf = torch.where(
             (self.episode_length_buf <= 1)[:, None, None],
-            torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
+            torch.stack([cur_obs_buf] * (self.cfg.env.history_buffer_length), dim=1),
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
 
@@ -598,7 +598,7 @@ class LeggedRobot(BaseTask):
         # Init history buffer
         self.obs_history_buf = torch.zeros(
             self.num_envs,
-            self.cfg.env.buffer_length, # minus current observation
+            self.cfg.env.history_buffer_length, # minus current observation
             self.cfg.env.num_proprio,
             device=self.device,
             dtype=torch.float

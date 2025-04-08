@@ -1,3 +1,4 @@
+# ppo.py
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -25,7 +26,6 @@ class PPO:
                  ):
 
         self.device = device
-
         self.desired_kl = desired_kl
         self.schedule = schedule
         self.learning_rate = learning_rate
@@ -34,11 +34,19 @@ class PPO:
         self.actor_critic = actor_critic
         self.actor_critic.to(self.device)
         self.storage = None # initialized later
-        self.optimizer = optim.Adam(self.actor_critic.parameters(), lr=learning_rate)
-        self.transition = RolloutStorage.Transition()
 
-        # Adaptation module (WIP)
-        self.adaptation_optimizer = optim.Adam(self.actor_critic.adaptation_encoder_.parameters(), lr=learning_rate) # AdaptationEncoder object parameters()
+        # Optimizer (Actor, Critic, Privileged Encoder)
+        self.optimizer = optim.Adam([
+            {'params': actor_critic.actor.parameters()},
+            {'params': actor_critic.critic.parameters()},
+            {'params': actor_critic.privileged_encoder_.parameters()}
+        ], lr=learning_rate)
+
+        # Optimizer (Adaptation Encoder)
+        self.adaptation_optimizer = optim.Adam(self.actor_critic.adaptation_encoder_.parameters(), lr=learning_rate)
+
+        # Transition data object
+        self.transition = RolloutStorage.Transition()
 
         # PPO parameters
         self.clip_param = clip_param
@@ -51,8 +59,8 @@ class PPO:
         self.max_grad_norm = max_grad_norm
         self.use_clipped_value_loss = use_clipped_value_loss
 
-    def init_storage(self, num_envs, num_transitions_per_env, actor_obs_shape, critic_obs_shape, action_shape):
-        self.storage = RolloutStorage(num_envs, num_transitions_per_env, actor_obs_shape, critic_obs_shape, action_shape, self.device)
+    def init_storage(self, num_envs, num_transitions_per_env, total_obs_shape, privileged_obs_shape, critic_obs_shape, action_shape):
+        self.storage = RolloutStorage(num_envs, num_transitions_per_env, total_obs_shape, privileged_obs_shape, critic_obs_shape, action_shape, self.device)
 
     def test_mode(self):
         self.actor_critic.test()
@@ -60,18 +68,27 @@ class PPO:
     def train_mode(self):
         self.actor_critic.train()
 
-    def act(self, obs, critic_obs):
-        if self.actor_critic.is_recurrent:
-            self.transition.hidden_states = self.actor_critic.get_hidden_states()
-        # Compute the actions and values
-        self.transition.actions = self.actor_critic.act(obs).detach()               # Forward pass thru policy network
-        self.transition.values = self.actor_critic.evaluate(critic_obs).detach()    # Forward pass thru critic network
+    def act(self, obs, privileged_obs, critic_obs, adaptation_mode=False):
+        """ No longer specifies critic_obs as a parameter - now uses privileged_obs
+        """
+        
+        # Compute actions from obs & privileged obs
+        self.transition.actions = self.actor_critic.act(obs, privileged_obs, adaptation_mode).detach()
+
+        # Compute values from critic obs
+        self.transition.values = self.actor_critic.evaluate(critic_obs).detach()
+
+        # Get action probabilities
         self.transition.actions_log_prob = self.actor_critic.get_actions_log_prob(self.transition.actions).detach()
         self.transition.action_mean = self.actor_critic.action_mean.detach()
         self.transition.action_sigma = self.actor_critic.action_std.detach()
-        # need to record obs and critic_obs before env.step()
+        
+        # Store observation data in Transition object
         self.transition.observations = obs
+        self.transition.privileged_observations = privileged_obs
         self.transition.critic_observations = critic_obs
+
+        # Return actions
         return self.transition.actions
     
     def process_env_step(self, rewards, dones, infos):
@@ -93,20 +110,31 @@ class PPO:
     def update(self):
         mean_value_loss = 0
         mean_surrogate_loss = 0
-        if self.actor_critic.is_recurrent:
-            generator = self.storage.reccurent_mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
-        else:
-            generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
-        for obs_batch, critic_obs_batch, actions_batch, target_values_batch, advantages_batch, returns_batch, old_actions_log_prob_batch, \
+        mean_regularization_loss = 0 
+
+           
+        generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
+        
+        # Loop over minibatches
+        for obs_batch, privileged_obs_batch, critic_obs_batch, actions_batch, target_values_batch, advantages_batch, returns_batch, old_actions_log_prob_batch, \
             old_mu_batch, old_sigma_batch, hid_states_batch, masks_batch in generator:
-
-
-                self.actor_critic.act(obs_batch, masks=masks_batch, hidden_states=hid_states_batch[0])                           # Forward pass thru policy network
+                
+                # Call ActorCritic act() method
+                self.actor_critic.act(obs_batch, privileged_obs_batch, adaptation_mode=False)
                 actions_log_prob_batch = self.actor_critic.get_actions_log_prob(actions_batch)
-                value_batch = self.actor_critic.evaluate(critic_obs_batch, masks=masks_batch, hidden_states=hid_states_batch[1]) # Forward pass thru critic network
+                value_batch = self.actor_critic.evaluate(critic_obs_batch)
+
                 mu_batch = self.actor_critic.action_mean
                 sigma_batch = self.actor_critic.action_std
                 entropy_batch = self.actor_critic.entropy
+
+                # Privileged encoder update
+                privileged_latent_batch = self.actor_critic.privileged_encoder(privileged_obs_batch)
+                with torch.inference_mode():
+                    adaptation_latent_batch = self.actor_critic.adaptation_encoder(obs_batch)
+
+                mean_regularization_loss = (privileged_latent_batch - adaptation_latent_batch.detach()).norm(p=2, dim=1).mean()
+                regularization_coef = 0.1  # Replaced by some esoteric staging variable
 
                 # KL
                 if self.desired_kl != None and self.schedule == 'adaptive':
@@ -141,7 +169,9 @@ class PPO:
                 else:
                     value_loss = (returns_batch - value_batch).pow(2).mean()
 
-                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean()
+                # added regularization loss
+                # loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean()
+                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean() + mean_regularization_loss * regularization_coef
 
                 # Gradient step
                 self.optimizer.zero_grad()
@@ -151,10 +181,51 @@ class PPO:
 
                 mean_value_loss += value_loss.item()
                 mean_surrogate_loss += surrogate_loss.item()
+                mean_regularization_loss += mean_regularization_loss.item()
 
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_value_loss /= num_updates
         mean_surrogate_loss /= num_updates
+        mean_regularization_loss /= num_updates
         self.storage.clear()
 
-        return mean_value_loss, mean_surrogate_loss
+        return mean_value_loss, mean_surrogate_loss, mean_regularization_loss
+
+    def update_dagger(self):
+        """Update only the adaptation encoder to mimic the privileged encoder"""
+        mean_adaptation_loss = 0
+
+        # Get minibatch generator
+        generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
+        
+        # Loop through batches
+        for obs_batch, privileged_obs_batch, critic_obs_batch, actions_batch, _, _, _, _, _, _, _, _ in generator:
+            # Act
+            with torch.inference_mode():
+                self.actor_critic.act(obs_batch, privileged_obs_batch, adaptation_mode=True)
+
+            # Adaptation module update
+            with torch.inference_mode():
+                priv_latent_batch = self.actor_critic.privileged_encoder(privileged_obs_batch)
+            
+
+            # Get adaptation latent (will accumulate gradients)
+            adapt_latent_batch = self.actor_critic.adaptation_encoder(obs_batch)
+            
+            # Compute loss - adaptation encoder should mimic privileged encoder
+            adaptation_loss = (priv_latent_batch.detach() - adapt_latent_batch).norm(p=2, dim=1).mean()
+            
+            # Update only the adaptation encoder
+            self.adaptation_optimizer.zero_grad()
+            adaptation_loss.backward()
+            nn.utils.clip_grad_norm_(self.actor_critic.adaptation_encoder_.parameters(), self.max_grad_norm)
+            self.adaptation_optimizer.step()
+            
+            mean_adaptation_loss += adaptation_loss.item()
+        
+        # Calculate average loss
+        num_updates = self.num_learning_epochs * self.num_mini_batches
+        mean_adaptation_loss /= num_updates
+        self.storage.clear()
+        
+        return mean_adaptation_loss

@@ -193,30 +193,40 @@ class Go2Robot(LeggedRobot):
                                 ),dim=-1)                                                           # total: (45,)
         
         # Add phase info to observations
-        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
+        # cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
 
         # Add noise
         if self.add_noise:
             cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
 
-        # Update self.obs_buf
+        self.obs_buf = cur_obs_buf.clone()
+        
+        # Concatenate
         self.obs_buf = torch.cat([
             self.obs_history_buf.view(self.num_envs, -1),  # Flattened history
             cur_obs_buf                                # Current observation
         ], dim=-1)
 
-        # Update history buffer 
+        # Update the history buffer   
         self.obs_history_buf = torch.where((
             self.episode_length_buf <= 1)[:, None, None],
-            torch.stack([cur_obs_buf] * (self.cfg.env.buffer_length), dim=1),
+            torch.stack([cur_obs_buf] * (self.cfg.env.history_buffer_length), dim=1),
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
 
         # TODO Update privileged observation buffer
-        self.privileged_obs_buf = torch.cat((self.mass_params_tensor,
-                                             self.friction_coeffs_tensor,
-                                             self.motor_strength - 1), dim=-1)
-
+        # self.privileged_obs_buf = torch.cat((self.mass_params_tensor,
+        #                                      self.friction_coeffs_tensor,
+        #                                      self.motor_strength - 1), dim=-1)
+        
+        # Update privileged observation buffer
+        self.privileged_obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel,
+                                             self.base_lin_vel * self.obs_scales.lin_vel), dim=-1)
+        
+        # Update critic observation buffer
+        self.critic_obs_buf = torch.cat((cur_obs_buf,
+                                         self.privileged_obs_buf), dim=-1)
+        
 
     # =========================== NEW REWARD FUNCTIONS ===========================
     def _reward_delta_torques(self): # Extreme Parkour -1.0e-7
@@ -244,7 +254,7 @@ class Go2Robot(LeggedRobot):
             - FR and BL feet should contact when phase < 0.5
             - FL and BR feet should contact when phase >= 0.5
         """
-        percent_time_on_ground = 0.20
+        percent_time_on_ground = 0.50
         
         # 1 is 100% on ground, 0 is 50% on ground, -1 is 0% on ground
         stance_threshold = 2.0 * percent_time_on_ground - 1.0
