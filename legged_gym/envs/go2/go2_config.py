@@ -64,7 +64,7 @@ class Go2Cfg( LeggedRobotCfg ):
         
         push_robots = True
         push_interval_s = 8
-        max_push_vel_xy = 1.0
+        max_push_vel_xy = 0.5
     
 
     class init_state( LeggedRobotCfg.init_state ):
@@ -115,7 +115,7 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class normalization( LeggedRobotCfg.normalization ):
         clip_observations = 100.
-        clip_actions = 20.0 # NEW
+        clip_actions = 3.14
         
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
             lin_vel = 2.0   # (Deprecated)
@@ -172,13 +172,13 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
 
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
-        value_loss_coef = 1.0
+        value_loss_coef = 1.0 # Change this to 10.0 if things get really annoying
         dagger_update_freq = 20
 
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = 'adaptation_go2'
         experiment_name = 'go2'
         load_run = -1
-        num_steps_per_env = 40 # NEW
+        num_steps_per_env = 24 # NEW
         max_iterations = 40000 # NEW
         save_interval = 50
