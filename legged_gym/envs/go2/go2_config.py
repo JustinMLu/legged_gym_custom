@@ -4,9 +4,9 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
-        num_proprio = 45+8
+        num_proprio = 45
         num_privileged_obs = 3+187
-        history_buffer_length = 9
+        history_buffer_length = 10
         num_observations = num_proprio+(num_proprio*history_buffer_length)
         num_critic_obs = num_proprio+(num_proprio*history_buffer_length)
         num_actions = 12
@@ -106,9 +106,9 @@ class Go2Cfg( LeggedRobotCfg ):
         max_curriculum = 3.5 # [m/s]
         
         class ranges:
-            lin_vel_x = [-0.5, 0.5]     # [m/s]
+            lin_vel_x = [-0.8, 0.8]     # [m/s]
             lin_vel_y = [-0.5, 0.5]     # [m/s]
-            ang_vel_yaw = [-0.5, 0.5]   # [rad/s]
+            ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
             heading = [-3.14, 3.14]
         # user_command = [0.5, 0., 0., 0.]
 
@@ -155,13 +155,13 @@ class Go2Cfg( LeggedRobotCfg ):
             collision = -10.0
             delta_torques = -1.0e-7
             # ====================== 
-            contact_phase_match = 1.0*0.5
+            # contact_phase_match = 1.0
             stumble = -1.0           
-            orientation = -3.0
+            orientation = -5.0
             dof_error = -0.04 
             hip_pos = -0.5          
             base_height = -2.0
-            # dof_vel = -0.0001
+            dof_vel = -0.0001
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):

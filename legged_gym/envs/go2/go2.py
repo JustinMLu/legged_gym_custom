@@ -165,23 +165,23 @@ class Go2Robot(LeggedRobot):
         """ Computes observations for the robot. Overloaded to include unique observations for Go2.
         """
        
-        # Calculate sine and cosine of phases for smooth transitions
-        sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl).unsqueeze(1) # FL
-        cos_phase_fl = torch.cos(2 * np.pi * self.phase_fl).unsqueeze(1)
-        sin_phase_fr = torch.sin(2 * np.pi * self.phase_fr).unsqueeze(1) # FR
-        cos_phase_fr = torch.cos(2 * np.pi * self.phase_fr).unsqueeze(1)
-        sin_phase_bl = torch.sin(2 * np.pi * self.phase_bl).unsqueeze(1) # BL
-        cos_phase_bl = torch.cos(2 * np.pi * self.phase_bl).unsqueeze(1)
-        sin_phase_br = torch.sin(2 * np.pi * self.phase_br).unsqueeze(1) # BR
-        cos_phase_br = torch.cos(2 * np.pi * self.phase_br).unsqueeze(1)
+        # # Calculate sine and cosine of phases for smooth transitions
+        # sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl).unsqueeze(1) # FL
+        # cos_phase_fl = torch.cos(2 * np.pi * self.phase_fl).unsqueeze(1)
+        # sin_phase_fr = torch.sin(2 * np.pi * self.phase_fr).unsqueeze(1) # FR
+        # cos_phase_fr = torch.cos(2 * np.pi * self.phase_fr).unsqueeze(1)
+        # sin_phase_bl = torch.sin(2 * np.pi * self.phase_bl).unsqueeze(1) # BL
+        # cos_phase_bl = torch.cos(2 * np.pi * self.phase_bl).unsqueeze(1)
+        # sin_phase_br = torch.sin(2 * np.pi * self.phase_br).unsqueeze(1) # BR
+        # cos_phase_br = torch.cos(2 * np.pi * self.phase_br).unsqueeze(1)
 
-        # Construct phase features
-        phase_features = torch.cat([
-            sin_phase_fr, cos_phase_fr, 
-            sin_phase_fl, cos_phase_fl,
-            sin_phase_bl, cos_phase_bl,
-            sin_phase_br, cos_phase_br
-        ], dim=1)
+        # # Construct phase features
+        # phase_features = torch.cat([
+        #     sin_phase_fr, cos_phase_fr, 
+        #     sin_phase_fl, cos_phase_fl,
+        #     sin_phase_bl, cos_phase_bl,
+        #     sin_phase_br, cos_phase_br
+        # ], dim=1)
        
         # Construct observations       
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                      # (3,)
@@ -193,7 +193,7 @@ class Go2Robot(LeggedRobot):
                                 ),dim=-1)                                                           # total: (45,)
         
         # Add phase features
-        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
+        # cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
 
         # Add noise vector
         if self.add_noise:

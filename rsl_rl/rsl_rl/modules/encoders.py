@@ -68,11 +68,11 @@ class AdaptationEncoder(nn.Module):
         self.fc_encoder = nn.Sequential(nn.Linear(num_base_obs, 3*channel_size), self.activation)
         
         # Second part: convolutional layers that process the history buffer
-        if history_buffer_length == 9:
+        if history_buffer_length == 10:
             self.conv_layers = nn.Sequential(
                 nn.Conv1d(in_channels = 3*channel_size, 
                           out_channels = 2*channel_size, 
-                          kernel_size = 3, 
+                          kernel_size = 4, 
                           stride = 2), 
                           self.activation,
                 nn.Conv1d(in_channels = 2*channel_size, 
