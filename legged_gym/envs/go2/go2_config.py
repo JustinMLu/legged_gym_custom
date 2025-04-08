@@ -31,9 +31,9 @@ class Go2Cfg( LeggedRobotCfg ):
         terrain_kwargs = {
             "type": "terrain_utils.random_uniform_terrain",
             "min_height": -0.05,
-            "max_heigh  t": 0.05,
+            "max_height": 0.05,
             "step": 0.005,
-            "downsampled_scale": 0.2
+            "downsampled_scale": 0.25
         }
 
         curriculum = True
@@ -155,12 +155,12 @@ class Go2Cfg( LeggedRobotCfg ):
             collision = -10.0
             delta_torques = -1.0e-7
             # ====================== 
-            contact_phase_match = 1.0*0.1
+            contact_phase_match = 1.0*0.5
             stumble = -1.0           
-            orientation = -5.0      
+            orientation = -3.0
             dof_error = -0.04 
             hip_pos = -0.5          
-            # base_height = -1.0
+            base_height = -2.0
             # dof_vel = -0.0001
 
 
