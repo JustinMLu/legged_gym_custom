@@ -27,7 +27,7 @@ class ActorCritic(nn.Module):
         """ Initialize an ActorCritic instance.
         
             Args:
-                num_base_obs: The number of base observations (without history, without privileged info, no bullshit)
+                num_proprio: The number of proprioceptive/base observations
                 num_critic_obs: Dimension of critic observation space (can differ from actor - e.g privileged info)
                 num_actions: Dimension of action space
                 actor_hidden_dims: List of hidden layer sizes for actor network
@@ -46,7 +46,7 @@ class ActorCritic(nn.Module):
         self.num_proprio = num_proprio
         self.num_privileged_obs = num_privileged_obs
         self.history_buffer_length = history_buffer_length
-        self.num_critic_obs = num_critic_obs # this can differ from num_base_obs if we rawdog privileged info into critic
+        self.num_critic_obs = num_critic_obs
         self.num_actions = num_actions
 
         print("\n======== DEBUG: ActorCritic ATTRIBUTES ========")
@@ -151,7 +151,7 @@ class ActorCritic(nn.Module):
             Input: full observation tensor - assumes history is at the back for now
             Returns: Latent vector encoding
         """
-        hist = obs_buf[:, :-self.num_proprio] 
+        hist = obs_buf[:, :-self.num_proprio] # Only the history part
         return self.adaptation_encoder_(hist.reshape(-1, self.history_buffer_length, self.num_proprio))
     
     def get_latent(self, obs_buf, privileged_obs_buf, adaptation_mode=False):

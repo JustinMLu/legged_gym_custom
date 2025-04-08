@@ -120,11 +120,14 @@ class PPO:
         for obs_batch, privileged_obs_batch, critic_obs_batch, actions_batch, target_values_batch, advantages_batch, returns_batch, old_actions_log_prob_batch, \
             old_mu_batch, old_sigma_batch, hid_states_batch, masks_batch in generator:
                 
-                # Call ActorCritic act() method
+                # Act 
                 self.actor_critic.act(obs_batch, privileged_obs_batch, adaptation_mode=False)
                 actions_log_prob_batch = self.actor_critic.get_actions_log_prob(actions_batch)
+                
+                # Evaluate
                 value_batch = self.actor_critic.evaluate(critic_obs_batch)
 
+                # Get mean, std, entropy
                 mu_batch = self.actor_critic.action_mean
                 sigma_batch = self.actor_critic.action_std
                 entropy_batch = self.actor_critic.entropy
@@ -137,7 +140,7 @@ class PPO:
                 regularization_loss = (privileged_latent_batch - adaptation_latent_batch.detach()).norm(p=2, dim=1).mean()
 
                 # ================= Regularization coefficient schedule =================
-                start_val, end_val, start_step, duration = 0.0, 0.1, 3000, 7000           # Define schedule parameters
+                start_val, end_val, start_step, duration = 0.0, 0.1, 2000, 3000           # Define schedule parameters
                 stage = min(max((self.total_updates - start_step) / duration, 0.0), 1.0)  # Calculate stage (0 to 1)
                 regularization_coef = start_val + stage * (end_val - start_val)           # Interpolate coefficient
                 # =======================================================================
@@ -204,7 +207,7 @@ class PPO:
         mean_regularization_loss /= num_updates
         self.storage.clear()
         self.increase_update_count()
-        return mean_value_loss, mean_surrogate_loss, mean_regularization_loss
+        return mean_value_loss, mean_surrogate_loss, mean_regularization_loss, regularization_coef
 
     def increase_update_count(self):
         """ Increase the counter that tracks the total number of updates 

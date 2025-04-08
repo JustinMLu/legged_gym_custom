@@ -362,7 +362,7 @@ class LeggedRobot(BaseTask):
                 it also  prevents _get_heights() from being called. 
                 
                 This means that self.measured_heights is ALWAYS EQUAL TO zero, which completely 
-                fucks up training on non-flat ground! Thanks ETH Zurich! 
+                screws up training on non-flat ground! Thanks ETH Zurich! 
                 (RESOLVED)
         """
         self.measured_heights = self._get_heights()
@@ -605,7 +605,7 @@ class LeggedRobot(BaseTask):
                 it also  prevents _get_heights() from being called. 
                 
                 This means that self.measured_heights is ALWAYS EQUAL TO zero, which completely 
-                fucks up training on non-flat ground! Thanks ETH Zurich! 
+                screws up training on non-flat ground! Thanks ETH Zurich! 
                 (RESOLVED)
         """
         self.height_points = self._init_height_points()
@@ -629,7 +629,7 @@ class LeggedRobot(BaseTask):
             self.privileged_friction_coeffs = self.friction_coeffs.to(self.device).to(torch.float).squeeze(-1)
         else:
             # Use the default terrain friction (1.0 as fallback if self.friction_coeffs isn't initialized
-            # Prevents error in initializing privileged_friction_coeffs when randomize_friction is turned off in play.py
+            # Prevents initialization error when friction randomization is False in play.py
             self.privileged_friction_coeffs = torch.ones(self.num_envs, 1, dtype=torch.float, device=self.device) * self.cfg.terrain.dynamic_friction
         # =====================================================================================        
     

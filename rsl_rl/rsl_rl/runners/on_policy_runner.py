@@ -87,6 +87,7 @@ class OnPolicyRunner:
         mean_surrogate_loss = 0.0
         mean_regularization_loss = 0.0
         mean_adaptation_loss = 0.0
+        reg_coef = 0.0
         
         # initialize writer
         if self.log_dir is not None and self.writer is None:
@@ -120,11 +121,16 @@ class OnPolicyRunner:
             # Rollout
             with torch.inference_mode():
                 for i in range(self.num_steps_per_env):
-                    # Sample and perform action to get next observation
+
+                    # Call PPO act() method
                     actions = self.alg.act(obs, privileged_obs, critic_obs, adaptation_mode=use_adaptation_mode)
+
+                    #  Step the environment
                     obs, privileged_obs, critic_obs, rewards, dones, infos = self.env.step(actions) # legged_robot.py env step
                     obs, privileged_obs, critic_obs, rewards, dones = obs.to(self.device), privileged_obs.to(self.device), critic_obs.to(self.device), rewards.to(self.device), dones.to(self.device)
-                    self.alg.process_env_step(rewards, dones, infos) # Handles transition for rewards, dones, infos
+                    
+                    # Handle storage of rewards, dones, and infos into Transition object
+                    self.alg.process_env_step(rewards, dones, infos)
                     
                     if self.log_dir is not None:
                         # Book keeping
@@ -149,9 +155,7 @@ class OnPolicyRunner:
                 mean_adaptation_loss = self.alg.update_dagger()
                 
             else:
-                mean_value_loss, mean_surrogate_loss, mean_regularization_loss = self.alg.update()
-
-
+                mean_value_loss, mean_surrogate_loss, mean_regularization_loss, reg_coef = self.alg.update()
 
             stop = time.time()
             learn_time = stop - start
@@ -189,6 +193,8 @@ class OnPolicyRunner:
         self.writer.add_scalar('Loss/value_function', locs['mean_value_loss'], locs['it'])
         self.writer.add_scalar('Loss/surrogate', locs['mean_surrogate_loss'], locs['it'])
         self.writer.add_scalar('Loss/regularization', locs['mean_regularization_loss'], locs['it'])
+        self.writer.add_scalar('Loss/regularization coef', locs['reg_coef'], locs['it'])
+        self.writer.add_scalar('Loss/adaptation', locs['mean_adaptation_loss'], locs['it'])
 
         self.writer.add_scalar('Loss/learning_rate', self.alg.learning_rate, locs['it'])
         self.writer.add_scalar('Policy/mean_noise_std', mean_std.item(), locs['it'])
@@ -213,6 +219,8 @@ class OnPolicyRunner:
                           f"""{'Value function loss:':>{pad}} {locs['mean_value_loss']:.4f}\n"""
                           f"""{'Surrogate loss:':>{pad}} {locs['mean_surrogate_loss']:.4f}\n"""
                           f"""{'Regularization loss:':>{pad}} {locs['mean_regularization_loss']:.4f}\n"""
+                          f"""{'Adaptation loss:':>{pad}} {locs['mean_adaptation_loss']:.4f}\n"""
+                          f"""{'Regularization coef:':>{pad}} {locs['reg_coef']:.4f}\n"""
                           f"""{'Mean action noise std:':>{pad}} {mean_std.item():.2f}\n"""
                           f"""{'Mean reward:':>{pad}} {statistics.mean(locs['rewbuffer']):.2f}\n"""
                           f"""{'Mean episode length:':>{pad}} {statistics.mean(locs['lenbuffer']):.2f}\n""")
@@ -226,6 +234,8 @@ class OnPolicyRunner:
                           f"""{'Value function loss:':>{pad}} {locs['mean_value_loss']:.4f}\n"""
                           f"""{'Surrogate loss:':>{pad}} {locs['mean_surrogate_loss']:.4f}\n"""
                           f"""{'Regularization loss:':>{pad}} {locs['mean_regularization_loss']:.4f}\n"""
+                          f"""{'Regularization coef:':>{pad}} {locs['reg_coef']:.4f}\n"""
+                          f"""{'Adaptation loss:':>{pad}} {locs['mean_adaptation_loss']:.4f}\n"""
                           f"""{'Mean action noise std:':>{pad}} {mean_std.item():.2f}\n""")
                         #   f"""{'Mean reward/step:':>{pad}} {locs['mean_reward']:.2f}\n"""
                         #   f"""{'Mean episode length/episode:':>{pad}} {locs['mean_trajectory_length']:.2f}\n""")

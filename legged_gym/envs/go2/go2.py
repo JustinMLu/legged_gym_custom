@@ -55,9 +55,6 @@ class Go2Robot(LeggedRobot):
 
 
     def _init_custom_buffers(self):
-        # ====================================== CUSTOM BUFFERS ======================================
-        # ============================================================================================
-        
         # ==================================== FEET RELATED INITS ====================================
         # Get feet indices and rigid body states
         self.feet_num = len(self.feet_indices)
@@ -199,39 +196,40 @@ class Go2Robot(LeggedRobot):
                                 ),dim=-1)                                                           # total: (45,)
         
         # Add phase features
-        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
+        # cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
 
         # Add noise vector
         if self.add_noise:
             cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
         
-        # Concatenate with history 
+        # Update obs buffer 
         self.obs_buf = torch.cat([
+            self.obs_history_buf.view(self.num_envs, -1),  # Flattened history
+            cur_obs_buf                                    # Current observation
+        ], dim=-1)
+
+        # Update privileged obs buffer
+        self.privileged_obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel,
+                                             self.privileged_mass_params,
+                                             self.privileged_friction_coeffs
+                                             ), dim=-1)
+        
+        # Update critic obs buffer
+        self.critic_obs_buf = torch.cat([
             self.obs_history_buf.view(self.num_envs, -1),  # Flattened history
             cur_obs_buf                                # Current observation
         ], dim=-1)
 
+        # self.critic_obs_buf = torch.cat((cur_obs_buf,
+        #                                  self.privileged_obs_buf.view(self.num_envs, -1)
+        #                                  ), dim=-1)
+        
         # Update the history buffer   
         self.obs_history_buf = torch.where((
             self.episode_length_buf <= 1)[:, None, None],
             torch.stack([cur_obs_buf] * (self.cfg.env.history_buffer_length), dim=1),
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
-        
-        # Get heights
-        # heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
-        
-        # print("privileged mass params shape: ", self.privileged_mass_params.shape)
-        # print("privileged friction coeffs shape: ", self.privileged_friction_coeffs.shape)
-
-        # Update privileged observation buffer
-        self.privileged_obs_buf = torch.cat((self.privileged_mass_params,
-                                             self.privileged_friction_coeffs
-                                             ), dim=-1)
-        
-        # Update critic observation buffer
-        self.critic_obs_buf = self.obs_buf.clone()
-        
 
     # =========================== NEW REWARD FUNCTIONS ===========================
     def _reward_delta_torques(self): # Extreme Parkour -1.0e-7

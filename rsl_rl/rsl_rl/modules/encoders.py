@@ -36,13 +36,7 @@ class PrivilegedEncoder(nn.Module):
     def forward(self, privileged_obs):
         """ Forward pass through the privileged obs. encoder.
         """
-        return self.priv_encoder(privileged_obs)
-    
-    # def __str__(self):
-    #     """ Returns a string representation of the PrivilegedEncoder instance.
-    #     """
-    #     return f"PrivilegedEncoder(num_privileged={self.num_privileged}, output_dim={self.output_dim}, encoder_hidden_dims={self.encoder_hidden_dims}, activation={self.activation})"
-                
+        return self.priv_encoder(privileged_obs)    
 
 
 class AdaptationEncoder(nn.Module):
@@ -64,28 +58,24 @@ class AdaptationEncoder(nn.Module):
         self.output_dim = output_layer_dim
         channel_size = 10
         
-        # First part: linear layer that encodes each observation 
+        # 1: linear layer that encodes each observation 
         self.fc_encoder = nn.Sequential(nn.Linear(num_base_obs, 3*channel_size), self.activation)
         
-        # Second part: convolutional layers that process the history buffer
-        if history_buffer_length == 10:
-            self.conv_layers = nn.Sequential(
-                nn.Conv1d(in_channels = 3*channel_size, 
-                          out_channels = 2*channel_size, 
-                          kernel_size = 4, 
-                          stride = 2), 
-                          self.activation,
-                nn.Conv1d(in_channels = 2*channel_size, 
-                          out_channels = channel_size, 
-                          kernel_size = 2, 
-                          stride = 1), 
-                          self.activation,
-                nn.Flatten())
-            
-        else:
-            raise ValueError("history buffer length fixed to 9 for now")
+        # 2: convolutional layers that process the history buffer
+        self.conv_layers = nn.Sequential(
+            nn.Conv1d(in_channels = 3*channel_size, 
+                        out_channels = 2*channel_size, 
+                        kernel_size = 4, 
+                        stride = 2), 
+                        self.activation,
+            nn.Conv1d(in_channels = 2*channel_size, 
+                        out_channels = channel_size, 
+                        kernel_size = 2, 
+                        stride = 1), 
+                        self.activation,
+            nn.Flatten())
         
-        # Third part: final linear layer that maps to the output size
+        # 3: final linear layer that maps to the output size
         self.fc_final = nn.Sequential(nn.Linear(3*channel_size, output_layer_dim), self.activation)
     
     def forward(self, obs_history):
@@ -98,11 +88,6 @@ class AdaptationEncoder(nn.Module):
         output = self.conv_layers(projected_obs.permute(0, 2, 1)) # permute to (batch_size, channels, seq_len)
         output = self.fc_final(output)
         return output
-
-    # def __str__(self):
-    #     """ Returns a string representation of the HistoryEncoder instance.
-    #     """
-    #     return f"HistoryEncoder(num_base_obs={self.num_base_obs}, history_buffer_length={self.history_buffer_length}, output_dim={self.output_dim}, activation={self.activation})"
 
 
 def get_activation(act_name):

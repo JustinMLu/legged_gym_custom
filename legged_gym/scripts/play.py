@@ -47,7 +47,7 @@ def play(args):
     env_cfg.terrain.num_cols = 5
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = True
-    env_cfg.domain_rand.randomize_friction = False # CHANGING TO FALSE WILL CAUSE PROBLEMS :DeepakChamp:
+    env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.push_robots = False
 
     # prepare environment
@@ -80,9 +80,10 @@ def play(args):
 
     for i in range(10*int(env.max_episode_length)):
         # actions = policy(obs.detach())
-        full_obs = env.get_observations()
+        obs = env.get_observations()
+        privileged_obs = env.get_privileged_observations()
     
-        actions = inference_policy(full_obs.detach(), None, adaptation_mode=True) # use adaption module
+        actions = inference_policy(obs.detach(), privileged_obs.detach(), adaptation_mode=False) # use adaption module
         obs, privileged_obs, critic_obs, rews, dones, infos = env.step(actions.detach())
 
         if RECORD_FRAMES:
