@@ -192,19 +192,18 @@ class PPO:
                 nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.max_grad_norm)
                 self.optimizer.step()
 
-                # Update mean loss metrics (numerator)
+                # Update mean loss sums
                 mean_value_loss += value_loss.item()
                 mean_surrogate_loss += surrogate_loss.item()
                 mean_regularization_loss += regularization_loss.item()
 
-        # Update mean loss metrics (denominator)
+        # Finalize metrics, clear storage, and increase update count
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_value_loss /= num_updates
         mean_surrogate_loss /= num_updates
         mean_regularization_loss /= num_updates
         self.storage.clear()
         self.increase_update_count()
-
         return mean_value_loss, mean_surrogate_loss, mean_regularization_loss
 
     def increase_update_count(self):
@@ -222,33 +221,33 @@ class PPO:
         
         # Loop through batches
         for obs_batch, privileged_obs_batch, critic_obs_batch, actions_batch, _, _, _, _, _, _, _, _ in generator:
-            # Act
+            
+            # Act without updating anything (inference mode)
             with torch.inference_mode():
                 self.actor_critic.act(obs_batch, privileged_obs_batch, adaptation_mode=True)
 
-            # Adaptation module update
+            # Get latent vector from privileged encoder
             with torch.inference_mode():
-                priv_latent_batch = self.actor_critic.privileged_encoder(privileged_obs_batch)
-            
+                privileged_latent = self.actor_critic.privileged_encoder(privileged_obs_batch)
 
-            # Get adaptation latent (will accumulate gradients)
-            adapt_latent_batch = self.actor_critic.adaptation_encoder(obs_batch)
+            # Get latent vector from adaptation encoder
+            adaptation_latent = self.actor_critic.adaptation_encoder(obs_batch)
             
-            # Compute loss - adaptation encoder should mimic privileged encoder
-            adaptation_loss = (priv_latent_batch.detach() - adapt_latent_batch).norm(p=2, dim=1).mean()
+            # Compute adaptation loss
+            adaptation_loss = (privileged_latent.detach() - adaptation_latent).norm(p=2, dim=1).mean()
             
-            # Update only the adaptation encoder
+            # Update only the adaptation encoder's gradient
             self.adaptation_optimizer.zero_grad()
             adaptation_loss.backward()
             nn.utils.clip_grad_norm_(self.actor_critic.adaptation_encoder_.parameters(), self.max_grad_norm)
             self.adaptation_optimizer.step()
             
+            # Update mean loss sums
             mean_adaptation_loss += adaptation_loss.item()
         
-        # Calculate average loss
+        # Finalize metrics, clear storage, and increase update count
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_adaptation_loss /= num_updates
         self.storage.clear()
         self.increase_update_count()
-        
         return mean_adaptation_loss

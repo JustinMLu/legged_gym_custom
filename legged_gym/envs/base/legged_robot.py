@@ -35,13 +35,23 @@ class LeggedRobot(BaseTask):
             device_id (int): 0, 1, ...
             headless (bool): Run without rendering if True
         """
-
+        # Parse config
         self.cfg = cfg
         self.sim_params = sim_params
         self.height_samples = None
         self.debug_viz = False
         self.init_done = False
         self._parse_cfg(self.cfg) # Parse configuration file
+
+        # Pre-initialize privileged_mass_params because create_envs() uses it before _init_buffers() is called
+        print("⚠️  Pre-initializing self.privileged_mass_params tensor to prevent _create_envs() failure")
+        print("⚠️  Notice: Early initialization of self.device and self.num_envs (BaseTask ctor will duplicate assign)")
+        self.device = sim_device
+        self.num_envs = self.cfg.env.num_envs
+        self.privileged_mass_params = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
+
+
+        # Call BaseTask constructor -> will call create_sim(), which calls create_envs()
         super().__init__(self.cfg, sim_params, physics_engine, sim_device, headless)
 
         if not self.headless:
@@ -113,7 +123,7 @@ class LeggedRobot(BaseTask):
         self.reset_idx(env_ids)     # calls resample_commands ...
         self.compute_observations()
 
-        # update last states
+        # Update buffers that store 'previous' data
         self.last_actions[:] = self.actions[:]            # Update prev. actions
         self.last_dof_vel[:] = self.dof_vel[:]            # Update prev. dof velocity
         self.last_root_vel[:] = self.root_states[:, 7:13] # Update prev. root velocity
@@ -289,7 +299,7 @@ class LeggedRobot(BaseTask):
                 num_buckets = 64
                 bucket_ids = torch.randint(0, num_buckets, (self.num_envs, 1))
                 friction_buckets = torch_rand_float(friction_range[0], friction_range[1], (num_buckets,1), device='cpu')
-                self.friction_coeffs = friction_buckets[bucket_ids]
+                self.friction_coeffs = friction_buckets[bucket_ids] # First appearance of self.friction_coeffs tensor
 
             for s in range(len(props)):
                 props[s].friction = self.friction_coeffs[env_id]
@@ -327,9 +337,10 @@ class LeggedRobot(BaseTask):
         """ Callback allowing to store/change/randomize the rigid body properties of each environment.
         """
         if self.cfg.domain_rand.randomize_base_mass:
-            rng = self.cfg.domain_rand.added_mass_range
-            props[0].mass += np.random.uniform(rng[0], rng[1])
-        return props
+            mass_ranges = self.cfg.domain_rand.added_mass_range                    # get range of added masses
+            rand = np.random.uniform(mass_ranges[0], mass_ranges[1], size=(1,))    # then pick randomly
+            props[0].mass += rand                                                  # and add to base rigid body
+        return props, rand
     
     def _post_physics_step_callback(self):
         """ Callback called before computing terminations, rewards, and observations
@@ -545,6 +556,9 @@ class LeggedRobot(BaseTask):
     def _init_buffers(self):
         """ Initialize torch tensors which will contain simulation states and processed quantities
         """
+        # Debug print
+        print("===== Initializing buffers... (_init_buffers() invoked) =====")
+
         # get gym GPU state tensors
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
         dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
@@ -606,6 +620,19 @@ class LeggedRobot(BaseTask):
             dtype=torch.float
         )
         print("Obs history initialized with shape: ", self.obs_history_buf.shape)
+
+        # ================ Buffers used for the privileged observation encoder ================ 
+        # This got pre-assigned in the ctor but I'm keeping it for consistency
+        self.privileged_mass_params = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
+        
+        if self.cfg.domain_rand.randomize_friction:
+            self.privileged_friction_coeffs = self.friction_coeffs.to(self.device).to(torch.float).squeeze(-1)
+        else:
+            # Use the default terrain friction (1.0 as fallback if self.friction_coeffs isn't initialized
+            # Prevents error in initializing privileged_friction_coeffs when randomize_friction is turned off in play.py
+            self.privileged_friction_coeffs = torch.ones(self.num_envs, 1, dtype=torch.float, device=self.device) * self.cfg.terrain.dynamic_friction
+        # =====================================================================================        
+    
 
         # Init joint positions offsets and PD gains
         self.default_dof_pos = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
@@ -706,6 +733,7 @@ class LeggedRobot(BaseTask):
                 2.3 create actor with these properties and add them to the env
              3. Store indices of different bodies of the robot
         """
+        print("===== Creating environments... (_create_envs() invoked) =====") 
         asset_path = self.cfg.asset.file.format(LEGGED_GYM_ROOT_DIR=LEGGED_GYM_ROOT_DIR)
         asset_root = os.path.dirname(asset_path)
         asset_file = os.path.basename(asset_path)
@@ -767,10 +795,11 @@ class LeggedRobot(BaseTask):
             dof_props = self._process_dof_props(dof_props_asset, i)
             self.gym.set_actor_dof_properties(env_handle, actor_handle, dof_props)
             body_props = self.gym.get_actor_rigid_body_properties(env_handle, actor_handle)
-            body_props = self._process_rigid_body_props(body_props, i)
+            body_props, mass_params = self._process_rigid_body_props(body_props, i) # Modified - now returns mass_params
             self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=True)
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
+            self.privileged_mass_params[i, :] = torch.from_numpy(mass_params).to(self.device).to(torch.float)
 
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(feet_names)):

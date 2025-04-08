@@ -42,7 +42,7 @@ class LeggedRobotCfg(BaseConfig):
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
         send_timeouts = True # send time out information to the algorithm
-        episode_length_s = 20 # episode length in seconds
+        episode_length_s = 20 # (max) episode length in seconds
 
 
     class terrain:
@@ -129,6 +129,7 @@ class LeggedRobotCfg(BaseConfig):
         friction_range = [0.5, 1.25]
         randomize_base_mass = False
         added_mass_range = [-1., 1.]
+        # Consider adding the randomized center of mass range
         push_robots = False
         push_interval_s = 15
         max_push_vel_xy = 1.

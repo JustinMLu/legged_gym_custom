@@ -54,7 +54,12 @@ class Go2Robot(LeggedRobot):
         return noise_vec
 
 
-    def _init_foot(self):
+    def _init_custom_buffers(self):
+        # ====================================== CUSTOM BUFFERS ======================================
+        # ============================================================================================
+        
+        # ==================================== FEET RELATED INITS ====================================
+        # Get feet indices and rigid body states
         self.feet_num = len(self.feet_indices)
         rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)
         self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_state)
@@ -80,11 +85,12 @@ class Go2Robot(LeggedRobot):
 
         # Stores the heights of each foot when it was last in contact with the ground
         self.last_contact_heights = torch.zeros(self.num_envs, self.feet_num, device=self.device)
+        # ============================================================================================
 
 
     def _init_buffers(self):
         super()._init_buffers()
-        self._init_foot()
+        self._init_custom_buffers()
 
 
     def update_feet_states(self):
@@ -165,23 +171,23 @@ class Go2Robot(LeggedRobot):
         """ Computes observations for the robot. Overloaded to include unique observations for Go2.
         """
        
-        # # Calculate sine and cosine of phases for smooth transitions
-        # sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl).unsqueeze(1) # FL
-        # cos_phase_fl = torch.cos(2 * np.pi * self.phase_fl).unsqueeze(1)
-        # sin_phase_fr = torch.sin(2 * np.pi * self.phase_fr).unsqueeze(1) # FR
-        # cos_phase_fr = torch.cos(2 * np.pi * self.phase_fr).unsqueeze(1)
-        # sin_phase_bl = torch.sin(2 * np.pi * self.phase_bl).unsqueeze(1) # BL
-        # cos_phase_bl = torch.cos(2 * np.pi * self.phase_bl).unsqueeze(1)
-        # sin_phase_br = torch.sin(2 * np.pi * self.phase_br).unsqueeze(1) # BR
-        # cos_phase_br = torch.cos(2 * np.pi * self.phase_br).unsqueeze(1)
+        # Calculate sine and cosine of phases for smooth transitions
+        sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl).unsqueeze(1) # FL
+        cos_phase_fl = torch.cos(2 * np.pi * self.phase_fl).unsqueeze(1)
+        sin_phase_fr = torch.sin(2 * np.pi * self.phase_fr).unsqueeze(1) # FR
+        cos_phase_fr = torch.cos(2 * np.pi * self.phase_fr).unsqueeze(1)
+        sin_phase_bl = torch.sin(2 * np.pi * self.phase_bl).unsqueeze(1) # BL
+        cos_phase_bl = torch.cos(2 * np.pi * self.phase_bl).unsqueeze(1)
+        sin_phase_br = torch.sin(2 * np.pi * self.phase_br).unsqueeze(1) # BR
+        cos_phase_br = torch.cos(2 * np.pi * self.phase_br).unsqueeze(1)
 
-        # # Construct phase features
-        # phase_features = torch.cat([
-        #     sin_phase_fr, cos_phase_fr, 
-        #     sin_phase_fl, cos_phase_fl,
-        #     sin_phase_bl, cos_phase_bl,
-        #     sin_phase_br, cos_phase_br
-        # ], dim=1)
+        # Construct phase features
+        phase_features = torch.cat([
+            sin_phase_fr, cos_phase_fr, 
+            sin_phase_fl, cos_phase_fl,
+            sin_phase_bl, cos_phase_bl,
+            sin_phase_br, cos_phase_br
+        ], dim=1)
        
         # Construct observations       
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                      # (3,)
@@ -193,7 +199,7 @@ class Go2Robot(LeggedRobot):
                                 ),dim=-1)                                                           # total: (45,)
         
         # Add phase features
-        # cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
+        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
 
         # Add noise vector
         if self.add_noise:
@@ -211,21 +217,18 @@ class Go2Robot(LeggedRobot):
             torch.stack([cur_obs_buf] * (self.cfg.env.history_buffer_length), dim=1),
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
-
-        # TODO: This is the actual privileged observation buffer that I gotta implement
-        # self.privileged_obs_buf = torch.cat((self.mass_params_tensor,
-        #                                      self.friction_coeffs_tensor,
-        #                                      self.motor_strength - 1), dim=-1)
         
         # Get heights
-        heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
+        # heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
         
-        # Update privileged observation buffer
-        self.privileged_obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel,
-                                             heights
-                                             ), dim=-1) # 3 + 187
-        
+        # print("privileged mass params shape: ", self.privileged_mass_params.shape)
+        # print("privileged friction coeffs shape: ", self.privileged_friction_coeffs.shape)
 
+        # Update privileged observation buffer
+        self.privileged_obs_buf = torch.cat((self.privileged_mass_params,
+                                             self.privileged_friction_coeffs
+                                             ), dim=-1)
+        
         # Update critic observation buffer
         self.critic_obs_buf = self.obs_buf.clone()
         
