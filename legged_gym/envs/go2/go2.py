@@ -209,7 +209,7 @@ class Go2Robot(LeggedRobot):
         ], dim=-1)
 
         
-        heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
+        # heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
         
         # Update privileged obs buffer
         self.privileged_obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel, # 3
@@ -217,7 +217,6 @@ class Go2Robot(LeggedRobot):
                                              self.privileged_friction_coeffs, # 1
                                              self.motor_strength[0] - 1,      # 12
                                              self.motor_strength[1] - 1,      # 12
-                                             heights                          # 187
                                              ), dim=-1)
         
         # Update critic obs buffer
@@ -261,7 +260,7 @@ class Go2Robot(LeggedRobot):
             - FR and BL feet should contact when phase < 0.5
             - FL and BR feet should contact when phase >= 0.5
         """
-        percent_time_on_ground = 0.20 # Originally 50
+        percent_time_on_ground = 0.20 # TODO: Make this a config variable
         
         # 1 is 100% on ground, 0 is 50% on ground, -1 is 0% on ground
         stance_threshold = 2.0 * percent_time_on_ground - 1.0
