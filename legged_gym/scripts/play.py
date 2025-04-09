@@ -42,12 +42,15 @@ import torch
 def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # Override some parameters for testing
-    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 30)
+    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 50)
     env_cfg.terrain.num_rows = 5
     env_cfg.terrain.num_cols = 5
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = True
     env_cfg.domain_rand.randomize_friction = False
+    env_cfg.domain_rand.randomize_base_mass = False
+    env_cfg.domain_rand.randomize_center_of_mass = False
+    env_cfg.domain_rand.randomize_motor_strength = False
     env_cfg.domain_rand.push_robots = False
 
     # prepare environment
@@ -83,7 +86,7 @@ def play(args):
         obs = env.get_observations()
         privileged_obs = env.get_privileged_observations()
     
-        actions = inference_policy(obs.detach(), privileged_obs.detach(), adaptation_mode=False) # use adaption module
+        actions = inference_policy(obs.detach(), privileged_obs.detach(), adaptation_mode=True) # use adaption module
         obs, privileged_obs, critic_obs, rews, dones, infos = env.step(actions.detach())
 
         if RECORD_FRAMES:

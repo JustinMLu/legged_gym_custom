@@ -9,7 +9,7 @@ from rsl_rl.storage import RolloutStorage
 class PPO:
     actor_critic: ActorCritic
     def __init__(self,
-                 actor_critic,
+                 actor_critic: ActorCritic,
                  num_learning_epochs=1,
                  num_mini_batches=1,
                  clip_param=0.2,
@@ -37,13 +37,14 @@ class PPO:
 
         # Optimizer (Actor, Critic, Privileged Encoder)
         self.optimizer = optim.Adam([
-            {'params': actor_critic.actor.parameters()},
-            {'params': actor_critic.critic.parameters()},
-            {'params': actor_critic.privileged_encoder_.parameters()}
+            {'params': self.actor_critic.actor.parameters()},
+            {'params': self.actor_critic.critic.parameters()},
+            {'params': self.actor_critic.privileged_encoder_.parameters()},
+            {'params': self.actor_critic.std}
         ], lr=learning_rate)
 
         # Optimizer (Adaptation Encoder)
-        self.adaptation_optimizer = optim.Adam(self.actor_critic.adaptation_encoder_.parameters(), lr=learning_rate)
+        self.adaptation_optimizer = optim.Adam(self.actor_critic.adaptation_encoder_.parameters(), lr=self.learning_rate)
 
         # Transition data object
         self.transition = RolloutStorage.Transition()
