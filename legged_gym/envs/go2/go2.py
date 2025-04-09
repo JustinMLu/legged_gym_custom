@@ -196,7 +196,7 @@ class Go2Robot(LeggedRobot):
                                 ),dim=-1)                                                           # total: (45,)
         
         # Add phase features
-        # cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
+        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
 
         # Add noise vector
         if self.add_noise:
@@ -208,21 +208,25 @@ class Go2Robot(LeggedRobot):
             cur_obs_buf                                    # Current observation
         ], dim=-1)
 
+        # base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
+        # heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
+        
         # Update privileged obs buffer
-        self.privileged_obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel,
-                                             self.privileged_mass_params,
-                                             self.privileged_friction_coeffs
+        self.privileged_obs_buf = torch.cat((self.privileged_mass_params,     # 4
+                                             self.privileged_friction_coeffs, # 1
+                                             self.motor_strength[0] - 1,      # 12
+                                             self.motor_strength[1] - 1       # 12
                                              ), dim=-1)
         
         # Update critic obs buffer
-        self.critic_obs_buf = torch.cat([
+        self.critic_obs_buf = torch.cat((
             self.obs_history_buf.view(self.num_envs, -1),  # Flattened history
-            cur_obs_buf                                # Current observation
-        ], dim=-1)
-
-        # self.critic_obs_buf = torch.cat((cur_obs_buf,
-        #                                  self.privileged_obs_buf.view(self.num_envs, -1)
-        #                                  ), dim=-1)
+            cur_obs_buf,                                   # Current observation
+            self.privileged_mass_params,                   # 4
+            self.privileged_friction_coeffs,               # 1
+            self.motor_strength[0] - 1,                    # 12
+            self.motor_strength[1] - 1                     # 12
+        ), dim=-1)
         
         # Update the history buffer   
         self.obs_history_buf = torch.where((

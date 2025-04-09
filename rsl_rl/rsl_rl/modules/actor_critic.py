@@ -59,7 +59,8 @@ class ActorCritic(nn.Module):
 
         # Get specified activation function, set MLP input dimensions
         activation = get_activation(activation)
-        mlp_input_dim_a = num_proprio + latent_encoder_output_dim # Actor accepts actor & 
+        # mlp_input_dim_a = num_proprio + latent_encoder_output_dim
+        mlp_input_dim_a = num_proprio + latent_encoder_output_dim + (num_proprio*history_buffer_length) # HISTORYS BACK BABY
         mlp_input_dim_c = num_critic_obs
 
         # Build the actor network
@@ -165,9 +166,12 @@ class ActorCritic(nn.Module):
     def update_distribution(self, obs_buf, privileged_obs_buf, adaptation_mode=False):
         """ Forward pass through actor network, updating action distribution.
         """
-        # get the final observation in obs_buf:
-        base_obs = obs_buf[:, -self.num_proprio:]
         latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode)
+        
+        # base_obs = obs_buf[:, -self.num_proprio:]
+        # HISTORYS BACK BABY
+        base_obs = obs_buf[:, :]
+
         actor_input = torch.cat((base_obs, latent), dim=-1)
         mean = self.actor(actor_input)
         self.distribution = Normal(mean, mean*0. + self.std)
@@ -183,8 +187,13 @@ class ActorCritic(nn.Module):
         """ Return action means for inference - does not sample from distribution.
             Does not call update_distribution().
         """
-        base_obs = obs_buf[:, -self.num_proprio:]
+
         latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode)
+        
+        # base_obs = obs_buf[:, -self.num_proprio:]
+        # HISTORYS BACK BABY
+        
+        base_obs = obs_buf[:, :]
         actor_input = torch.cat((base_obs, latent), dim=-1)
         return self.actor(actor_input)
     # ==================================================================================================

@@ -127,9 +127,16 @@ class LeggedRobotCfg(BaseConfig):
     class domain_rand:
         randomize_friction = True
         friction_range = [0.5, 1.25]
+
         randomize_base_mass = False
         added_mass_range = [-1., 1.]
-        # Consider adding the randomized center of mass range
+
+        randomize_center_of_mass = False
+        added_com_range = [-0.2, 0.2]
+
+        randomize_motor_strength = False
+        motor_strength_range = [0.8, 1.2]
+        
         push_robots = False
         push_interval_s = 15
         max_push_vel_xy = 1.
@@ -146,7 +153,7 @@ class LeggedRobotCfg(BaseConfig):
             dof_vel = -0.0               
             dof_acc = -2.5e-7             
             base_height = -0.0           
-            feet_air_time = 1.0       
+            feet_air_time = 0.0       
             collision = -1.0             
             stumble = -0.0               
             action_rate = -0.01           

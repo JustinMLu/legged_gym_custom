@@ -48,7 +48,7 @@ class LeggedRobot(BaseTask):
         print("⚠️  Notice: Early initialization of self.device and self.num_envs (BaseTask ctor will duplicate assign)")
         self.device = sim_device
         self.num_envs = self.cfg.env.num_envs
-        self.privileged_mass_params = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
+        self.privileged_mass_params = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
 
 
         # Call BaseTask constructor -> will call create_sim(), which calls create_envs()
@@ -337,10 +337,22 @@ class LeggedRobot(BaseTask):
         """ Callback allowing to store/change/randomize the rigid body properties of each environment.
         """
         if self.cfg.domain_rand.randomize_base_mass:
-            mass_ranges = self.cfg.domain_rand.added_mass_range                    # get range of added masses
-            rand = np.random.uniform(mass_ranges[0], mass_ranges[1], size=(1,))    # then pick randomly
-            props[0].mass += rand                                                  # and add to base rigid body
-        return props, rand
+            mass_ranges = self.cfg.domain_rand.added_mass_range                         # get range of added masses
+            rand_mass = np.random.uniform(mass_ranges[0], mass_ranges[1], size=(1,))    # then pick randomly
+            props[0].mass += rand_mass                                                  # and add to base rigid body
+        else:
+            rand_mass = np.zeros((1, )) 
+
+        if self.cfg.domain_rand.randomize_center_of_mass:
+            com_ranges = self.cfg.domain_rand.added_com_range
+            rand_com = np.random.uniform(com_ranges[0], com_ranges[1], size=(3,))
+            props[0].com += gymapi.Vec3(*rand_com)
+        else:
+            rand_com = np.zeros((3, ))
+        
+        # return props and mass parameters
+        mass_params = np.concatenate([rand_mass, rand_com])
+        return props, mass_params
     
     def _post_physics_step_callback(self):
         """ Callback called before computing terminations, rewards, and observations
@@ -420,13 +432,20 @@ class LeggedRobot(BaseTask):
         actions_scaled = actions * self.cfg.control.action_scale
         control_type = self.cfg.control.control_type
         if control_type=="P":
-            torques = self.p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel # spring damper version(?), different from usual PID - TODO look up math later
+            if not self.cfg.domain_rand.randomize_motor_strength:
+                torques = self.p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel # spring damper version(?), different from usual PID
+            else:
+                torques = self.motor_strength[0]*self.p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos) - self.motor_strength[1] * self.d_gains*self.dof_vel
+
         elif control_type=="V":
             torques = self.p_gains*(actions_scaled - self.dof_vel) - self.d_gains*(self.dof_vel - self.last_dof_vel)/self.sim_params.dt
+
         elif control_type=="T":
             torques = actions_scaled
+
         else:
             raise NameError(f"Unknown controller type: {control_type}")
+        
         return torch.clip(torques, -self.torque_limits, self.torque_limits)
 
     def _reset_dofs(self, env_ids):
@@ -623,14 +642,21 @@ class LeggedRobot(BaseTask):
 
         # ================ Buffers used for the privileged observation encoder ================ 
         # This got pre-assigned in the ctor but I'm keeping it for consistency
-        self.privileged_mass_params = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
+        self.privileged_mass_params = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
         
         if self.cfg.domain_rand.randomize_friction:
             self.privileged_friction_coeffs = self.friction_coeffs.to(self.device).to(torch.float).squeeze(-1)
         else:
-            # Use the default terrain friction (1.0 as fallback if self.friction_coeffs isn't initialized
             # Prevents initialization error when friction randomization is False in play.py
             self.privileged_friction_coeffs = torch.ones(self.num_envs, 1, dtype=torch.float, device=self.device) * self.cfg.terrain.dynamic_friction
+
+        # Tensor of shape [2, num_envs, num_actions] -> [0] is added to P, [1] is added to D
+        self.motor_strength = (self.cfg.domain_rand.motor_strength_range[1] \
+                               - self.cfg.domain_rand.motor_strength_range[0]) \
+                               * torch.rand(2, self.num_envs, self.num_actions, dtype=torch.float, 
+                                                                                device=self.device, 
+                                                                                requires_grad=False) \
+                               + self.cfg.domain_rand.motor_strength_range[0]
         # =====================================================================================        
     
 
