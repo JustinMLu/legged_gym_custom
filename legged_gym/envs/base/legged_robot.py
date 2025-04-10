@@ -514,26 +514,27 @@ class LeggedRobot(BaseTask):
         Args:
             env_ids (List[int]): ids of environments being reset
         """
-        # Implement Terrain curriculum
+        # Don't change on initial reset
         if not self.init_done:
-            # don't change on initial reset
             return
+        
+        # Get XY distance between the robot and the origin of the terrain
         distance = torch.norm(self.root_states[env_ids, :2] - self.env_origins[env_ids, :2], dim=1)
 
-        # robots that walked far enough progress to harder terrains
+        # Mask for robots that will be promoted
         move_up = distance > self.terrain.env_length * self.cfg.terrain.promote_threshold
 
-        # some sampled commands will be too small to meet the goal, so account for that
+        # Use expected distnace for demotion mask -> some cmds are too small to win!
         expected_distance = torch.norm(self.commands[env_ids, :2], dim=1)*self.max_episode_length_s
 
-        # robots that still didn't walk far enough are sent to easier terrains
+        # Mask for robots that will be demoted
         move_down = distance < expected_distance * self.cfg.terrain.demote_threshold
         
-        # update the terrain levels
+        # Use masks to update terrain elvels
         self.terrain_levels[env_ids[move_up]] += 1
         self.terrain_levels[env_ids[move_down]] -= 1
         
-        # robots that solve the last level are sent to a random one
+        # Robots that solve the last level are sent to a random one
         self.terrain_levels[env_ids] = torch.where(self.terrain_levels[env_ids]>=self.max_terrain_level,
                                                    torch.randint_like(self.terrain_levels[env_ids], self.max_terrain_level),
                                                    torch.clip(self.terrain_levels[env_ids], 0)) # (the minumum level is zero)

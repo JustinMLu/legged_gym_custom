@@ -13,7 +13,7 @@ class Go2Cfg( LeggedRobotCfg ):
         num_observations = num_proprio+(num_proprio*history_buffer_length)
 
         # Phase features
-        period = 0.45
+        period = 0.35
         fr_offset = 0.0 
         bl_offset = 0.0
         fl_offset = 0.5
