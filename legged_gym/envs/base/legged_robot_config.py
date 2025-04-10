@@ -33,7 +33,7 @@ from .base_config import BaseConfig
 class LeggedRobotCfg(BaseConfig):
     class env:
         history_buffer_length = 5 # number of previous obs to keep in buffer
-        num_proprio = 235 # number of proprio. obs
+        num_proprio = 235
         num_observations = num_proprio+(num_proprio*history_buffer_length)
         num_envs = 4096
         num_privileged_obs = 6 
@@ -52,7 +52,7 @@ class LeggedRobotCfg(BaseConfig):
         border_size = 25 # [m]
         curriculum = True
         promote_threshold = 0.6 # [%] --> percentage of terrain traversed to move up a level
-        demote_threshold = 0.4 # [%] --> percentage of terrain traversed to move down a level
+        demote_threshold = 0.4  # [%] --> percentage of terrain traversed to move down a level
         static_friction = 1.0
         dynamic_friction = 1.0
         restitution = 0.

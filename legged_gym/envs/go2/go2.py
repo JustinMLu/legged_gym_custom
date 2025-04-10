@@ -86,8 +86,19 @@ class Go2Robot(LeggedRobot):
 
 
     def _init_buffers(self):
+        """ Initializes the buffers used to store the simulation state and observational data.
+            Overloaded to also initialize some custom buffers.
+        """
         super()._init_buffers()
         self._init_custom_buffers()
+
+
+    def reset_idx(self, env_ids):
+        """ Reset the environment indices. Overloaded to reset some additional buffers. 
+        """
+        super().reset_idx(env_ids)
+        self.last_contacts = torch.zeros(self.num_envs, self.feet_num, device=self.device)
+        self.last_contact_heights = torch.zeros(self.num_envs, self.feet_num, device=self.device)
 
 
     def update_feet_states(self):
@@ -187,13 +198,13 @@ class Go2Robot(LeggedRobot):
         ], dim=1)
        
         # Construct observations       
-        cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                      # (3,)
-                                self.projected_gravity,                                             # (3,)
-                                self.commands[:, :3] * self.commands_scale,                         # (3,)  
-                                (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,    # (12,) for quadruped
-                                self.dof_vel * self.obs_scales.dof_vel,                             # (12,)
-                                self.actions                                                        # (12,) last actions
-                                ),dim=-1)                                                           # total: (45,)
+        cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                     # (3,)
+                                self.projected_gravity,                                            # (3,)
+                                self.commands[:, :3] * self.commands_scale,                        # (3,)  
+                                (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,   # (12,) for quadruped
+                                self.dof_vel * self.obs_scales.dof_vel,                            # (12,)
+                                self.actions                                                       # (12,) last actions
+                                ),dim=-1)                                                          # total: (45,)
         
         # Add phase features
         cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
@@ -208,8 +219,10 @@ class Go2Robot(LeggedRobot):
             cur_obs_buf                                    # Current observation
         ], dim=-1)
 
-        
-        # heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
+        # EXTREME PARKOUR
+        # if self.cfg.terrain.measure_heights:
+        #     heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.3 - self.measured_heights, -1, 1.)
+        #     self.obs_buf = torch.cat([obs_buf, heights, priv_explicit, priv_latent, self.obs_history_buf.view(self.num_envs, -1)], dim=-1)
         
         # Update privileged obs buffer
         self.privileged_obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel, # 3

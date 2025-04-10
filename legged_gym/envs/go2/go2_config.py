@@ -23,12 +23,14 @@ class Go2Cfg( LeggedRobotCfg ):
     class terrain( LeggedRobotCfg.terrain ):
 
         # General parameters
-        num_rows = 10 # num. difficulties       ->    (0/n, 1/n, 2/n ... (n-1)/n)
-        num_cols = 20 # max. terrain choices    ->    affects terrain_proportions "accuracy"
-
+        num_rows = 10               # num. difficulties     ->    (0/n, 1/n, 2/n ... (n-1)/n)
+        num_cols = 20               # max. terrain choices  ->    affects terrain_proportions "accuracy"
         mesh_type = 'trimesh'
-        measure_heights = False     # changed so this only enables the buffer & noise
-        max_init_terrain_level = 2  # starting curriculum state
+        measure_heights = False     # add a height measurement to the observations
+        
+        # Extreme parkour
+        measured_points_x = [-0.45, -0.3, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2] # 1mx1.6m rectangle (w/o centerline)
+        measured_points_y = [-0.75, -0.6, -0.45, -0.3, -0.15, 0., 0.15, 0.3, 0.45, 0.6, 0.75]
         
         # Manual terrain selection
         selected = False
@@ -40,10 +42,11 @@ class Go2Cfg( LeggedRobotCfg ):
             "downsampled_scale": 0.25
         }
         
-        # Curriculum
+        # Terrain curriculum
         curriculum = True
-        promote_threshold = 0.6 # [%] --> percentage of terrain traversed to move up a level
-        demote_threshold = 0.4  # [%] --> percentage of terrain traversed to move down a level
+        max_init_terrain_level = 2      # starting curriculum state
+        promote_threshold = 0.6         # [%] of terrain traversed to move up a level
+        demote_threshold = 0.4          # [%] of terrain traversed to move down a level
 
         terrain_default     = [0.15,    # smooth slope
                                0.25,    # rough slope
@@ -115,13 +118,14 @@ class Go2Cfg( LeggedRobotCfg ):
         heading_command = False
         resampling_time = 10.
         zero_command_prob = 0.10 # prob. of randomly resampling a zero command
-
+        
+        # Command curriculum params TODO: add more
         curriculum = False
         max_curriculum = 3.0 # [m/s]
         
         class ranges:
-            lin_vel_x = [-0.8, 0.8]     # [m/s]
-            lin_vel_y = [-0.5, 0.5]     # [m/s]
+            lin_vel_x = [-1.2, 1.2]     # [m/s]
+            lin_vel_y = [-0.8, 0.8]     # [m/s]
             ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
             heading = [-3.14, 3.14]
         # user_command = [0.35, 0., 0., 0.]
@@ -193,7 +197,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         schedule = 'fixed'       # could be adaptive, fixed
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'adaptation_v2'
+        run_name = 'adaptation_v3'
         experiment_name = 'go2'
         load_run = -1
         num_steps_per_env = 24 # NEW

@@ -374,13 +374,9 @@ class LeggedRobot(BaseTask):
             heading = torch.atan2(forward[:, 1], forward[:, 0])
             self.commands[:, 2] = torch.clip(0.5*wrap_to_pi(self.commands[:, 3] - heading), -1., 1.)
 
-        # if self.cfg.terrain.measure_heights:
-        """BUG: Disabling measure-heights doesn't just disable heightpoints in observations, 
-                it also  prevents _get_heights() from being called. 
-                
-                This means that self.measured_heights is ALWAYS EQUAL TO zero, which completely 
-                screws up training on non-flat ground! Thanks ETH Zurich! 
-                (RESOLVED)
+        """BUG: (RESOLVED) Before, self.measured_heights was only being updated if cfg.terrain.measure_heights=True.
+                This meant that if cfg.terrain.measure_heights=False, reward functions that used self.measured_heights
+                were using zeros instead of the actual height map measurements.
         """
         self.measured_heights = self._get_heights()
 
@@ -592,7 +588,7 @@ class LeggedRobot(BaseTask):
 
     #----------------------------------------
     def _init_buffers(self):
-        """ Initialize torch tensors which will contain simulation states and processed quantities
+        """ Initializes the buffers used to store the simulation state and observational data.
         """
         # Debug print
         print("===== _init_buffers() called: Initializing buffers... =====")
@@ -638,14 +634,6 @@ class LeggedRobot(BaseTask):
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
 
         # Init height points buffer
-        # if self.cfg.terrain.measure_heights:
-        """BUG: Disabling measure-heights doesn't just disable heightpoints in observations, 
-                it also  prevents _get_heights() from being called. 
-                
-                This means that self.measured_heights is ALWAYS EQUAL TO zero, which completely 
-                screws up training on non-flat ground! Thanks ETH Zurich! 
-                (RESOLVED)
-        """
         self.height_points = self._init_height_points()
         self.measured_heights = 0
 
