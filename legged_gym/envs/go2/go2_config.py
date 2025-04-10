@@ -21,13 +21,16 @@ class Go2Cfg( LeggedRobotCfg ):
 
 
     class terrain( LeggedRobotCfg.terrain ):
+
+        # General parameters
         num_rows = 10 # num. difficulties       ->    (0/n, 1/n, 2/n ... (n-1)/n)
         num_cols = 20 # max. terrain choices    ->    affects terrain_proportions "accuracy"
 
         mesh_type = 'trimesh'
         measure_heights = False     # changed so this only enables the buffer & noise
         max_init_terrain_level = 2  # starting curriculum state
-
+        
+        # Manual terrain selection
         selected = False
         terrain_kwargs = {
             "type": "terrain_utils.random_uniform_terrain",
@@ -36,8 +39,12 @@ class Go2Cfg( LeggedRobotCfg ):
             "step": 0.005,
             "downsampled_scale": 0.25
         }
-
+        
+        # Curriculum
         curriculum = True
+        promote_threshold = 0.6 # [%] --> percentage of terrain traversed to move up a level
+        demote_threshold = 0.4  # [%] --> percentage of terrain traversed to move down a level
+
         terrain_default     = [0.15,    # smooth slope
                                0.25,    # rough slope
                                0.35,    # stairs up

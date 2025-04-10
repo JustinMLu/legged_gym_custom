@@ -51,6 +51,8 @@ class LeggedRobotCfg(BaseConfig):
         vertical_scale = 0.005 # [m] --> meters per grid value
         border_size = 25 # [m]
         curriculum = True
+        promote_threshold = 0.6 # [%] --> percentage of terrain traversed to move up a level
+        demote_threshold = 0.4 # [%] --> percentage of terrain traversed to move down a level
         static_friction = 1.0
         dynamic_friction = 1.0
         restitution = 0.
@@ -77,6 +79,7 @@ class LeggedRobotCfg(BaseConfig):
         resampling_time = 10.           # time before command are changed[s]
         heading_command = True          # if true: compute ang vel command from heading error
                                         # if not empty: will override resampling logic
+        zero_command_prob = 0.10        # probability of randomly resampling a zero command
         user_command = []               # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]             
         
         class ranges:

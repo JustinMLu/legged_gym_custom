@@ -508,7 +508,8 @@ class LeggedRobot(BaseTask):
         self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(self.root_states))
 
     def _update_terrain_curriculum(self, env_ids):
-        """ Implements the game-inspired curriculum.
+        """ Implements a game-inspired curriculum. This has been modified from the original
+            implementation to be more robust to the terrain types and levels.
 
         Args:
             env_ids (List[int]): ids of environments being reset
@@ -519,15 +520,18 @@ class LeggedRobot(BaseTask):
             return
         distance = torch.norm(self.root_states[env_ids, :2] - self.env_origins[env_ids, :2], dim=1)
 
-        # Threshold of distance to walk before moving up a level
-        walk_threshold = 0.5 # [% terrain length] 
-
         # robots that walked far enough progress to harder terrains
-        move_up = distance > self.terrain.env_length * walk_threshold
+        move_up = distance > self.terrain.env_length * self.cfg.terrain.promote_threshold
+
+        # some sampled commands will be too small to meet the goal, so account for that
+        expected_distance = torch.norm(self.commands[env_ids, :2], dim=1)*self.max_episode_length_s
+
+        # robots that still didn't walk far enough are sent to easier terrains
+        move_down = distance < expected_distance * self.cfg.terrain.demote_threshold
         
-        # robots that walked less than half of their required distance go to simpler terrains
-        move_down = (distance < torch.norm(self.commands[env_ids, :2], dim=1)*self.max_episode_length_s*walk_threshold) * ~move_up
-        self.terrain_levels[env_ids] += 1 * move_up - 1 * move_down
+        # update the terrain levels
+        self.terrain_levels[env_ids[move_up]] += 1
+        self.terrain_levels[env_ids[move_down]] -= 1
         
         # robots that solve the last level are sent to a random one
         self.terrain_levels[env_ids] = torch.where(self.terrain_levels[env_ids]>=self.max_terrain_level,
