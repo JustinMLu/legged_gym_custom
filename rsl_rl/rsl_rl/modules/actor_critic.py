@@ -167,11 +167,8 @@ class ActorCritic(nn.Module):
         """ Forward pass through actor network, updating action distribution.
         """
         latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode)
-        
         # base_obs = obs_buf[:, -self.num_proprio:]
-        # HISTORYS BACK BABY
-        base_obs = obs_buf[:, :]
-
+        base_obs = obs_buf[:, :]  # HISTORYS BACK BABY
         actor_input = torch.cat((base_obs, latent), dim=-1)
         mean = self.actor(actor_input)
         self.distribution = Normal(mean, mean*0. + self.std)
@@ -189,11 +186,8 @@ class ActorCritic(nn.Module):
         """
 
         latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode)
-        
         # base_obs = obs_buf[:, -self.num_proprio:]
-        # HISTORYS BACK BABY
-        
-        base_obs = obs_buf[:, :]
+        base_obs = obs_buf[:, :]  # HISTORYS BACK BABY
         actor_input = torch.cat((base_obs, latent), dim=-1)
         return self.actor(actor_input)
     # ==================================================================================================

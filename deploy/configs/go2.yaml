@@ -1,19 +1,21 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/skipper_v6/3000.pt"
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml" 
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/go2_adaptation_rough/policy.pt"
+encoder_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/go2_adaptation_rough/encoder.pt"
+
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_terrain.xml" 
 
 # Action & Observations
 num_actions: 12
 num_proprio: 53
-buffer_length: 9
+buffer_length: 10
 
 # Phase Features
-period: 0.32                # TODO: Put Isaac period into config!!!!
+period: 0.45                # TODO: Put Isaac period into config!!!!
 fr_offset: 0.0 
 bl_offset: 0.0
-fl_offset: 0.25
-br_offset: 0.25
+fl_offset: 0.5
+br_offset: 0.5
 
 # Protocols
 msg_type: "go" # "hg" or "go" # (REAL ONLY)
@@ -47,22 +49,28 @@ kds: [1.0, 1.0, 1.0,
       1.0, 1.0, 1.0,
       1.0, 1.0, 1.0]
 
-               # hip, thigh, calf
-default_angles: [0.1, 0.8, -1.5,    # FL
-                -0.1, 0.8, -1.5,    # FR
-                 0.1, 1.0, -1.5,    # RL
-                -0.1, 1.0, -1.5]    # RR
+                # hip, thigh, calf
+default_angles: [0.1, 0.8, -1.5,    # Front left
+                -0.1, 0.8, -1.5,    # Front right
+                 0.1, 1.0, -1.5,    # Rear left
+                -0.1, 1.0, -1.5]    # Rear right
+
+# Empirical joint limits
+# Hips (all):   [ -0.75,  0.75 ]
+# Front thighs: [ -1.50,  1.75 ]
+# Rear thighs:  [  0.00,  2.75 ]
+# Calves (all): [ -2.75, -0.75 ]
 
 # Scales
+lin_vel_scale: 2.0 
 ang_vel_scale: 0.25
 dof_pos_scale: 1.0
 dof_vel_scale: 0.05
 action_scale: 0.25
-cmd_scale: [2.0, 2.0, 0.25]
 
 # Clip values
 clip_observations: 100.0
-clip_actions: 20.0          # NEW - Remember to match this!!!!
+clip_actions: 3.8
 
 # Remote controller scale
-rc_scale: [2.1, 0.5, 1.57]
+rc_scale: [1.0, 1.0, 1.5]

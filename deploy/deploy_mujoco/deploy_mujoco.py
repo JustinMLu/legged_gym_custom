@@ -40,8 +40,8 @@ class MujocoController(BaseController):
         self.ang_vel = self.mj_data.qvel[3:6]    # angular vel (local frame)
         self.base_quat = self.mj_data.qpos[3:7]  # base rot. in quaternion
 
-    def get_pd_control(self, target_q, q, kp, target_dq, dq, kd):
-        """ Calculates torques from position commands using PD position control.
+    def compute_torques(self, target_q, q, kp, target_dq, dq, kd):
+        """ Calculates torques from position commands using position PD control.
         """
         return kp*(target_q-q) + kd*(target_dq-dq)
 
@@ -84,16 +84,21 @@ if __name__ == "__main__":
         decimation_counter += 1
 
         # DEBUG: print stuff!
-        if decimation_counter % 250 == 0:
-            # print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
-            print("Mean join torques: ", np.mean(np.abs(controller.mj_data.ctrl[:])))
+        if decimation_counter % 150 == 0:
+            print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
+            # print("Mean join torques: ", np.mean(np.abs(controller.mj_data.ctrl[:])))
 
         # Apply control signal every (control_decimation) steps
         if decimation_counter % cfg.control_decimation == 0:
             controller.step(sim_time_s)
 
         # Joint torque PD control outside of control decimation 
-        tau = controller.get_pd_control(controller.target_dof_pos, controller.qj, cfg.kps, np.zeros_like(cfg.kds), controller.dqj, cfg.kds)
+        tau = controller.compute_torques(target_q=controller.target_dof_pos, 
+                                         q=controller.qj, 
+                                         kp=cfg.kps, 
+                                         target_dq=np.zeros_like(cfg.kds), 
+                                         dq=controller.dqj, 
+                                         kd=cfg.kds)
         controller.mj_data.ctrl[:] = tau
 
 

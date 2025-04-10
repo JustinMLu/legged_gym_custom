@@ -106,7 +106,7 @@ class Go2Robot(LeggedRobot):
         self.feet_vel = self.feet_states[:, :, 7:10]
         
         # =========================== GAIT CALCULATIONS ===========================
-        # Calculate per-leg phase
+        # Calculate per-leg phase variables
         self.phase = (self.episode_length_buf * self.dt) % self.cfg.env.period / self.cfg.env.period 
         self.phase_fr = (self.phase + self.cfg.env.fr_offset) % 1
         self.phase_bl = (self.phase + self.cfg.env.bl_offset) % 1
@@ -202,7 +202,7 @@ class Go2Robot(LeggedRobot):
         if self.add_noise:
             cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
         
-        # Update obs buffer 
+        # Update obs buffer (concat. history)
         self.obs_buf = torch.cat([
             self.obs_history_buf.view(self.num_envs, -1),  # Flattened history
             cur_obs_buf                                    # Current observation
@@ -222,8 +222,7 @@ class Go2Robot(LeggedRobot):
         # Update critic obs buffer
         self.critic_obs_buf = torch.cat((
             self.obs_buf.clone().detach(),
-            self.privileged_obs_buf.clone().detach(),
-
+            self.privileged_obs_buf.clone().detach()
         ), dim=-1)
         
         
@@ -260,7 +259,7 @@ class Go2Robot(LeggedRobot):
             - FR and BL feet should contact when phase < 0.5
             - FL and BR feet should contact when phase >= 0.5
         """
-        percent_time_on_ground = 0.20 # TODO: Make this a config variable
+        percent_time_on_ground = 0.5 # TODO: Make this a config variable
         
         # 1 is 100% on ground, 0 is 50% on ground, -1 is 0% on ground
         stance_threshold = 2.0 * percent_time_on_ground - 1.0

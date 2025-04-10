@@ -19,11 +19,14 @@ class ConfigParser:
             # ===================== SIM ONLY ========================
             self.xml_path = cfg["xml_path"].replace(
                 "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
-  
 
             # ===================== COMMON ==========================
-            # Policy Path
+            # Path to policy network
             self.policy_path = cfg["policy_path"].replace(
+                "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
+            
+            # Path to encoder network
+            self.encoder_path = cfg["encoder_path"].replace(
                 "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
             
             # Timing
@@ -37,11 +40,15 @@ class ConfigParser:
             self.default_angles = np.array(cfg["default_angles"], dtype=np.float32)
 
             # Scaling
+            self.lin_vel_scale = cfg["lin_vel_scale"]
             self.ang_vel_scale = cfg["ang_vel_scale"]
             self.dof_pos_scale = cfg["dof_pos_scale"]
             self.dof_vel_scale = cfg["dof_vel_scale"]
             self.action_scale = cfg["action_scale"]
-            self.cmd_scale = np.array(cfg["cmd_scale"], dtype=np.float32)
+            self.cmd_scale = np.array([self.lin_vel_scale, 
+                                       self.lin_vel_scale, 
+                                       self.ang_vel_scale], dtype=np.float32)
+            
             self.rc_scale = np.array(cfg["rc_scale"], dtype=np.float32)
 
             # Clipping

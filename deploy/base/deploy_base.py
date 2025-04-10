@@ -4,8 +4,11 @@ from deploy.base.config_parser import ConfigParser
 
 class BaseController:
     def __init__(self, cfg: ConfigParser) -> None:
+
+        # Get config, load policy and encoder
         self.cfg = cfg
         self.policy = torch.jit.load(cfg.policy_path)
+        self.encoder = torch.jit.load(cfg.encoder_path)
 
         # Initialize essential buffers
         self.qj = np.zeros(cfg.num_actions, dtype=np.float32)    # joint pos.
@@ -73,14 +76,14 @@ class BaseController:
         self.refresh_robot_states()
         self.projected_gravity = self.get_gravity_orientation(self.base_quat)
         
-        # Calculate per-leg phase
+        # Calculate per-leg phase variables
         phase = (elapsed_time_s % self.cfg.period) / self.cfg.period
         phase_fr = (phase + self.cfg.fr_offset) % 1
         phase_bl = (phase + self.cfg.bl_offset) % 1
         phase_fl = (phase + self.cfg.fl_offset) % 1
         phase_br = (phase + self.cfg.br_offset) % 1
 
-        # Zero out all of them if small command
+        # Zero out phase variables if small command
         cmd_norm = np.linalg.norm(self.cmd[:3])
         if cmd_norm < 0.15:
             phase_fr *= 0.0
@@ -88,7 +91,7 @@ class BaseController:
             phase_fl *= 0.0
             phase_br *= 0.0
 
-        # Construct phase features 
+        # Calculate sine and cosine of phases for smooth transitions
         sin_phase_fl = np.sin(2 * np.pi * phase_fl)
         cos_phase_fl = np.cos(2 * np.pi * phase_fl)
         sin_phase_fr = np.sin(2 * np.pi * phase_fr)
@@ -98,6 +101,7 @@ class BaseController:
         sin_phase_br = np.sin(2 * np.pi * phase_br)
         cos_phase_br = np.cos(2 * np.pi * phase_br)
 
+        # Construct phase features
         phase_features = np.array([
             sin_phase_fr, cos_phase_fr, 
             sin_phase_fl, cos_phase_fl,
@@ -105,7 +109,7 @@ class BaseController:
             sin_phase_br, cos_phase_br
         ], dtype=np.float32)
 
-        # Create observation list
+        # Construct observation
         num_actions = self.cfg.num_actions
         cur_obs = np.zeros(self.cfg.num_proprio, dtype=np.float32)
         cur_obs[:3] = self.ang_vel * self.cfg.ang_vel_scale
@@ -116,9 +120,10 @@ class BaseController:
         cur_obs[9+2*num_actions : 9+3*num_actions] = self.actions
         cur_obs[9+3*num_actions:9+3*num_actions+8] = phase_features
 
-        # Concatenate obs history
+        # Update obs buffer (concat. history)
         self.obs[:] = np.concatenate([self.obs_history.flatten(), cur_obs])
-        # Then, add current observation to history
+        
+        # Update the history buffer
         if self.first_step_ever:
             self.first_step_ever = False
             self.obs_history = np.tile(cur_obs, (self.cfg.buffer_length, 1))  # (4x1, 1x53)
@@ -126,15 +131,19 @@ class BaseController:
             self.obs_history = np.roll(self.obs_history, -1, axis=0)
             self.obs_history[-1] = cur_obs
 
-        # else:
-        #     self.obs[:] = cur_obs
-
-        # Convert observations to tensor, clip
+        # Convert observations to tensor and clip
         obs_tensor = torch.from_numpy(self.obs).unsqueeze(0)
         obs_tensor = torch.clip(obs_tensor, -self.cfg.clip_obs, self.cfg.clip_obs)
 
+        hist_len = self.cfg.buffer_length * self.cfg.num_proprio
+        hist_tensor = obs_tensor[:, :hist_len].reshape(1, self.cfg.buffer_length, self.cfg.num_proprio)
+        
+        # Get latent vector from encoder, concat. with observations
+        latent = self.encoder(hist_tensor)
+        actor_input = torch.cat((obs_tensor, latent), dim=-1)
+
         # Get actions from policy network, clip
-        self.actions = self.policy(obs_tensor)
+        self.actions = self.policy(actor_input)
         self.actions = torch.clip(self.actions, 
                                  -self.cfg.clip_actions, 
                                   self.cfg.clip_actions).detach().numpy().squeeze()

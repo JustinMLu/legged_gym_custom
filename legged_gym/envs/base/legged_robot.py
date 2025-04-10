@@ -43,11 +43,16 @@ class LeggedRobot(BaseTask):
         self.init_done = False
         self._parse_cfg(self.cfg) # Parse configuration file
 
-        # Pre-initialize privileged_mass_params because create_envs() uses it before _init_buffers() is called
-        print("⚠️  Pre-initializing self.privileged_mass_params tensor to prevent _create_envs() failure")
-        print("⚠️  Notice: Early initialization of self.device and self.num_envs (BaseTask ctor will duplicate assign)")
+        """ NOTE: `create_envs()` (triggered inside `BaseTask.__init__`) expects
+            `self.device` and `self.num_envs` to be defined. We set them here so the
+            pre-allocated `privileged_mass_params` is valid, even though `BaseTask`
+            will assign the *same* values again. This redundancy is intentional and
+            harmless—documented now to avoid future confusion if the init order changes.
+        """
+
         self.device = sim_device
         self.num_envs = self.cfg.env.num_envs
+        print("⚠️  Pre-allocating privileged_mass_params so _create_envs() can access it")
         self.privileged_mass_params = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
 
 
@@ -73,7 +78,7 @@ class LeggedRobot(BaseTask):
         # Step physics and render each frame
         self.render()
         for _ in range(self.cfg.control.decimation):
-            self.torques = self._compute_torques(self.actions).view(self.torques.shape)
+            self.torques = self._compute_torques(self.actions).view(self.torques.shape) # NOTE: Compute_torques multiplies actions by action scale
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
             self.gym.simulate(self.sim)
             if self.device == 'cpu':
@@ -428,24 +433,33 @@ class LeggedRobot(BaseTask):
         Returns:
             [torch.Tensor]: Torques sent to the simulation
         """
-        #pd controller
+        # Scale actions -> actions already clipped
         actions_scaled = actions * self.cfg.control.action_scale
         control_type = self.cfg.control.control_type
+
+        # Position control
         if control_type=="P":
             if not self.cfg.domain_rand.randomize_motor_strength:
-                torques = self.p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel # spring damper version(?), different from usual PID
+                torques = self.p_gains * (actions_scaled + self.default_dof_pos - self.dof_pos)  \
+                        - self.d_gains * self.dof_vel
             else:
-                torques = self.motor_strength[0]*self.p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos) - self.motor_strength[1] * self.d_gains*self.dof_vel
+                torques = self.motor_strength[0] * self.p_gains * (actions_scaled + self.default_dof_pos - self.dof_pos) \
+                        - self.motor_strength[1] * self.d_gains * self.dof_vel
 
+        # Velocity control
         elif control_type=="V":
-            torques = self.p_gains*(actions_scaled - self.dof_vel) - self.d_gains*(self.dof_vel - self.last_dof_vel)/self.sim_params.dt
+            torques = self.p_gains * (actions_scaled - self.dof_vel) \
+                    - self.d_gains * (self.dof_vel - self.last_dof_vel) / self.sim_params.dt
 
+        # Torque control
         elif control_type=="T":
             torques = actions_scaled
 
+        # NameError
         else:
             raise NameError(f"Unknown controller type: {control_type}")
         
+        # Return clipped torques
         return torch.clip(torques, -self.torque_limits, self.torque_limits)
 
     def _reset_dofs(self, env_ids):
@@ -576,7 +590,7 @@ class LeggedRobot(BaseTask):
         """ Initialize torch tensors which will contain simulation states and processed quantities
         """
         # Debug print
-        print("===== Initializing buffers... (_init_buffers() invoked) =====")
+        print("===== _init_buffers() called: Initializing buffers... =====")
 
         # get gym GPU state tensors
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
@@ -759,7 +773,7 @@ class LeggedRobot(BaseTask):
                 2.3 create actor with these properties and add them to the env
              3. Store indices of different bodies of the robot
         """
-        print("===== Creating environments... (_create_envs() invoked) =====") 
+        print("===== _create_envs() called: Creating environments... =====") 
         asset_path = self.cfg.asset.file.format(LEGGED_GYM_ROOT_DIR=LEGGED_GYM_ROOT_DIR)
         asset_root = os.path.dirname(asset_path)
         asset_file = os.path.basename(asset_path)

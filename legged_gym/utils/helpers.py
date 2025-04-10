@@ -185,7 +185,7 @@ def export_policy_as_jit(actor_critic, path, save_adaptation_module=False):
     else: 
         os.makedirs(path, exist_ok=True)
         
-        policy_path = os.path.join(path, 'exported_policy.pt')
+        policy_path = os.path.join(path, 'policy.pt')
         model = copy.deepcopy(actor_critic.actor).to('cpu')
         traced_script_module = torch.jit.script(model)
         traced_script_module.save(policy_path)
@@ -193,7 +193,7 @@ def export_policy_as_jit(actor_critic, path, save_adaptation_module=False):
 
 
         if save_adaptation_module:
-            encoder_path = os.path.join(path, 'exported_encoder.pt')
+            encoder_path = os.path.join(path, 'encoder.pt')
             module = copy.deepcopy(actor_critic.adaptation_encoder_).to('cpu')
             traced_script_module = torch.jit.script(module)
             traced_script_module.save(encoder_path)
