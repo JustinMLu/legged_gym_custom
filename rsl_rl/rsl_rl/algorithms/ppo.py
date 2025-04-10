@@ -179,11 +179,6 @@ class PPO:
                 else:
                     value_loss = (returns_batch - value_batch).pow(2).mean()
 
-                # # DEBUG PRINTS
-                # print(f"Returns batch mean: {returns_batch.mean().item()}")
-                # print(f"Value batch mean: {value_batch.mean().item()}")
-                # print(f"Value loss: {value_loss.item()}")
-
                 # Compute loss - privileged encoder should mimic adaptation encoder
                 loss = surrogate_loss \
                      + self.value_loss_coef * value_loss \

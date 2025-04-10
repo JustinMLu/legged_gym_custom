@@ -378,6 +378,7 @@ class LeggedRobot(BaseTask):
                 This meant that if cfg.terrain.measure_heights=False, reward functions that used self.measured_heights
                 were using zeros instead of the actual height map measurements.
         """
+        # Update measured heights buffer
         self.measured_heights = self._get_heights()
 
         # bully robots

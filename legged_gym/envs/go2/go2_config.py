@@ -28,9 +28,9 @@ class Go2Cfg( LeggedRobotCfg ):
         mesh_type = 'trimesh'
         measure_heights = False     # add a height measurement to the observations
         
-        # Extreme parkour
-        measured_points_x = [-0.45, -0.3, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2] # 1mx1.6m rectangle (w/o centerline)
-        measured_points_y = [-0.75, -0.6, -0.45, -0.3, -0.15, 0., 0.15, 0.3, 0.45, 0.6, 0.75]
+        # # Extreme parkour
+        # measured_points_x = [-0.45, -0.3, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2]
+        # measured_points_y = [-0.75, -0.6, -0.45, -0.3, -0.15, 0., 0.15, 0.3, 0.45, 0.6, 0.75]
         
         # Manual terrain selection
         selected = False
