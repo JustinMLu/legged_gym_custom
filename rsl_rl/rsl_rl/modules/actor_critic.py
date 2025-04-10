@@ -49,13 +49,13 @@ class ActorCritic(nn.Module):
         self.num_critic_obs = num_critic_obs
         self.num_actions = num_actions
 
-        print("\n======== DEBUG: ActorCritic ATTRIBUTES ========")
+        print("\n============== DEBUG: ActorCritic ATTRIBUTES ==============")
         print(f"num_base_obs: {self.num_proprio}")
         print(f"num_privileged_obs: {self.num_privileged_obs}")
         print(f"history_buffer_length: {self.history_buffer_length}")
         print(f"num_critic_obs: {self.num_critic_obs}")
         print(f"num_actions: {self.num_actions}")
-        print("===============================================\n")
+        print("===========================================================\n")
 
         # Get specified activation function, set MLP input dimensions
         activation = get_activation(activation)

@@ -1,9 +1,9 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/go2_adaptation_rough/policy.pt"
-encoder_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/go2_adaptation_rough/encoder.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/go2_adaptation_rough/policy_40k.pt"
+encoder_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/go2_adaptation_rough/encoder_40k.pt"
 
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_terrain.xml" 
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_010.xml" 
 
 # Action & Observations
 num_actions: 12
@@ -11,7 +11,7 @@ num_proprio: 53
 buffer_length: 10
 
 # Phase Features
-period: 0.45                # TODO: Put Isaac period into config!!!!
+period: 0.35    # TODO: PERIOD RANDOMIZATION!!
 fr_offset: 0.0 
 bl_offset: 0.0
 fl_offset: 0.5
@@ -73,4 +73,4 @@ clip_observations: 100.0
 clip_actions: 3.8
 
 # Remote controller scale
-rc_scale: [1.0, 1.0, 1.5]
+rc_scale: [1.2, 0.8, 1.57]

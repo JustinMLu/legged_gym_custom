@@ -1,4 +1,4 @@
-<mujoco model="go2 scene mountain">
+<mujoco model="scene_nasa">
     <include file="go2.xml" />
 
     <statistic center="0 0 0.1" extent="0.8" />
@@ -26,18 +26,14 @@
                 Z_top is the max height above 0 (after normalization),
                 Z_bottom is the thickness extending below 0.    -->
 
-        <hfield name="perlin_hfield" size="20.0 20.0 6.0 6.0" file="../hf_test.png" />
-        
-        <!--    =========== DEFAULTS =========== -->
-        <!-- <hfield name="perlin_hfield" size="1.0 0.75 0.2 0.2" file="../height_field.png" /> -->
-        <!-- <hfield name="image_hfield" size="1.0 1.0 0.02 0.1" file="../unitree_hfield.png" /> -->
+        <hfield name="nasa_heightfield" size="20.0 20.0 3.5 3.5" file="../heightfields/hf_nasa.png" />
         
     </asset>
 
     <worldbody>
         <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
         
-        <geom name="floor" type="hfield" hfield="perlin_hfield" pos="0.0 0.0 -4.0"/>
+        <geom name="floor_tile_1" type="hfield" hfield="nasa_heightfield" pos="0.0 0.0 -3.0"/>
 
     </worldbody>
 </mujoco>

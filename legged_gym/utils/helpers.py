@@ -200,9 +200,6 @@ def export_policy_as_jit(actor_critic, path, save_adaptation_module=False):
             print(f"Exported adaptation module saved to: {encoder_path}")
 
 
-    
-
-
 class PolicyExporterLSTM(torch.nn.Module):
     """ Don't use this it's mega broken 
     """

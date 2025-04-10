@@ -1,4 +1,4 @@
-<mujoco model="go2 scene terrain">
+<mujoco model="scene_terrain">
     <include file="go2.xml" />
 
     <statistic center="0 0 0.1" extent="0.8" />
@@ -26,14 +26,14 @@
                 Z_top is the max height above 0 (after normalization),
                 Z_bottom is the thickness extending below 0.    -->
 
-        <hfield name="hfield_1" size="30.0 30.0 2.5 2.5" file="../hf_test.png" />
-        
+        <hfield name="perlin_hfield" size="12.0 12.0 3.5 3.5" file="../heightfields/hf_original.png" />
+              
     </asset>
 
     <worldbody>
         <light pos="0 0 1.5" dir="0 0 -1" directional="true" />
         
-        <geom name="floor_tile_1" type="hfield" hfield="hfield_1" pos="0.0 0.0 -2.0"/>
+        <geom name="floor" type="hfield" hfield="perlin_hfield" pos="0.0 0.0 -4.0"/>
 
     </worldbody>
 </mujoco>

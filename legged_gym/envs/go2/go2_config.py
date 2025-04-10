@@ -164,10 +164,10 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_error = -0.04 
             hip_pos = -0.75
             stumble = -1.0
+            orientation = -1.0 # -5.0 for super stable, at the expense of stairs
             # ====================== 
             contact_phase_match = 1.0
             feet_air_time = 1.0           
-            orientation = -5.0
             base_height = -20.0
             
 
@@ -186,7 +186,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         schedule = 'fixed'       # could be adaptive, fixed
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'go2_encoders'
+        run_name = 'adaptation_v2'
         experiment_name = 'go2'
         load_run = -1
         num_steps_per_env = 24 # NEW

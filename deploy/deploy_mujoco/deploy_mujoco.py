@@ -84,8 +84,8 @@ if __name__ == "__main__":
         decimation_counter += 1
 
         # DEBUG: print stuff!
-        if decimation_counter % 150 == 0:
-            print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
+        # if decimation_counter % 100 == 0:
+            # print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
             # print("Mean join torques: ", np.mean(np.abs(controller.mj_data.ctrl[:])))
 
         # Apply control signal every (control_decimation) steps
