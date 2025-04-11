@@ -57,7 +57,6 @@ class Go2Robot(LeggedRobot):
     def _init_custom_buffers(self):
         # ==================================== FEET RELATED INITS ====================================
         # Get feet indices and rigid body states
-        self.feet_num = len(self.feet_indices)
         rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)
         self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_state)
         self.rigid_body_states_view = self.rigid_body_states.view(self.num_envs, -1, 13)
@@ -80,8 +79,11 @@ class Go2Robot(LeggedRobot):
         self.bl_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.br_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
 
+        # Stores the last contact status of each foot (bools)
+        self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
+
         # Stores the heights of each foot when it was last in contact with the ground
-        self.last_contact_heights = torch.zeros(self.num_envs, self.feet_num, device=self.device)
+        self.last_contact_heights = torch.zeros(self.num_envs, len(self.feet_indices), device=self.device)
         # ============================================================================================
 
 
@@ -97,6 +99,7 @@ class Go2Robot(LeggedRobot):
         """ Reset the environment indices. Overloaded to reset some additional buffers. 
         """
         super().reset_idx(env_ids)
+        self.last_contacts[env_ids] = 0.
         self.last_contact_heights[env_ids] = 0.
 
 
@@ -307,3 +310,17 @@ class Go2Robot(LeggedRobot):
         
         # Only apply when commands are small
         return (dof_error + vel_reward + base_vel_reward) * small_command
+    
+    def _reward_feet_air_time(self):
+        """ Reward long steps. Need to filter the contacts because 
+            the contact reporting of PhysX is unreliable on meshes 
+        """
+        
+        contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+        contact_filt = torch.logical_or(contact, self.last_contacts) 
+        first_contact = (self.feet_air_time > 0.) * contact_filt
+        self.feet_air_time += self.dt
+        rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
+        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
+        self.feet_air_time *= ~contact_filt
+        return rew_airTime
