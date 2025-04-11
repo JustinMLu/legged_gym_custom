@@ -97,8 +97,7 @@ class Go2Robot(LeggedRobot):
         """ Reset the environment indices. Overloaded to reset some additional buffers. 
         """
         super().reset_idx(env_ids)
-        self.last_contacts = torch.zeros(self.num_envs, self.feet_num, device=self.device)
-        self.last_contact_heights = torch.zeros(self.num_envs, self.feet_num, device=self.device)
+        self.last_contact_heights[env_ids] = 0.
 
 
     def update_feet_states(self):

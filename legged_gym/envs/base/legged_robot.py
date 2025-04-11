@@ -177,7 +177,8 @@ class LeggedRobot(BaseTask):
         self.last_root_vel[env_ids] = 0.
         self.last_base_lin_vel[env_ids] = 0.
         self.last_torques[env_ids] = 0. 
-        self.obs_history_buf[env_ids, :, :] = 0.  # reset obs history buffer
+        self.last_contacts[env_ids] = 0.
+        self.obs_history_buf[env_ids, :, :] = 0.
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
@@ -1057,7 +1058,10 @@ class LeggedRobot(BaseTask):
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 
             the contact reporting of PhysX is unreliable on meshes 
+
+            DO NOT USE THIS ON THE GO2! SELF.LAST_CONTACTS IS UPDATED BY ITSELF!
         """
+        return NotImplementedError("WARNING: This function should not be used until the update logic for self.last_contacts is fixed!")
         contact = self.contact_forces[:, self.feet_indices, 2] > 1.
         contact_filt = torch.logical_or(contact, self.last_contacts) 
         self.last_contacts = contact

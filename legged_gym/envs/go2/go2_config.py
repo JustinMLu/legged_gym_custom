@@ -200,8 +200,7 @@ class Go2Cfg( LeggedRobotCfg ):
             stumble = -1.0
             orientation = -2.0 # -5.0 for super stable, at the expense of stairs
             # ====================== 
-            contact_phase_match = 1.0
-            feet_air_time = 1.0           
+            contact_phase_match = 1.0        
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
