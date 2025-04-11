@@ -14,19 +14,33 @@ class Go2Robot(LeggedRobot):
     def _create_envs(self):
         super()._create_envs()
         
-        # Find indices of hips, thighs, and calfs (using Go2's URDF joint naming convention)
-        hip_names = ["FR_hip_joint", "FL_hip_joint", "RR_hip_joint", "RL_hip_joint"]
+        # Get indices of hip, thigh, and calf links
+        hip_names = [s for s in self.body_names if "hip" in s]
         self.hip_indices = torch.zeros(len(hip_names), dtype=torch.long, device=self.device, requires_grad=False)
-        for i, name in enumerate(hip_names):
-            self.hip_indices[i] = self.dof_names.index(name)
-        thigh_names = ["FR_thigh_joint", "FL_thigh_joint", "RR_thigh_joint", "RL_thigh_joint"]
+        
+        for i in range(len(hip_names)):
+            self.hip_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], hip_names[i])
+
+        thigh_names = [s for s in self.body_names if "thigh" in s]
         self.thigh_indices = torch.zeros(len(thigh_names), dtype=torch.long, device=self.device, requires_grad=False)
-        for i, name in enumerate(thigh_names):
-            self.thigh_indices[i] = self.dof_names.index(name)
-        calf_names = ["FR_calf_joint", "FL_calf_joint", "RR_calf_joint", "RL_calf_joint"]
+
+        for i in range(len(thigh_names)):
+            self.thigh_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], thigh_names[i])
+
+        calf_names = [s for s in self.body_names if "calf" in s]
         self.calf_indices = torch.zeros(len(calf_names), dtype=torch.long, device=self.device, requires_grad=False)
-        for i, name in enumerate(calf_names):
-            self.calf_indices[i] = self.dof_names.index(name)
+
+        for i in range(len(calf_names)):
+            self.calf_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], calf_names[i])
+
+
+        # Get indices of hip, thigh and calf joints
+        hip_joint_names = ["FR_hip_joint", "FL_hip_joint", "RR_hip_joint", "RL_hip_joint"]
+        self.hip_joint_indices = torch.zeros(len(hip_joint_names), dtype=torch.long, device=self.device, requires_grad=False)
+
+        for i, name in enumerate(hip_joint_names):
+            self.hip_joint_indices[i] = self.dof_names.index(name)
+
 
 
     def _get_noise_scale_vec(self, cfg):
@@ -38,15 +52,14 @@ class Go2Robot(LeggedRobot):
         Returns:
             [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
         """
-        # Build noise vector -must match obs structure before history
-        # noise_vec = torch.zeros_like(self.obs_buf[0]) # NOTE: UNCOMMENTING THIS RESULTS IN 1060 vs. 53 MISMATCH IF HISTORY=TRUE
+        # Build noise vector
         noise_vec = torch.zeros(self.cfg.env.num_proprio, device=self.device)
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         noise_level = self.cfg.noise.noise_level
         noise_vec[:3] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
         noise_vec[3:6] = noise_scales.gravity * noise_level
-        noise_vec[6:9] = 0. # commands (FOUR FOR ISAAC)
+        noise_vec[6:9] = 0. # commands (is this four or three??? I have no real idea)
         noise_vec[9:21] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
         noise_vec[21:33] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[33:45] = 0. # previous actions (12)
@@ -79,11 +92,19 @@ class Go2Robot(LeggedRobot):
         self.bl_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.br_contact = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
 
-        # Stores the last contact status of each foot (bools)
-        self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
+        # Last contact status (MOVED FROM LEGGED_ROBOT.PY)
+        self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, 
+                                                                                device=self.device, 
+                                                                                requires_grad=False)
 
-        # Stores the heights of each foot when it was last in contact with the ground
-        self.last_contact_heights = torch.zeros(self.num_envs, len(self.feet_indices), device=self.device)
+        # Last contact heights (MOVED FROM LEGGED_ROBOT.PY)
+        self.last_contact_heights = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.float, 
+                                                                                       device=self.device,)
+
+        # Feet airtime buffer (MOVED FROM LEGGED_ROBOT.PY)
+        self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, 
+                                                                                    device=self.device, 
+                                                                                    requires_grad=False)
         # ============================================================================================
 
 
@@ -99,6 +120,7 @@ class Go2Robot(LeggedRobot):
         """ Reset the environment indices. Overloaded to reset some additional buffers. 
         """
         super().reset_idx(env_ids)
+        self.feet_air_time[env_ids] = 0.
         self.last_contacts[env_ids] = 0.
         self.last_contact_heights[env_ids] = 0.
 
@@ -134,6 +156,7 @@ class Go2Robot(LeggedRobot):
         self.phase_br *= torch.where(mask, 0.0, 1.0)
 
         # =========================== CONTACT DETECTION ===========================
+        
         # Check if feet are in contact currently
         cur_fl = self.contact_forces[:, self.feet_indices[0], 2] > 1.0
         cur_fr = self.contact_forces[:, self.feet_indices[1], 2] > 1.0
@@ -256,11 +279,10 @@ class Go2Robot(LeggedRobot):
     
     def _reward_hip_pos(self): # Extreme Parkour -0.5
         """ Penalize DOF hip positions away from default"""
-        return torch.sum(torch.square(self.dof_pos[:, self.hip_indices] - self.default_dof_pos[:, self.hip_indices]), dim=1)
+        default_hip_pos = self.default_dof_pos[:, self.hip_joint_indices]
+        cur_hip_pos = self.dof_pos[:, self.hip_joint_indices]
+        return torch.sum(torch.square(cur_hip_pos - default_hip_pos), dim=1)
     
-    def _reward_calf_pos(self):
-        """ Penalize DOF calf positions away from default"""
-        return torch.sum(torch.square(self.dof_pos[:, self.calf_indices] - self.default_dof_pos[:, self.calf_indices] - 0.3), dim=1)
     
     def _reward_dof_error(self): # Extreme Parkour -0.04
         """ Penalize DOF positions away from default
@@ -295,6 +317,21 @@ class Go2Robot(LeggedRobot):
         
         return reward
 
+    def _reward_stumble_feet(self): # Extreme Parkour -1.0
+        """ Penalize feet hitting vertical surfaces. Uses norm of the X and Y contact forces
+        """
+        return torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
+             5 *torch.abs(self.contact_forces[:, self.feet_indices, 2]), dim=1)
+    
+
+    def _reward_stumble_calves(self):
+        """ Penalize calves hitting vertical surfaces. Uses norm of the X and Y contact forces
+        """
+        return torch.any(torch.norm(self.contact_forces[:, self.calf_indices, :2], dim=2) >\
+             5 *torch.abs(self.contact_forces[:, self.calf_indices, 2]), dim=1)
+
+
+# ============================ REWARD FUNCTIONS THAT I DON'T USE lol ===========================
     def _reward_stand_still_v2(self):
         """ Reward maintaining pose with zero commands """
         small_command = torch.norm(self.commands[:, :3], dim=1) < 0.15

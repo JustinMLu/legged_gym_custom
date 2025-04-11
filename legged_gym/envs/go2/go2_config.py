@@ -154,7 +154,7 @@ class Go2Cfg( LeggedRobotCfg ):
             # ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
             # heading = [-3.14, 3.14]
 
-            # Offroad
+            # Reduced
             # lin_vel_x = [-0.85, 0.85]   # [m/s]
             # lin_vel_y = [-0.75, 0.75]   # [m/s]
             # ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
@@ -207,12 +207,13 @@ class Go2Cfg( LeggedRobotCfg ):
             delta_torques = -1.0e-7
             dof_error = -0.04 
             hip_pos = -0.75
-            orientation = -1.0      # -5.0 for super stable
+            orientation = -1.0          # -5.0 for super stable
             # ====================== 
-            action_rate = -0.025    # -0.05 was first good stair policy
-            stumble = -5.0          # -1.0 normally, -5.0 stairs
             contact_phase_match = 1.0
-            base_height = -30.0
+            stumble_feet = -2.5         # renamed
+            stumble_calves = -2.5       # new
+            action_rate = -0.01         # decreased (-0.025 to -0.010) 
+            base_height = -20.0         # decreased (-30.0 to -20.0)
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -229,7 +230,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         schedule = 'fixed' # fixed or adaptive
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'adaptation_rough_ft_v3'
+        run_name = 'adaptation_rough_ft_v4'
         experiment_name = 'go2'
         load_run = -1
         num_steps_per_env = 24

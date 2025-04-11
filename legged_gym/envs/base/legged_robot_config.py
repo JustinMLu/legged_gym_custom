@@ -158,7 +158,7 @@ class LeggedRobotCfg(BaseConfig):
             base_height = -0.0           
             feet_air_time = 0.0       
             collision = -1.0             
-            stumble = -0.0               
+            stumble_feet = -0.0               
             action_rate = -0.01           
             stand_still = -0.0           
             contact_forces = -0.0        

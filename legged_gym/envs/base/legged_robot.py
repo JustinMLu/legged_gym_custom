@@ -178,7 +178,7 @@ class LeggedRobot(BaseTask):
         self.last_base_lin_vel[env_ids] = 0.
         self.last_torques[env_ids] = 0. 
         self.obs_history_buf[env_ids, :, :] = 0.
-        self.feet_air_time[env_ids] = 0.
+        # self.feet_air_time[env_ids] = 0. MOVED TO GO2.PY
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
         
@@ -627,7 +627,7 @@ class LeggedRobot(BaseTask):
         self.last_torques = torch.zeros_like(self.torques) # (NEW)
         self.commands = torch.zeros(self.num_envs, self.cfg.commands.num_commands, dtype=torch.float, device=self.device, requires_grad=False)
         self.commands_scale = torch.tensor([self.obs_scales.lin_vel, self.obs_scales.lin_vel, self.obs_scales.ang_vel], device=self.device, requires_grad=False,)
-        self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
+        # self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False) MOVED TO GO2.PY
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.last_base_lin_vel = self.base_lin_vel.clone() # (NEW)
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
@@ -793,17 +793,17 @@ class LeggedRobot(BaseTask):
         rigid_shape_props_asset = self.gym.get_asset_rigid_shape_properties(robot_asset)
 
         # save body names from the asset
-        body_names = self.gym.get_asset_rigid_body_names(robot_asset)
+        self.body_names = self.gym.get_asset_rigid_body_names(robot_asset)
         self.dof_names = self.gym.get_asset_dof_names(robot_asset)
-        self.num_bodies = len(body_names)
+        self.num_bodies = len(self.body_names)
         self.num_dofs = len(self.dof_names)
-        feet_names = [s for s in body_names if self.cfg.asset.foot_name in s]
+        
         penalized_contact_names = []
         for name in self.cfg.asset.penalize_contacts_on:
-            penalized_contact_names.extend([s for s in body_names if name in s])
+            penalized_contact_names.extend([s for s in self.body_names if name in s])
         termination_contact_names = []
         for name in self.cfg.asset.terminate_after_contacts_on:
-            termination_contact_names.extend([s for s in body_names if name in s])
+            termination_contact_names.extend([s for s in self.body_names if name in s])
 
         base_init_state_list = self.cfg.init_state.pos + self.cfg.init_state.rot + self.cfg.init_state.lin_vel + self.cfg.init_state.ang_vel
         self.base_init_state = to_torch(base_init_state_list, device=self.device, requires_grad=False)
@@ -834,6 +834,8 @@ class LeggedRobot(BaseTask):
             self.actor_handles.append(actor_handle)
             self.privileged_mass_params[i, :] = torch.from_numpy(mass_params).to(self.device).to(torch.float)
 
+        # Init feet indices and fill it with the proper indices
+        feet_names = [s for s in self.body_names if self.cfg.asset.foot_name in s]
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(feet_names)):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], feet_names[i])
@@ -1053,7 +1055,7 @@ class LeggedRobot(BaseTask):
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma)
     
-    def _reward_stumble(self): # Extreme Parkour -1.0
+    def _reward_stumble_feet(self): # Extreme Parkour -1.0
         """ Penalize feet hitting vertical surfaces
         """
         return torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
