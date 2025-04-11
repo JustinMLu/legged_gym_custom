@@ -527,7 +527,7 @@ class LeggedRobot(BaseTask):
         # Mask for robots that will be demoted
         move_down = distance < expected_distance * self.cfg.terrain.demote_threshold
         
-        # Use masks to update terrain elvels
+        # Use masks to update terrain levels
         self.terrain_levels[env_ids[move_up]] += 1
         self.terrain_levels[env_ids[move_down]] -= 1
         

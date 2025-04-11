@@ -135,9 +135,9 @@ class Terrain:
                                 horizontal_scale=self.cfg.horizontal_scale)
 
         
-        slope = difficulty * 0.4
-        step_height = 0.05 + 0.125 * difficulty              # For stairs
-        discrete_obstacles_height = 0.05 + difficulty * 0.15 # Originally 0.2
+        slope = difficulty * 0.5                             # For slope
+        step_height = 0.05 + 0.115 * difficulty              # For stairs
+        discrete_obstacles_height = 0.05 + difficulty * 0.15 
         stepping_stones_size = 1.5 * (1.05 - difficulty)
         stone_distance = 0.05 if difficulty==0 else 0.1
         gap_size = 1. * difficulty
@@ -153,14 +153,13 @@ class Terrain:
         # 2. Rough slope
         elif choice < self.proportions[1]:
             terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005, downsampled_scale=0.2)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.06, max_height=0.06, step=0.005, downsampled_scale=0.2)
 
-
-        # 3-4. Stairs up & down
+        # 3-4. Stairs
         elif choice < self.proportions[3]:
             if choice<self.proportions[2]:
                 step_height *= -1
-            terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.24, step_height=step_height, platform_size=2.)
+            terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.30, step_height=step_height, platform_size=2.)
         
         # 5. Discrete obstacles
         elif choice < self.proportions[4]:
@@ -181,10 +180,6 @@ class Terrain:
         else:
             gap_terrain(terrain, gap_size=gap_size, platform_size=3.)
             
-            # Bumpy hole
-            # terrain_utils.pyramid_sloped_terrain(terrain, slope=slope*-1.2, platform_size=3.)
-            # terrain_utils.random_uniform_terrain(terrain, min_height=-0.12, max_height=0.12, step=0.01, downsampled_scale=0.4)
-        
         return terrain
 
 

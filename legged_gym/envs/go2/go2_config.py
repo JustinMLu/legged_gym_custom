@@ -13,7 +13,7 @@ class Go2Cfg( LeggedRobotCfg ):
         num_observations = num_proprio+(num_proprio*history_buffer_length)
 
         # Phase features
-        period = 0.35
+        period = 0.45
         fr_offset = 0.0 
         bl_offset = 0.0
         fl_offset = 0.5
@@ -28,33 +28,57 @@ class Go2Cfg( LeggedRobotCfg ):
         mesh_type = 'trimesh'
         measure_heights = False     # add a height measurement to the observations
         
-        # # Extreme parkour
+        # Extreme parkour (132 SCANDOTS)
         # measured_points_x = [-0.45, -0.3, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2]
         # measured_points_y = [-0.75, -0.6, -0.45, -0.3, -0.15, 0., 0.15, 0.3, 0.45, 0.6, 0.75]
         
         # Manual terrain selection
         selected = False
+        # ========================================================
         terrain_kwargs = {
             "type": "terrain_utils.random_uniform_terrain",
-            "min_height": -0.05,
-            "max_height": 0.05,
+            "min_height": -0.07,
+            "max_height": 0.07,
             "step": 0.005,
-            "downsampled_scale": 0.25
+            "downsampled_scale": 0.2
         }
+
+        terrain_kwargs = {
+            "type": "terrain_utils.discrete_obstacles_terrain",
+            "max_height": 0.4,
+            "min_size": 1.,
+            "max_size": 2.,
+            "num_rects": 20,
+            "platform_size": 3.
+        }
+
+        terrain_kwargs = {
+            "type": "terrain_utils.pyramid_sloped_terrain",
+            "slope": 1.0*0.5,
+            "platform_size": 3.
+        }
+
+        terrain_kwargs = {
+            "type": "terrain_utils.pyramid_stairs_terrain",
+            "step_width":0.30,
+            "step_height":-0.165,
+            "platform_size":2.
+        }
+        # ========================================================
         
         # Terrain curriculum
         curriculum = True
-        max_init_terrain_level = 2      # starting curriculum state
-        promote_threshold = 0.6         # [%] of terrain traversed to move up a level
-        demote_threshold = 0.4          # [%] of terrain traversed to move down a level
+        max_init_terrain_level = 1      # starting curriculum state
+        promote_threshold = 0.5         # [%] of terrain traversed
+        demote_threshold = 0.4          # [%] of terrain traversed
 
         terrain_default     = [0.15,    # smooth slope
-                               0.25,    # rough slope
-                               0.35,    # stairs up
+                               0.15,    # rough slope
+                               0.25,    # stairs up
                                0.25,    # stairs down
-                               0.00,    # discrete terrain
+                               0.10,    # discrete terrain
                                0.00,    # stepping stones
-                               0.00]    # random uniform
+                               0.10]    # random uniform NOTE: Turning this on artificially boosts terrain difficulty, as it doesn't get harder
         
         terrain_stairs      = [0.00,    # smooth slope
                                0.00,    # rough slope
@@ -62,10 +86,10 @@ class Go2Cfg( LeggedRobotCfg ):
                                0.25,    # stairs down
                                0.00,    # discrete terrain
                                0.00,    # stepping stones
-                               0.00]    # random unifrom
+                               0.00]    # random uniform
         
-        terrain_proportions = terrain_default
-
+        terrain_proportions = terrain_stairs
+        # ========================================================
     class domain_rand:      
         randomize_friction = True
         friction_range = [0.1, 1.0]
@@ -119,16 +143,15 @@ class Go2Cfg( LeggedRobotCfg ):
         resampling_time = 10.
         zero_command_prob = 0.10 # prob. of randomly resampling a zero command
         
-        # Command curriculum params TODO: add more
+        # Command curriculum
         curriculum = False
         max_curriculum = 3.0 # [m/s]
         
         class ranges:
-            lin_vel_x = [-1.2, 1.2]     # [m/s]
-            lin_vel_y = [-0.8, 0.8]     # [m/s]
+            lin_vel_x = [-0.8, 0.8]     # [m/s]
+            lin_vel_y = [-0.6, 0.6]     # [m/s]
             ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
             heading = [-3.14, 3.14]
-        # user_command = [0.35, 0., 0., 0.]
 
 
     class normalization( LeggedRobotCfg.normalization ):
@@ -175,12 +198,10 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_error = -0.04 
             hip_pos = -0.75
             stumble = -1.0
-            orientation = -1.0 # -5.0 for super stable, at the expense of stairs
+            orientation = -2.0 # -5.0 for super stable, at the expense of stairs
             # ====================== 
             contact_phase_match = 1.0
             feet_air_time = 1.0           
-            base_height = -20.0
-            
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -197,9 +218,9 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         schedule = 'fixed'       # could be adaptive, fixed
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'adaptation_v3'
+        run_name = 'adaptation_rough_finetune'
         experiment_name = 'go2'
         load_run = -1
-        num_steps_per_env = 24 # NEW
-        max_iterations = 10000 # NEW
+        num_steps_per_env = 24
+        max_iterations = 2000
         save_interval = 50

@@ -150,11 +150,12 @@ class Go2Robot(LeggedRobot):
                                           cur_bl, 
                                           cur_br], dim=1)
         
-        # Update last contact heights
+        # Update mask of which feet are contacting the ground
         foot_height_update_mask = torch.stack([
             self.fl_contact, self.fr_contact, self.bl_contact, self.br_contact
         ], dim=1)
 
+        # Get current foot heights
         foot_heights = torch.stack([
             self.feet_pos[:, 0, 2],  # FL foot height 
             self.feet_pos[:, 1, 2],  # FR foot height
@@ -162,11 +163,10 @@ class Go2Robot(LeggedRobot):
             self.feet_pos[:, 3, 2]   # BR foot height
         ], dim=1)
 
-        self.last_contact_heights = torch.where(
-        foot_height_update_mask,
-        foot_heights,
-        self.last_contact_heights
-    )
+        # Update last contact heights buffer using mask
+        self.last_contact_heights = torch.where(foot_height_update_mask,
+                                                foot_heights,
+                                                self.last_contact_heights)
 
 
     def _post_physics_step_callback(self):
