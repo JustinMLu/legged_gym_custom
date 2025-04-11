@@ -111,7 +111,7 @@ class RolloutStorage:
         actions = self.actions.flatten(0, 1)
         values = self.values.flatten(0, 1)
         returns = self.returns.flatten(0, 1)
-        old_actions_log_prob = self.actions_log_prob.flatten(0, 1)
+        old_actions_log_prob = self.actions_log_prob.flatten(0, 1) # "old" because they're in storage - the ones we compare to are computed in-the-moment using actions_batch in ppo update()
         advantages = self.advantages.flatten(0, 1)
         old_mu = self.mu.flatten(0, 1)
         old_sigma = self.sigma.flatten(0, 1)

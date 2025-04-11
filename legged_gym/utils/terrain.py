@@ -159,7 +159,7 @@ class Terrain:
         elif choice < self.proportions[3]:
             if choice<self.proportions[2]:
                 step_height *= -1
-            terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.30, step_height=step_height, platform_size=2.)
+            terrain_utils.pyramid_stairs_terrain(terrain, step_width=0.25, step_height=step_height, platform_size=2.)
         
         # 5. Discrete obstacles
         elif choice < self.proportions[4]:
