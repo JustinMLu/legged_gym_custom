@@ -205,17 +205,13 @@ class Go2Robot(LeggedRobot):
         """
        
         # Calculate sine and cosine of phases for smooth transitions
-        sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl).unsqueeze(1) # FL
-        cos_phase_fl = torch.cos(2 * np.pi * self.phase_fl).unsqueeze(1)
-        sin_phase_fr = torch.sin(2 * np.pi * self.phase_fr).unsqueeze(1) # FR
-        cos_phase_fr = torch.cos(2 * np.pi * self.phase_fr).unsqueeze(1)
-        sin_phase_bl = torch.sin(2 * np.pi * self.phase_bl).unsqueeze(1) # BL
-        cos_phase_bl = torch.cos(2 * np.pi * self.phase_bl).unsqueeze(1)
-        sin_phase_br = torch.sin(2 * np.pi * self.phase_br).unsqueeze(1) # BR
-        cos_phase_br = torch.cos(2 * np.pi * self.phase_br).unsqueeze(1)
-
+        sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl); cos_phase_fl = torch.cos(2 * np.pi * self.phase_fl)
+        sin_phase_fr = torch.sin(2 * np.pi * self.phase_fr); cos_phase_fr = torch.cos(2 * np.pi * self.phase_fr)
+        sin_phase_bl = torch.sin(2 * np.pi * self.phase_bl); cos_phase_bl = torch.cos(2 * np.pi * self.phase_bl)
+        sin_phase_br = torch.sin(2 * np.pi * self.phase_br); cos_phase_br = torch.cos(2 * np.pi * self.phase_br)
+        
         # Construct phase features
-        phase_features = torch.cat([
+        phase_features = torch.stack([
             sin_phase_fr, cos_phase_fr, 
             sin_phase_fl, cos_phase_fl,
             sin_phase_bl, cos_phase_bl,

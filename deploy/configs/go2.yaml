@@ -1,9 +1,9 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/adaptation_rough_ft_v4/policy.pt"
-encoder_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/adaptation_rough_ft_v4/encoder.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/adaptation_rough/policy.pt"
+encoder_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/adaptation_rough/encoder.pt"
 
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_015.xml" 
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml" 
 
 # Action & Observations
 num_actions: 12
@@ -16,7 +16,7 @@ buffer_length: 10
 # ======================================================================
 
 # Phase Features
-period: 0.42    
+period: 0.42
 fr_offset: 0.0 
 bl_offset: 0.0
 fl_offset: 0.5
@@ -78,4 +78,4 @@ clip_observations: 100.0
 clip_actions: 3.8
 
 # Remote controller scale
-rc_scale: [1.0, 1.0, 1.5]
+rc_scale: [1.2, 1.0, 1.5]

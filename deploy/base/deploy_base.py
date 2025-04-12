@@ -92,14 +92,10 @@ class BaseController:
             phase_br *= 0.0
 
         # Calculate sine and cosine of phases for smooth transitions
-        sin_phase_fl = np.sin(2 * np.pi * phase_fl)
-        cos_phase_fl = np.cos(2 * np.pi * phase_fl)
-        sin_phase_fr = np.sin(2 * np.pi * phase_fr)
-        cos_phase_fr = np.cos(2 * np.pi * phase_fr)
-        sin_phase_bl = np.sin(2 * np.pi * phase_bl)
-        cos_phase_bl = np.cos(2 * np.pi * phase_bl)
-        sin_phase_br = np.sin(2 * np.pi * phase_br)
-        cos_phase_br = np.cos(2 * np.pi * phase_br)
+        sin_phase_fl = np.sin(2 * np.pi * phase_fl);        cos_phase_fl = np.cos(2 * np.pi * phase_fl)
+        sin_phase_fr = np.sin(2 * np.pi * phase_fr);        cos_phase_fr = np.cos(2 * np.pi * phase_fr)
+        sin_phase_bl = np.sin(2 * np.pi * phase_bl);        cos_phase_bl = np.cos(2 * np.pi * phase_bl)
+        sin_phase_br = np.sin(2 * np.pi * phase_br);        cos_phase_br = np.cos(2 * np.pi * phase_br)
 
         # Construct phase features
         phase_features = np.array([

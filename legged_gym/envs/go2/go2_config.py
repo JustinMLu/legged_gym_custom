@@ -230,7 +230,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         schedule = 'fixed' # fixed or adaptive
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'adaptation_rough_ft_v4'
+        run_name = 'adaptation_rough_ft_v5'
         experiment_name = 'go2'
         load_run = -1
         num_steps_per_env = 24
