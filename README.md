@@ -11,7 +11,7 @@ Originally used by the Robotic Systems Lab to train the ANYmal quadruped on a va
 
 Custom functions implemented:
 - Regularized Online Adaptation (ROA), using encoder neural networks to estimate environment extrinsics
-- MLP State Estimator - currently used to estimate linear velocity
+- MLP State Estimator - can learn to estimate linear/angular velocity, acceleration, base height, etc.
 - Sim2Sim deployment in Mujoco
 - Sim2Real deployment to the Go2 robot
 - Xbox ontroller support for Mujoco and Isaac Sim 
