@@ -6,12 +6,12 @@ class Go2Cfg( LeggedRobotCfg ):
         # Extremely important ones
         num_envs = 4096
         num_proprio = 53
-        num_scan = 132 # Not used yet
-        num_estimated = 3 # Not used yet
-        num_privileged_obs = 4+1+12+12+3 # includes implicit (29,) AND explicit (3,)
+        num_scan_obs =  0 # 132 # Not used yet
+        num_estimated_obs = 3
+        num_privileged_obs = 4+1+12+12
         history_buffer_length = 10
         num_actions = 12
-        num_critic_obs = num_proprio+(num_proprio*history_buffer_length)+num_privileged_obs
+        num_critic_obs = num_proprio+(num_proprio*history_buffer_length)+num_privileged_obs+num_estimated_obs+num_scan_obs
         num_observations = num_proprio+(num_proprio*history_buffer_length)
 
         # Phase features

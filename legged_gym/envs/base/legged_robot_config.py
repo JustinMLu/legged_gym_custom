@@ -34,10 +34,12 @@ class LeggedRobotCfg(BaseConfig):
     class env:
         history_buffer_length = 5 # number of previous obs to keep in buffer
         num_proprio = 235
+        num_scan_obs =  0 # 132 # Not used yet
+        num_estimated_obs = 6
         num_observations = num_proprio+(num_proprio*history_buffer_length)
         num_envs = 4096
         num_privileged_obs = 6 
-        num_critic_obs = num_proprio + num_privileged_obs 
+        num_critic_obs = num_proprio+(num_proprio*history_buffer_length)+num_estimated_obs+num_scan_obs+num_privileged_obs 
         
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 

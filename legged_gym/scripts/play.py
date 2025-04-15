@@ -80,9 +80,12 @@ def play(args):
     for i in range(10*int(env.max_episode_length)):
         obs = env.get_observations()
         privileged_obs = env.get_privileged_observations()
+        critic_obs = env.get_critic_observations()
+        estimated_obs = env.get_estimated_observations()
+        scan_obs = env.get_scan_observations()
     
-        actions = inference_policy(obs.detach(), privileged_obs.detach(), adaptation_mode=True) # use adaption module
-        obs, privileged_obs, critic_obs, rews, dones, infos = env.step(actions.detach())
+        actions = inference_policy(obs.detach(), privileged_obs.detach(), estimated_obs.detach(), scan_obs.detach(), adaptation_mode=True) # use adaption module
+        obs, privileged_obs, critic_obs, estimated_obs, scan_obs, rews, dones, infos = env.step(actions.detach())
 
         if RECORD_FRAMES:
             if i % 2:

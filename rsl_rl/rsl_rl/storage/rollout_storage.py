@@ -7,9 +7,15 @@ from rsl_rl.utils import split_and_pad_trajectories
 class RolloutStorage:
     class Transition:
         def __init__(self):
+            """ Initialize a Transition instance. This class is used to store the observations, 
+                actions, rewards, and other information related to a single transition in the environment.
+                Attributes:
+            """
             self.observations = None
             self.privileged_observations = None
             self.critic_observations = None
+            self.true_estimated_observations = None
+            self.scan_observations = None
             self.actions = None
             self.rewards = None
             self.dones = None
@@ -22,19 +28,42 @@ class RolloutStorage:
         def clear(self):
             self.__init__()
 
-    def __init__(self, num_envs, num_transitions_per_env, obs_shape, privileged_obs_shape, critic_obs_shape, actions_shape, device='cpu'):
+    def __init__(self, 
+                 num_envs, 
+                 num_transitions_per_env, 
+                 obs_shape, 
+                 privileged_obs_shape, 
+                 critic_obs_shape, 
+                 estimated_obs_shape, 
+                 scan_obs_shape, 
+                 actions_shape, 
+                 device='cpu'):
+        """ Initialize a RolloutStorage instance.
+            Args:
+                num_envs: Number of environments
+                num_transitions_per_env: Number of transitions per environment
+                obs_shape: Shape of the (total) observations
+                privileged_obs_shape: Shape of the privileged observation buffer
+                critic_obs_shape: Shape of the critic observation buffer
+                estimated_obs_shape: Shape of the estimated observation buffer
+                scan_obs_shape: Shape of the scan observation buffer
+                actions_shape: Shape of the actions
+                device: Device to use for storage (e.g., 'cpu', 'cuda:0', etc.)
+        """
 
         self.device = device
-
         self.obs_shape = obs_shape
         self.privileged_obs_shape = privileged_obs_shape
         self.critic_obs_shape = critic_obs_shape
+        self.estimated_obs_shape = estimated_obs_shape
         self.actions_shape = actions_shape
 
         # Core
         self.observations = torch.zeros(num_transitions_per_env, num_envs, *obs_shape, device=self.device)
         self.privileged_observations = torch.zeros(num_transitions_per_env, num_envs, *privileged_obs_shape, device=self.device)
         self.critic_observations = torch.zeros(num_transitions_per_env, num_envs, *critic_obs_shape, device=self.device)
+        self.true_estimated_observations = torch.zeros(num_transitions_per_env, num_envs, *estimated_obs_shape, device=self.device)
+        self.scan_observations = torch.zeros(num_transitions_per_env, num_envs, *scan_obs_shape, device=self.device)
         self.rewards = torch.zeros(num_transitions_per_env, num_envs, 1, device=self.device)
         self.actions = torch.zeros(num_transitions_per_env, num_envs, *actions_shape, device=self.device)
         self.dones = torch.zeros(num_transitions_per_env, num_envs, 1, device=self.device).byte()
@@ -53,15 +82,19 @@ class RolloutStorage:
         # rnn
         self.saved_hidden_states_a = None
         self.saved_hidden_states_c = None
-
         self.step = 0
 
     def add_transitions(self, transition: Transition):
+        """ Add a transition to memory. In practice, sets the attributes of the 
+            RolloutStorage instance to the values of the transition."""
+        
         if self.step >= self.num_transitions_per_env:
             raise AssertionError("Rollout buffer overflow")
         self.observations[self.step].copy_(transition.observations)
         self.privileged_observations[self.step].copy_(transition.privileged_observations)
         self.critic_observations[self.step].copy_(transition.critic_observations)
+        self.true_estimated_observations[self.step].copy_(transition.true_estimated_observations)
+        self.scan_observations[self.step].copy_(transition.scan_observations)
         self.actions[self.step].copy_(transition.actions)
         self.rewards[self.step].copy_(transition.rewards.view(-1, 1))
         self.dones[self.step].copy_(transition.dones.view(-1, 1))
@@ -99,6 +132,11 @@ class RolloutStorage:
         return trajectory_lengths.float().mean(), self.rewards.mean()
 
     def mini_batch_generator(self, num_mini_batches, num_epochs=8):
+        """ Generates mini-batches of data for training. This is used to sample mini-batches.
+            Args:
+                num_mini_batches: Number of mini-batches to generate
+                num_epochs: Number of epochs to split the data across
+        """
         batch_size = self.num_envs * self.num_transitions_per_env
         mini_batch_size = batch_size // num_mini_batches
         indices = torch.randperm(num_mini_batches*mini_batch_size, requires_grad=False, device=self.device)
@@ -107,11 +145,13 @@ class RolloutStorage:
         observations = self.observations.flatten(0, 1)
         privileged_observations = self.privileged_observations.flatten(0, 1)
         critic_observations = self.critic_observations.flatten(0, 1)
+        true_estimated_observations = self.true_estimated_observations.flatten(0, 1)
+        scan_observations = self.scan_observations.flatten(0, 1)
 
         actions = self.actions.flatten(0, 1)
         values = self.values.flatten(0, 1)
         returns = self.returns.flatten(0, 1)
-        old_actions_log_prob = self.actions_log_prob.flatten(0, 1) # "old" because they're in storage - the ones we compare to are computed in-the-moment using actions_batch in ppo update()
+        old_actions_log_prob = self.actions_log_prob.flatten(0, 1) # "old" because they're in storage
         advantages = self.advantages.flatten(0, 1)
         old_mu = self.mu.flatten(0, 1)
         old_sigma = self.sigma.flatten(0, 1)
@@ -126,6 +166,8 @@ class RolloutStorage:
                 obs_batch = observations[batch_idx]
                 privileged_obs_batch = privileged_observations[batch_idx]
                 critic_obs_batch = critic_observations[batch_idx]
+                true_estimated_obs_batch = true_estimated_observations[batch_idx]
+                scan_obs_batch = scan_observations[batch_idx]
                 actions_batch = actions[batch_idx]
                 target_values_batch = values[batch_idx]
                 returns_batch = returns[batch_idx]
@@ -134,5 +176,6 @@ class RolloutStorage:
                 old_mu_batch = old_mu[batch_idx]
                 old_sigma_batch = old_sigma[batch_idx]
 
-                yield obs_batch, privileged_obs_batch, critic_obs_batch, actions_batch, target_values_batch, advantages_batch, returns_batch, \
-                       old_actions_log_prob_batch, old_mu_batch, old_sigma_batch, (None, None), None
+                yield obs_batch, privileged_obs_batch, critic_obs_batch, true_estimated_obs_batch, scan_obs_batch, \
+                      actions_batch, target_values_batch, advantages_batch, returns_batch, \
+                      old_actions_log_prob_batch, old_mu_batch, old_sigma_batch, (None, None), None    

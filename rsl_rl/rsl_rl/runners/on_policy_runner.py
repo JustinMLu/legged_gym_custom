@@ -32,6 +32,8 @@ class OnPolicyRunner:
         actor_critic = ActorCritic(num_proprio=self.env.num_proprio,
                                    num_privileged_obs=self.env.num_privileged_obs,
                                    num_critic_obs=self.env.num_critic_obs,
+                                   num_estimated_obs=self.env.num_estimated_obs,
+                                   num_scan_obs=self.env.num_scan_obs,
                                    num_actions=self.env.num_actions,
                                    history_buffer_length=self.env.history_buffer_length,
                                    actor_hidden_dims=self.policy_cfg["actor_hidden_dims"],
@@ -43,8 +45,9 @@ class OnPolicyRunner:
         
 
         estimator = LinearVelocityEstimator(num_base_obs=self.env.num_proprio,
-                                            history_buffer_length=self.env.history_buffer_length
-                                            )
+                                            history_buffer_length=self.env.history_buffer_length,
+                                            output_dim=self.env.num_estimated_obs,
+                                            activation=self.policy_cfg["activation"])
 
         self.alg = PPO(actor_critic=actor_critic,
                        estimator=estimator,
@@ -74,7 +77,9 @@ class OnPolicyRunner:
                               num_transitions_per_env=self.num_steps_per_env, 
                               total_obs_shape=[self.env.num_obs], 
                               privileged_obs_shape=[self.env.num_privileged_obs],
-                              critic_obs_shape=[self.env.num_critic_obs], 
+                              critic_obs_shape=[self.env.num_critic_obs],
+                              estimated_obs_shape=[self.env.num_estimated_obs],
+                              scan_obs_shape=[self.env.num_scan_obs],
                               action_shape=[self.env.num_actions],
                               )
 
@@ -86,7 +91,7 @@ class OnPolicyRunner:
         self.current_learning_iteration = 0
 
         # Reset environment
-        _, _, _ = self.env.reset()
+        _, _, _, _, _ = self.env.reset()
     
     def learn(self, num_learning_iterations, init_at_random_ep_len=False):
         # Init these for Tensorboard logging
@@ -105,11 +110,15 @@ class OnPolicyRunner:
         if init_at_random_ep_len:
             self.env.episode_length_buf = torch.randint_like(self.env.episode_length_buf, high=int(self.env.max_episode_length))
         
-        # Get observations, move to device
+        # Get observation buffers
         obs = self.env.get_observations()
         privileged_obs = self.env.get_privileged_observations()
         critic_obs = self.env.get_critic_observations()
-        obs, privileged_obs, critic_obs = obs.to(self.device), privileged_obs.to(self.device), critic_obs.to(self.device)
+        true_estimated_obs = self.env.get_estimated_observations()
+        scan_obs = self.env.get_scan_observations()
+
+        # Move to device
+        obs, privileged_obs, critic_obs, true_estimated_obs, scan_obs = obs.to(self.device), privileged_obs.to(self.device), critic_obs.to(self.device), true_estimated_obs.to(self.device), scan_obs.to(self.device)
 
         # Set up training mode
         self.alg.actor_critic.train() # switch to train mode (for dropout for example)
@@ -131,11 +140,11 @@ class OnPolicyRunner:
                 for i in range(self.num_steps_per_env):
 
                     # Call PPO act() method
-                    actions = self.alg.act(obs, privileged_obs, critic_obs, adaptation_mode=use_adaptation_mode)
+                    actions = self.alg.act(obs, privileged_obs, critic_obs, true_estimated_obs, scan_obs, adaptation_mode=use_adaptation_mode)
 
-                    #  Step the environment
-                    obs, privileged_obs, critic_obs, rewards, dones, infos = self.env.step(actions) # legged_robot.py env step
-                    obs, privileged_obs, critic_obs, rewards, dones = obs.to(self.device), privileged_obs.to(self.device), critic_obs.to(self.device), rewards.to(self.device), dones.to(self.device)
+                    # Step the environment
+                    obs, privileged_obs, critic_obs, true_estimated_obs, scan_obs, rewards, dones, infos = self.env.step(actions) # legged_robot.py env step
+                    obs, privileged_obs, critic_obs, true_estimated_obs, scan_obs, rewards, dones = obs.to(self.device), privileged_obs.to(self.device), critic_obs.to(self.device), true_estimated_obs.to(self.device), scan_obs.to(self.device), rewards.to(self.device), dones.to(self.device)
                     
                     # Handle storage of rewards, dones, and infos into Transition object
                     self.alg.process_env_step(rewards, dones, infos)
@@ -275,12 +284,6 @@ class OnPolicyRunner:
             self.alg.optimizer.load_state_dict(loaded_dict['optimizer_state_dict'])
         self.current_learning_iteration = loaded_dict['iter']
         return loaded_dict['infos']
-
-    # def get_inference_policy(self, device=None):
-    #     self.alg.actor_critic.eval() # switch to evaluation mode (dropout for example)
-    #     if device is not None:
-    #         self.alg.actor_critic.to(device)
-    #     return self.alg.actor_critic.act_inference
 
     def get_inference_policy(self, device=None, stochastic=False):
         self.alg.actor_critic.eval()  # Switch to evaluation mode

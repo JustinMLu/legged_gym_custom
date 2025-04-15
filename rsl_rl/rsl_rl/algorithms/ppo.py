@@ -9,6 +9,7 @@ from rsl_rl.storage import RolloutStorage
 
 class PPO:
     actor_critic: ActorCritic
+    estimator: LinearVelocityEstimator
     def __init__(self,
                  actor_critic: ActorCritic,
                  estimator: LinearVelocityEstimator,
@@ -70,8 +71,38 @@ class PPO:
         self.use_clipped_value_loss = use_clipped_value_loss
         self.total_updates = 0.0 # number of total updates - either update() or update_dagger()
 
-    def init_storage(self, num_envs, num_transitions_per_env, total_obs_shape, privileged_obs_shape, critic_obs_shape, action_shape):
-        self.storage = RolloutStorage(num_envs, num_transitions_per_env, total_obs_shape, privileged_obs_shape, critic_obs_shape, action_shape, self.device)
+    def init_storage(self, 
+                     num_envs, 
+                     num_transitions_per_env, 
+                     total_obs_shape, 
+                     privileged_obs_shape, 
+                     critic_obs_shape,
+                     estimated_obs_shape,
+                     scan_obs_shape, 
+                     action_shape):
+        
+        """ Initialize the storage for the PPO algorithm. Calls the RolloutStorage constructor.
+            
+            Args:
+                num_envs: Number of environments
+                num_transitions_per_env: Number of transitions per environment
+                total_obs_shape: Shape of the (total) observations
+                privileged_obs_shape: Shape of the privileged observation buffer
+                critic_obs_shape: Shape of the critic observation buffer
+                estimated_obs_shape: Shape of the estimated observation buffer
+                scan_obs_shape: Shape of the scan observation buffer
+                actions_shape: Shape of the actions
+                device: Device to use for storage (e.g., 'cpu', 'cuda:0', etc.)
+        """
+        self.storage = RolloutStorage(num_envs, 
+                                      num_transitions_per_env, 
+                                      total_obs_shape, 
+                                      privileged_obs_shape, 
+                                      critic_obs_shape,
+                                      estimated_obs_shape,
+                                      scan_obs_shape,
+                                      action_shape, 
+                                      self.device)
 
     def test_mode(self):
         self.actor_critic.test()
@@ -79,22 +110,17 @@ class PPO:
     def train_mode(self):
         self.actor_critic.train()
 
-    def act(self, obs, privileged_obs, critic_obs, adaptation_mode=False):
-        """ No longer specifies critic_obs as a parameter - now uses privileged_obs
+    def act(self, obs, privileged_obs, critic_obs, true_estimated_obs, scan_obs, adaptation_mode=False):
+        """ Perform an action using the actor-critic model, and store experiences in the transition object.
+            This method will simply call the actor_critic.act() method, while performing the necessary
+            assignments to store experiences into the PPO's transition object/instance.
         """
         # ================== Modified with Linear Velocity Estimator ==================
-        # Clone privileged obs
-        privileged_obs_clone = privileged_obs.clone()
-
-        # Get estimate
-        estimated_lin_vel = self.estimator(obs)
-
-        # Replace ground truth with estimate in the cloned privileged obs
-        privileged_obs_clone[:, -3:] = estimated_lin_vel
+        # Get estimated quantities
+        estimated_obs = self.estimator(obs)
         
-        # =============================================================================
-        # Compute actions (use priv. clone), store in transition
-        self.transition.actions = self.actor_critic.act(obs, privileged_obs_clone, adaptation_mode).detach()
+        # Compute actions (use priv. clone), store in transition -> ACT USING THE ACTUALLY ESTIMATED OBS
+        self.transition.actions = self.actor_critic.act(obs, privileged_obs, estimated_obs, scan_obs, adaptation_mode).detach()
 
         # Compute values, store in transition
         self.transition.values = self.actor_critic.evaluate(critic_obs).detach()
@@ -104,10 +130,12 @@ class PPO:
         self.transition.action_mean = self.actor_critic.action_mean.detach()
         self.transition.action_sigma = self.actor_critic.action_std.detach()
         
-        # Store observation data in Transition object
+        # Store observations
         self.transition.observations = obs
-        self.transition.privileged_observations = privileged_obs # Store actual linear velocity though
+        self.transition.privileged_observations = privileged_obs
         self.transition.critic_observations = critic_obs
+        self.transition.true_estimated_observations = true_estimated_obs # This stores the TRUE estimated observations
+        self.transition.scan_observations = scan_obs
 
         # Return actions
         return self.transition.actions
@@ -138,11 +166,12 @@ class PPO:
         generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
         
         # Loop over minibatches
-        for obs_batch, privileged_obs_batch, critic_obs_batch, actions_batch, target_values_batch, advantages_batch, returns_batch, old_actions_log_prob_batch, \
+        for obs_batch, privileged_obs_batch, critic_obs_batch, true_estimated_obs_batch, scan_obs_batch, \
+            actions_batch, target_values_batch, advantages_batch, returns_batch, old_actions_log_prob_batch, \
             old_mu_batch, old_sigma_batch, hid_states_batch, masks_batch in generator:
                 
                 # Act 
-                self.actor_critic.act(obs_batch, privileged_obs_batch, adaptation_mode=False)
+                self.actor_critic.act(obs_batch, privileged_obs_batch, true_estimated_obs_batch, scan_obs_batch, adaptation_mode=False) # original code stored the true ones too
                 actions_log_prob_batch = self.actor_critic.get_actions_log_prob(actions_batch)
                 
                 # Evaluate
@@ -154,7 +183,7 @@ class PPO:
                 entropy_batch = self.actor_critic.entropy
 
                 # Privileged encoder update
-                privileged_latent_batch = self.actor_critic.privileged_encoder(privileged_obs_batch[:, :-3]) # Linear velocity removed
+                privileged_latent_batch = self.actor_critic.privileged_encoder(privileged_obs_batch) # Linear velocity removed
 
                 with torch.inference_mode():
                     adaptation_latent_batch = self.actor_critic.adaptation_encoder(obs_batch)
@@ -170,9 +199,8 @@ class PPO:
                 
                 # ====================== Linear Velocity Estimator ======================
                 # Estimator loss
-                target_lin_vel = privileged_obs_batch[:, -3:] # Remember - batches store the ground truth
-                estimated_lin_vel = self.estimator(obs_batch)
-                estimator_loss = (estimated_lin_vel - target_lin_vel).norm(p=2, dim=1).pow(2).mean()
+                pred = self.estimator(obs_batch)
+                estimator_loss = (pred - true_estimated_obs_batch).norm(p=2, dim=1).pow(2).mean()
                 
                 # Estimator backprop
                 self.estimator_optimizer.zero_grad()
@@ -256,15 +284,15 @@ class PPO:
         generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
         
         # Loop through batches
-        for obs_batch, privileged_obs_batch, critic_obs_batch, actions_batch, _, _, _, _, _, _, _, _ in generator:
+        for obs_batch, privileged_obs_batch, critic_obs_batch, true_estimated_obs_batch, scan_obs_batch, actions_batch, _, _, _, _, _, _, _, _ in generator:
             
             # Act without updating anything (inference mode)
             with torch.inference_mode():
-                self.actor_critic.act(obs_batch, privileged_obs_batch, adaptation_mode=True)
+                self.actor_critic.act(obs_batch, privileged_obs_batch, true_estimated_obs_batch, scan_obs_batch, adaptation_mode=True) # original code stored the true ones too
 
             # Get latent vector from privileged encoder
             with torch.inference_mode():
-                privileged_latent = self.actor_critic.privileged_encoder(privileged_obs_batch[:, :-3]) # Linear velocity removed
+                privileged_latent = self.actor_critic.privileged_encoder(privileged_obs_batch) # Linear velocity removed
 
             # Get latent vector from adaptation encoder
             adaptation_latent = self.actor_critic.adaptation_encoder(obs_batch)

@@ -250,15 +250,18 @@ class Go2Robot(LeggedRobot):
                                              self.privileged_friction_coeffs, # 1 -> latent
                                              self.motor_strength[0] - 1,      # 12 -> latent
                                              self.motor_strength[1] - 1,      # 12 -> latent
-                                             self.base_lin_vel * self.obs_scales.lin_vel, # 3 -> explicit
                                              ), dim=-1)
+        
+        # Update estimated obs buffer
+        self.estimated_obs_buf = self.base_lin_vel * self.obs_scales.lin_vel
+        
         
         # Update critic obs buffer
         self.critic_obs_buf = torch.cat((
             self.obs_buf.clone().detach(),
-            self.privileged_obs_buf.clone().detach()
+            self.privileged_obs_buf.clone().detach(),
+            self.estimated_obs_buf.clone().detach()
         ), dim=-1)
-        
         
         # Update the history buffer   
         self.obs_history_buf = torch.where((

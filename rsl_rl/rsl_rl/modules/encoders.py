@@ -6,7 +6,7 @@ from torch.distributions import Normal
 from torch.nn.modules import rnn
 
 class LinearVelocityEstimator(nn.Module):
-    def __init__(self, num_base_obs, history_buffer_length, output_dim=3, hidden_dims=[128, 64], activation="elu"):
+    def __init__(self, num_base_obs, history_buffer_length, output_dim, hidden_dims=[128, 64], activation="elu"):
         
         super().__init__()
         self.input_dim = num_base_obs + (num_base_obs*history_buffer_length)

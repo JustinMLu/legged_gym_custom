@@ -15,7 +15,9 @@ class ActorCritic(nn.Module):
     is_recurrent = False
     def __init__(self,  num_proprio,                        # NEW (renamed)       
                         num_privileged_obs,                 # NEW
-                        num_critic_obs,                     
+                        num_critic_obs,
+                        num_estimated_obs,
+                        num_scan_obs,                     
                         num_actions,                          
                         history_buffer_length,              # NEW
                         actor_hidden_dims=[256, 256, 256],
@@ -47,19 +49,25 @@ class ActorCritic(nn.Module):
         self.num_privileged_obs = num_privileged_obs
         self.history_buffer_length = history_buffer_length
         self.num_critic_obs = num_critic_obs
+        self.num_estimated_obs = num_estimated_obs
+        self.num_scan_obs = num_scan_obs
         self.num_actions = num_actions
 
         print("\n============== DEBUG: ActorCritic ATTRIBUTES ==============")
         print(f"num_base_obs: {self.num_proprio}")
         print(f"num_privileged_obs: {self.num_privileged_obs}")
-        print(f"history_buffer_length: {self.history_buffer_length}")
         print(f"num_critic_obs: {self.num_critic_obs}")
+        print(f"num_estimated_obs: {self.num_estimated_obs}")
+        print(f"num_scan_obs: {self.num_scan_obs}")
+        print(f"history_buffer_length: {self.history_buffer_length}")
         print(f"num_actions: {self.num_actions}")
         print("===========================================================\n")
 
         # Get specified activation function, set MLP input dimensions
         activation = get_activation(activation)
-        mlp_input_dim_a = num_proprio + latent_encoder_output_dim + (num_proprio*history_buffer_length) + 3 # cur_obs, latent, history, lin_vel
+
+        # [cur. obs | obs. history | latent | estimated_obs ]
+        mlp_input_dim_a = num_proprio + (num_proprio*history_buffer_length) + latent_encoder_output_dim + num_estimated_obs + num_scan_obs
         mlp_input_dim_c = num_critic_obs
 
         # Build the actor network
@@ -92,7 +100,7 @@ class ActorCritic(nn.Module):
                                                      output_layer_dim=latent_encoder_output_dim, 
                                                      activation='elu')
         
-        self.privileged_encoder_ = PrivilegedEncoder(num_privileged_obs=self.num_privileged_obs - 3, # Linear velocity removed
+        self.privileged_encoder_ = PrivilegedEncoder(num_privileged_obs=self.num_privileged_obs, # Linear velocity removed
                                                      encoder_hidden_dims=[64, 20], 
                                                      output_layer_dim=latent_encoder_output_dim, 
                                                      activation='elu') 
@@ -162,37 +170,28 @@ class ActorCritic(nn.Module):
         else:
             return self.privileged_encoder(privileged_obs_buf)
         
-    def update_distribution(self, obs_buf, privileged_obs_buf, adaptation_mode=False):
+    def update_distribution(self, obs_buf, privileged_obs_buf, estimated_obs_buf, scan_obs_buf, adaptation_mode=False):
         """ Forward pass through actor network, updating action distribution.
         """
-        # TODO: SLICE LINEAR VELOCITY OUT OF PRIVILEGED
-        latent = self.get_latent(obs_buf, privileged_obs_buf[:, :-3], adaptation_mode) # Linear velocity removed
-        
-        # TODO: PUT LINEAR VELOCITY INTO ACTOR INPUT
-        base_obs = obs_buf[:, :] 
-        lin_vel = privileged_obs_buf[:, -3:]
-        actor_input = torch.cat((base_obs, latent, lin_vel), dim=-1) # Linear velocity added
+        latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode) # Linear velocity removed
+        actor_input = torch.cat((obs_buf, latent, estimated_obs_buf), dim=-1) # Linear velocity added
         mean = self.actor(actor_input)
         self.distribution = Normal(mean, mean*0. + self.std)
 
-    def act(self, obs_buf, privileged_obs_buf, adaptation_mode=False):
+    def act(self, obs_buf, privileged_obs_buf, estimated_obs_buf, scan_obs_buf, adaptation_mode=False):
         """ Returns an action sampled from the action distribution.
             Calls update_distribution() first.
         """
-        self.update_distribution(obs_buf, privileged_obs_buf, adaptation_mode)
+        self.update_distribution(obs_buf, privileged_obs_buf, estimated_obs_buf, scan_obs_buf, adaptation_mode)
         return self.distribution.sample()
     
-    def act_inference(self, obs_buf, privileged_obs_buf, adaptation_mode=False):
+    def act_inference(self, obs_buf, privileged_obs_buf, estimated_obs_buf, scan_obs_buf, adaptation_mode=False):
         """ Return action means for inference - does not sample from distribution.
             Does not call update_distribution().
         """
-        # TODO: SLICE LINEAR VELOCITY OUT OF PRIVILEGED
-        latent = self.get_latent(obs_buf, privileged_obs_buf[:, :-3], adaptation_mode) # Linear velocity removed
         
-        # TODO: PUT LINEAR VELOCITY INTO ACTOR INPUT
-        base_obs = obs_buf[:, :]
-        lin_vel = privileged_obs_buf[:, -3:]
-        actor_input = torch.cat((base_obs, latent, lin_vel), dim=-1) # Linear velocity added
+        latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode) # Linear velocity removed
+        actor_input = torch.cat((obs_buf, latent, estimated_obs_buf), dim=-1) # Linear velocity added
         return self.actor(actor_input)
     # ==================================================================================================
 

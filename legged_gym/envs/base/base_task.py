@@ -63,6 +63,8 @@ class BaseTask():
         self.num_obs = cfg.env.num_observations
         self.num_privileged_obs = cfg.env.num_privileged_obs
         self.num_critic_obs = cfg.env.num_critic_obs
+        self.num_estimated_obs = cfg.env.num_estimated_obs
+        self.num_scan_obs = cfg.env.num_scan_obs
         self.history_buffer_length = cfg.env.history_buffer_length
         self.num_actions = cfg.env.num_actions
 
@@ -75,6 +77,8 @@ class BaseTask():
         self.privileged_obs_buf = torch.zeros(self.num_envs, self.num_privileged_obs, device=self.device, dtype=torch.float)
         self.critic_obs_buf = torch.zeros(self.num_envs, self.num_critic_obs, device=self.device, dtype=torch.float)
         self.obs_history_buf = torch.zeros(self.num_envs, self.history_buffer_length, self.num_obs, device=self.device, dtype=torch.float)
+        self.estimated_obs_buf = torch.zeros(self.num_envs, self.num_estimated_obs, device=self.device, dtype=torch.float)
+        self.scan_obs_buf = torch.zeros(self.num_envs, self.num_scan_obs, device=self.device, dtype=torch.float)
         self.rew_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self.reset_buf = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
@@ -114,6 +118,12 @@ class BaseTask():
     def get_critic_observations(self):
         return self.critic_obs_buf
 
+    def get_estimated_observations(self):
+        return self.estimated_obs_buf
+    
+    def get_scan_observations(self):
+        return self.scan_obs_buf
+
     def reset_idx(self, env_ids):
         """Reset selected robots"""
         raise NotImplementedError
@@ -121,8 +131,8 @@ class BaseTask():
     def reset(self):
         """ Reset all robots. Called in on_policy_runner.py"""
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
-        obs, privileged_obs, critic_obs, _, _, _ = self.step(torch.zeros(self.num_envs, self.num_actions, device=self.device, requires_grad=False))
-        return obs, privileged_obs, critic_obs
+        obs, privileged_obs, critic_obs, estimated_obs, scan_obs, _, _, _ = self.step(torch.zeros(self.num_envs, self.num_actions, device=self.device, requires_grad=False))
+        return obs, privileged_obs, critic_obs, estimated_obs, scan_obs
 
     def step(self, actions):
         raise NotImplementedError
