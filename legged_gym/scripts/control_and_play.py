@@ -43,11 +43,12 @@ import torch
 def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # Override some parameters for testing
-    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 50)
+    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 100)
     env_cfg.terrain.num_rows = 3
     env_cfg.terrain.num_cols = 3
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = True
+    env_cfg.commands.user_command = [0.0, 0.0, 0.0, 0.0] # this SHOULD stop the resampling?
     env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.randomize_base_mass = False
     env_cfg.domain_rand.randomize_center_of_mass = False
@@ -55,7 +56,7 @@ def play(args):
     env_cfg.domain_rand.push_robots = False
 
     # Initialize gamepad
-    gamepad = Gamepad(1.0, 1.0, 1.0) # Should have corresponded with rc_scale :(
+    gamepad = Gamepad(1.5, 1.0, 1.2) # Manually have to calibrate with rc_scale :(
 
     # Prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
@@ -81,12 +82,20 @@ def play(args):
     camera_direction = np.array(env_cfg.viewer.lookat) - np.array(env_cfg.viewer.pos)
     img_idx = 0
 
+    obs = env.get_observations()
+    privileged_obs = env.get_privileged_observations()
+    critic_obs = env.get_critic_observations()
+    estimated_obs = env.get_estimated_observations()
+    scan_obs = env.get_scan_observations()
     for i in range(10*int(env.max_episode_length)):
-        obs = env.get_observations()
-        privileged_obs = env.get_privileged_observations()
+
+        # gamepad control
+        env.commands[:, 0] = gamepad.vx * env.cfg.normalization.obs_scales.lin_vel
+        env.commands[:, 1] = gamepad.vy * env.cfg.normalization.obs_scales.lin_vel * 0.0 # Disabled for cheetah
+        env.commands[:, 2] = gamepad.wz * env.cfg.normalization.obs_scales.ang_vel
     
-        actions = inference_policy(obs.detach(), privileged_obs.detach(), adaptation_mode=True) # use adaption module
-        obs, privileged_obs, critic_obs, rews, dones, infos = env.step(actions.detach())
+        actions = inference_policy(obs.detach(), privileged_obs.detach(), estimated_obs.detach(), scan_obs.detach(), adaptation_mode=True) # use adaption module
+        obs, privileged_obs, critic_obs, estimated_obs, scan_obs, rews, dones, infos = env.step(actions.detach())
 
         if RECORD_FRAMES:
             if i % 2:

@@ -204,7 +204,7 @@ class Go2Cfg( LeggedRobotCfg ):
             delta_torques = -1.0e-7
             dof_error = -0.04 
             hip_pos = -0.75
-            orientation = -2.5            # -5.0 for super stable
+            orientation = -5.0            # -5.0 for super stable
             # ====================== 
             contact_phase_match = 1.0
             action_rate = -0.01           # decreased (-0.025 to -0.010) 

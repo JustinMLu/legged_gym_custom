@@ -9,7 +9,7 @@ import torch
 
 from rsl_rl.algorithms import PPO
 from rsl_rl.modules import ActorCritic, ActorCriticRecurrent
-from rsl_rl.modules.encoders import LinearVelocityEstimator
+from rsl_rl.modules.support_networks import LinearVelocityEstimator
 from rsl_rl.env import VecEnv
 
 
