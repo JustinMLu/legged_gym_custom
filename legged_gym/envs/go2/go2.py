@@ -57,15 +57,15 @@ class Go2Robot(LeggedRobot):
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         noise_level = self.cfg.noise.noise_level
+
         noise_vec[:3] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
         noise_vec[3:6] = noise_scales.gravity * noise_level
-        noise_vec[6:9] = 0. # commands (is this four or three??? I have no real idea)
+        noise_vec[6:9] = 0. # commands 
         noise_vec[9:21] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
         noise_vec[21:33] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[33:45] = 0. # previous actions (12)
         noise_vec[45:53] = 0. # phase observations (8)
         return noise_vec
-
 
     def _init_custom_buffers(self):
         # ==================================== FEET RELATED INITS ====================================
@@ -224,11 +224,11 @@ class Go2Robot(LeggedRobot):
                                 self.commands[:, :3] * self.commands_scale,                        # (3,)  
                                 (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,   # (12,) for quadruped
                                 self.dof_vel * self.obs_scales.dof_vel,                            # (12,)
-                                self.actions                                                       # (12,) last actions
-                                ),dim=-1)                                                          # total: (45,)
+                                self.actions,                                                      # (12,) last actions
+                                ),dim=-1)                                                          # total: (48,)
         
         # Add phase features
-        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (53,)
+        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (56,)
 
         # Add noise vector
         if self.add_noise:
@@ -246,11 +246,11 @@ class Go2Robot(LeggedRobot):
         #     self.obs_buf = torch.cat([obs_buf, heights, priv_explicit, priv_latent, self.obs_history_buf.view(self.num_envs, -1)], dim=-1)
         
         # Update privileged obs buffer
-        self.privileged_obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel, # 3
-                                             self.privileged_mass_params,     # 4
-                                             self.privileged_friction_coeffs, # 1
-                                             self.motor_strength[0] - 1,      # 12
-                                             self.motor_strength[1] - 1,      # 12
+        self.privileged_obs_buf = torch.cat((self.privileged_mass_params,     # 4 -> latent
+                                             self.privileged_friction_coeffs, # 1 -> latent
+                                             self.motor_strength[0] - 1,      # 12 -> latent
+                                             self.motor_strength[1] - 1,      # 12 -> latent
+                                             self.base_lin_vel * self.obs_scales.lin_vel, # 3 -> explicit
                                              ), dim=-1)
         
         # Update critic obs buffer

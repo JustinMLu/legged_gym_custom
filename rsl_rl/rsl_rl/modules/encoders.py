@@ -5,6 +5,30 @@ import torch.nn as nn
 from torch.distributions import Normal
 from torch.nn.modules import rnn
 
+class LinearVelocityEstimator(nn.Module):
+    def __init__(self, num_base_obs, history_buffer_length, output_dim=3, hidden_dims=[128, 64], activation="elu"):
+        
+        super().__init__()
+        self.input_dim = num_base_obs + (num_base_obs*history_buffer_length)
+        self.output_dim = output_dim
+        activation = get_activation(activation)
+
+        estimator_layers = []
+        estimator_layers.append(nn.Linear(self.input_dim, hidden_dims[0]))
+        estimator_layers.append(activation)
+
+        for l in range(len(hidden_dims)):
+            if l == len(hidden_dims) - 1:
+                estimator_layers.append(nn.Linear(hidden_dims[l], output_dim)) # last layer
+            else:
+                estimator_layers.append(nn.Linear(hidden_dims[l], hidden_dims[l + 1]))
+                estimator_layers.append(activation)
+        
+        self.estimator = nn.Sequential(*estimator_layers)
+    
+    def forward(self, input):
+        return self.estimator(input)
+
 class PrivilegedEncoder(nn.Module):
 
     def __init__(self, num_privileged_obs, encoder_hidden_dims=[64, 20], output_layer_dim=20, activation='elu'):

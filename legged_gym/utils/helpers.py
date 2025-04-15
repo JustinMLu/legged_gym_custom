@@ -177,7 +177,7 @@ def get_args():
         args.sim_device += f":{args.sim_device_id}"
     return args
 
-def export_policy_as_jit(actor_critic, path, save_adaptation_module=False):
+def export_policy_as_jit(actor_critic, estimator, path):
     if hasattr(actor_critic, 'memory_a'):
         # assumes LSTM: TODO add GRU
         exporter = PolicyExporterLSTM(actor_critic)
@@ -185,19 +185,26 @@ def export_policy_as_jit(actor_critic, path, save_adaptation_module=False):
     else: 
         os.makedirs(path, exist_ok=True)
         
+        # Save policy
         policy_path = os.path.join(path, 'policy.pt')
         model = copy.deepcopy(actor_critic.actor).to('cpu')
         traced_script_module = torch.jit.script(model)
         traced_script_module.save(policy_path)
         print(f"Exported policy saved to: {policy_path}")
 
+        # Save adaptation module
+        encoder_path = os.path.join(path, 'encoder.pt')
+        module = copy.deepcopy(actor_critic.adaptation_encoder_).to('cpu')
+        traced_script_module = torch.jit.script(module)
+        traced_script_module.save(encoder_path)
+        print(f"Exported adaptation module saved to: {encoder_path}")
 
-        if save_adaptation_module:
-            encoder_path = os.path.join(path, 'encoder.pt')
-            module = copy.deepcopy(actor_critic.adaptation_encoder_).to('cpu')
-            traced_script_module = torch.jit.script(module)
-            traced_script_module.save(encoder_path)
-            print(f"Exported adaptation module saved to: {encoder_path}")
+        # Save estimator
+        estimator_path = os.path.join(path, 'estimator.pt')
+        module = copy.deepcopy(estimator).to('cpu')
+        traced_script_module = torch.jit.script(module)
+        traced_script_module.save(estimator_path)
+        print(f"Exported estimator saved to: {estimator_path}")
 
 
 class PolicyExporterLSTM(torch.nn.Module):

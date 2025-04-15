@@ -68,7 +68,7 @@ def play(args):
     # Export policy (and adaptation module) as jit module
     if EXPORT_POLICY:
         path = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'policies')
-        export_policy_as_jit(ppo_runner.alg.actor_critic, path, save_adaptation_module=True)
+        export_policy_as_jit(ppo_runner.alg.actor_critic, ppo_runner.alg.estimator, path)
         
 
     logger = Logger(env.dt)

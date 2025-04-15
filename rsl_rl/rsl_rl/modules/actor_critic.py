@@ -59,8 +59,7 @@ class ActorCritic(nn.Module):
 
         # Get specified activation function, set MLP input dimensions
         activation = get_activation(activation)
-        # mlp_input_dim_a = num_proprio + latent_encoder_output_dim
-        mlp_input_dim_a = num_proprio + latent_encoder_output_dim + (num_proprio*history_buffer_length) # HISTORYS BACK BABY
+        mlp_input_dim_a = num_proprio + latent_encoder_output_dim + (num_proprio*history_buffer_length) + 3 # cur_obs, latent, history, lin_vel
         mlp_input_dim_c = num_critic_obs
 
         # Build the actor network
@@ -93,7 +92,7 @@ class ActorCritic(nn.Module):
                                                      output_layer_dim=latent_encoder_output_dim, 
                                                      activation='elu')
         
-        self.privileged_encoder_ = PrivilegedEncoder(num_privileged_obs=self.num_privileged_obs, 
+        self.privileged_encoder_ = PrivilegedEncoder(num_privileged_obs=self.num_privileged_obs - 3, # Linear velocity removed
                                                      encoder_hidden_dims=[64, 20], 
                                                      output_layer_dim=latent_encoder_output_dim, 
                                                      activation='elu') 
@@ -166,10 +165,13 @@ class ActorCritic(nn.Module):
     def update_distribution(self, obs_buf, privileged_obs_buf, adaptation_mode=False):
         """ Forward pass through actor network, updating action distribution.
         """
-        latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode)
-        # base_obs = obs_buf[:, -self.num_proprio:]
-        base_obs = obs_buf[:, :]  # HISTORYS BACK BABY
-        actor_input = torch.cat((base_obs, latent), dim=-1)
+        # TODO: SLICE LINEAR VELOCITY OUT OF PRIVILEGED
+        latent = self.get_latent(obs_buf, privileged_obs_buf[:, :-3], adaptation_mode) # Linear velocity removed
+        
+        # TODO: PUT LINEAR VELOCITY INTO ACTOR INPUT
+        base_obs = obs_buf[:, :] 
+        lin_vel = privileged_obs_buf[:, -3:]
+        actor_input = torch.cat((base_obs, latent, lin_vel), dim=-1) # Linear velocity added
         mean = self.actor(actor_input)
         self.distribution = Normal(mean, mean*0. + self.std)
 
@@ -184,11 +186,13 @@ class ActorCritic(nn.Module):
         """ Return action means for inference - does not sample from distribution.
             Does not call update_distribution().
         """
-
-        latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode)
-        # base_obs = obs_buf[:, -self.num_proprio:]
-        base_obs = obs_buf[:, :]  # HISTORYS BACK BABY
-        actor_input = torch.cat((base_obs, latent), dim=-1)
+        # TODO: SLICE LINEAR VELOCITY OUT OF PRIVILEGED
+        latent = self.get_latent(obs_buf, privileged_obs_buf[:, :-3], adaptation_mode) # Linear velocity removed
+        
+        # TODO: PUT LINEAR VELOCITY INTO ACTOR INPUT
+        base_obs = obs_buf[:, :]
+        lin_vel = privileged_obs_buf[:, -3:]
+        actor_input = torch.cat((base_obs, latent, lin_vel), dim=-1) # Linear velocity added
         return self.actor(actor_input)
     # ==================================================================================================
 
@@ -203,31 +207,6 @@ class ActorCritic(nn.Module):
         value = self.critic(critic_observations)
         return value
     
-    # # TODO Need to rewrite with ROA logic
-    # def update_distribution(self, observations):
-    #     """ Forward pass through the actor network, updating the action distribution.
-    #     """
-    #     print("WARNING: Using deprecated update_distribution() method. Please use the new one.")
-    #     mean = self.actor(observations)
-    #     self.distribution = Normal(mean, mean*0. + self.std) # Gaussian distribution with learnable std
-
-    # # TODO Need to rewrite with ROA logic
-    # def act(self, observations, **kwargs):
-    #     """ Returns an action sampled from the action distribution. Calls update_distribution() first.
-    #     """
-    #     print("WARNING: Using deprecated act() method. Please use the new one.")
-    #     self.update_distribution(observations)
-        
-    #     return self.distribution.sample()
-
-    # # TODO Need to rewrite with ROA logic
-    # def act_inference(self, observations):
-    #     """ Return result of a forward pass through the actor network (action means).
-    #     """
-    #     print("WARNING: Using deprecated act_inference() method. Please use the new one.")
-    #     actions_mean = self.actor(observations)
-    #     return actions_mean
-
 
 def get_activation(act_name):
     """ Returns the specified activation function.

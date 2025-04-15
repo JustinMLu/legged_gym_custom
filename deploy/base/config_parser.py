@@ -23,11 +23,14 @@ class ConfigParser:
             # ===================== COMMON ==========================
             # Path to policy network
             self.policy_path = cfg["policy_path"].replace(
-                "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
+                "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR).replace("*model", cfg["model_name"])
             
             # Path to encoder network
             self.encoder_path = cfg["encoder_path"].replace(
-                "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
+                "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR).replace("*model", cfg["model_name"])
+            
+            self.estimator_path = cfg["estimator_path"].replace(
+                "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR).replace("*model", cfg["model_name"])
             
             # Timing
             self.simulation_dt = cfg["simulation_dt"]

@@ -9,6 +9,7 @@ class BaseController:
         self.cfg = cfg
         self.policy = torch.jit.load(cfg.policy_path)
         self.encoder = torch.jit.load(cfg.encoder_path)
+        self.estimator = torch.jit.load(cfg.estimator_path)
 
         # Initialize essential buffers
         self.qj = np.zeros(cfg.num_actions, dtype=np.float32)    # joint pos.
@@ -130,13 +131,18 @@ class BaseController:
         # Convert observations to tensor and clip
         obs_tensor = torch.from_numpy(self.obs).unsqueeze(0)
         obs_tensor = torch.clip(obs_tensor, -self.cfg.clip_obs, self.cfg.clip_obs)
-
+        
+        
+        # Get latent vector using adaptation module
         hist_len = self.cfg.buffer_length * self.cfg.num_proprio
         hist_tensor = obs_tensor[:, :hist_len].reshape(1, self.cfg.buffer_length, self.cfg.num_proprio)
-        
-        # Get latent vector from encoder, concat. with observations
         latent = self.encoder(hist_tensor)
-        actor_input = torch.cat((obs_tensor, latent), dim=-1)
+
+        # Get estimated quantities using estimator 
+        estimated_vel = self.estimator(obs_tensor)
+
+        # Concatenate
+        actor_input = torch.cat((obs_tensor, latent, estimated_vel), dim=-1)
 
         # Get actions from policy network, clip
         self.actions = self.policy(actor_input)

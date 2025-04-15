@@ -9,6 +9,7 @@ import torch
 
 from rsl_rl.algorithms import PPO
 from rsl_rl.modules import ActorCritic, ActorCriticRecurrent
+from rsl_rl.modules.encoders import LinearVelocityEstimator
 from rsl_rl.env import VecEnv
 
 
@@ -37,10 +38,16 @@ class OnPolicyRunner:
                                    critic_hidden_dims=self.policy_cfg["critic_hidden_dims"],
                                    latent_encoder_output_dim=self.policy_cfg["latent_encoder_output_dim"],
                                    activation=self.policy_cfg["activation"],
-                                   init_noise_std=self.policy_cfg["init_noise_std"])
+                                   init_noise_std=self.policy_cfg["init_noise_std"]
+                                   )
         
 
+        estimator = LinearVelocityEstimator(num_base_obs=self.env.num_proprio,
+                                            history_buffer_length=self.env.history_buffer_length
+                                            )
+
         self.alg = PPO(actor_critic=actor_critic,
+                       estimator=estimator,
                        num_learning_epochs=self.alg_cfg["num_learning_epochs"],
                        num_mini_batches=self.alg_cfg["num_mini_batches"],
                        clip_param=self.alg_cfg["clip_param"],
@@ -87,6 +94,7 @@ class OnPolicyRunner:
         mean_surrogate_loss = 0.0
         mean_regularization_loss = 0.0
         mean_adaptation_loss = 0.0
+        mean_estimator_loss = 0.0
         reg_coef = 0.0
         
         # initialize writer
@@ -155,7 +163,7 @@ class OnPolicyRunner:
                 mean_adaptation_loss = self.alg.update_dagger()
                 
             else:
-                mean_value_loss, mean_surrogate_loss, mean_regularization_loss, reg_coef = self.alg.update()
+                mean_value_loss, mean_surrogate_loss, mean_regularization_loss, reg_coef, mean_estimator_loss = self.alg.update()
 
             stop = time.time()
             learn_time = stop - start
@@ -195,6 +203,7 @@ class OnPolicyRunner:
         self.writer.add_scalar('Loss/regularization', locs['mean_regularization_loss'], locs['it'])
         self.writer.add_scalar('Loss/regularization coef', locs['reg_coef'], locs['it'])
         self.writer.add_scalar('Loss/adaptation', locs['mean_adaptation_loss'], locs['it'])
+        self.writer.add_scalar('Loss/estimator', locs['mean_estimator_loss'], locs['it'])
 
         self.writer.add_scalar('Loss/learning_rate', self.alg.learning_rate, locs['it'])
         self.writer.add_scalar('Policy/mean_noise_std', mean_std.item(), locs['it'])
@@ -218,9 +227,10 @@ class OnPolicyRunner:
                             'collection_time']:.3f}s, learning {locs['learn_time']:.3f}s)\n"""
                           f"""{'Value function loss:':>{pad}} {locs['mean_value_loss']:.4f}\n"""
                           f"""{'Surrogate loss:':>{pad}} {locs['mean_surrogate_loss']:.4f}\n"""
-                          f"""{'Regularization loss:':>{pad}} {locs['mean_regularization_loss']:.4f}\n"""
                           f"""{'Adaptation loss:':>{pad}} {locs['mean_adaptation_loss']:.4f}\n"""
+                          f"""{'Regularization loss:':>{pad}} {locs['mean_regularization_loss']:.4f}\n"""
                           f"""{'Regularization coef:':>{pad}} {locs['reg_coef']:.4f}\n"""
+                          f"""{'Estimator loss:':>{pad}} {locs['mean_estimator_loss']:.4f}\n"""
                           f"""{'Mean action noise std:':>{pad}} {mean_std.item():.2f}\n"""
                           f"""{'Mean reward:':>{pad}} {statistics.mean(locs['rewbuffer']):.2f}\n"""
                           f"""{'Mean episode length:':>{pad}} {statistics.mean(locs['lenbuffer']):.2f}\n""")
@@ -233,9 +243,10 @@ class OnPolicyRunner:
                             'collection_time']:.3f}s, learning {locs['learn_time']:.3f}s)\n"""
                           f"""{'Value function loss:':>{pad}} {locs['mean_value_loss']:.4f}\n"""
                           f"""{'Surrogate loss:':>{pad}} {locs['mean_surrogate_loss']:.4f}\n"""
+                          f"""{'Adaptation loss:':>{pad}} {locs['mean_adaptation_loss']:.4f}\n"""
                           f"""{'Regularization loss:':>{pad}} {locs['mean_regularization_loss']:.4f}\n"""
                           f"""{'Regularization coef:':>{pad}} {locs['reg_coef']:.4f}\n"""
-                          f"""{'Adaptation loss:':>{pad}} {locs['mean_adaptation_loss']:.4f}\n"""
+                          f"""{'Estimator loss:':>{pad}} {locs['mean_estimator_loss']:.4f}\n"""
                           f"""{'Mean action noise std:':>{pad}} {mean_std.item():.2f}\n""")
                         #   f"""{'Mean reward/step:':>{pad}} {locs['mean_reward']:.2f}\n"""
                         #   f"""{'Mean episode length/episode:':>{pad}} {locs['mean_trajectory_length']:.2f}\n""")

@@ -56,10 +56,6 @@ def play(args):
     # prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
 
-    # obs = env.get_observations()
-    # privileged_obs = env.get_privileged_observations()
-    # critic_obs = env.get_critic_observations()
-
     # Load inference policy
     train_cfg.runner.resume = True
     ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args, train_cfg=train_cfg)
@@ -68,7 +64,7 @@ def play(args):
     # Export policy (and adaptation module) as jit module
     if EXPORT_POLICY:
         path = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'policies')
-        export_policy_as_jit(ppo_runner.alg.actor_critic, path, save_adaptation_module=True)
+        export_policy_as_jit(ppo_runner.alg.actor_critic, ppo_runner.alg.estimator, path)
         
 
     logger = Logger(env.dt)

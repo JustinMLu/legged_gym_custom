@@ -1,7 +1,12 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
+
+# Model (folder) name
+model_name: &model "cheetah_estimator"
+
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/cheetah/policy.pt"
-encoder_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/cheetah/encoder.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/*model/policy.pt"
+encoder_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/*model/encoder.pt"
+estimator_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/*model/estimator.pt"
 
 xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_015.xml" 
 
