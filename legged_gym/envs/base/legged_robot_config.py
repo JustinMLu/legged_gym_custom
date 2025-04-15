@@ -51,8 +51,8 @@ class LeggedRobotCfg(BaseConfig):
         vertical_scale = 0.005 # [m] --> meters per grid value
         border_size = 25 # [m]
         curriculum = True
-        promote_threshold = 0.6 # [%] --> percentage of terrain traversed to move up a level
-        demote_threshold = 0.4  # [%] --> percentage of terrain traversed to move down a level
+        promote_threshold = 0.60 # [%] --> percentage of terrain traversed to move up a level
+        demote_threshold = 0.40  # [%] --> percentage of terrain traversed to move down a level
         static_friction = 1.0
         dynamic_friction = 1.0
         restitution = 0.

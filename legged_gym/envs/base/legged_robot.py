@@ -129,11 +129,11 @@ class LeggedRobot(BaseTask):
         self.compute_observations()
 
         # Update buffers that store 'previous' data
-        self.last_actions[:] = self.actions[:]            # Update prev. actions
-        self.last_dof_vel[:] = self.dof_vel[:]            # Update prev. dof velocity
-        self.last_root_vel[:] = self.root_states[:, 7:13] # Update prev. root velocity
-        self.last_base_lin_vel[:] = self.base_lin_vel[:]  # Update prev. base linear velocity (NEW)
-        self.last_torques[:] = self.torques[:]            # Update prev. torques (NEW)
+        self.last_actions[:] = self.actions[:]              # Update prev. actions
+        self.last_dof_vel[:] = self.dof_vel[:]              # Update prev. dof velocity
+        self.last_root_vel[:] = self.root_states[:, 7:13]   # Update prev. root velocity
+        self.last_base_lin_vel[:] = self.base_lin_vel[:]    # Update prev. base linear velocity (NEW)
+        self.last_torques[:] = self.torques[:]              # Update prev. torques (NEW)
 
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
             self._draw_debug_vis()
@@ -521,7 +521,7 @@ class LeggedRobot(BaseTask):
         # Mask for robots that will be promoted
         move_up = distance > self.terrain.env_length * self.cfg.terrain.promote_threshold
 
-        # Use expected distnace for demotion mask -> some cmds are too small to win!
+        # Use expected distance for demotion mask -> some cmds are too small to win!
         expected_distance = torch.norm(self.commands[env_ids, :2], dim=1)*self.max_episode_length_s
 
         # Mask for robots that will be demoted

@@ -14,8 +14,10 @@ class MujocoController(BaseController):
     def __init__(self, cfg: ConfigParser) -> None:
         super().__init__(cfg)
 
-        # Initialize Mujoco, otherwise we can't get robot data when refreshing
+        # Init gamepad
         self.gamepad = Gamepad(cfg.rc_scale[0], cfg.rc_scale[1], cfg.rc_scale[2])
+        
+        # Init Mujoco here so refresh_robot_states() can access mj_data
         self.mj_model = mujoco.MjModel.from_xml_path(cfg.xml_path)
         self.mj_data = mujoco.MjData(self.mj_model)
         self.mj_model.opt.timestep = cfg.simulation_dt
@@ -84,8 +86,8 @@ if __name__ == "__main__":
         decimation_counter += 1
 
         # DEBUG: print stuff!
-        # if decimation_counter % 100 == 0:
-            # print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
+        if decimation_counter % 100 == 0:
+            print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
             # print("Mean join torques: ", np.mean(np.abs(controller.mj_data.ctrl[:])))
 
         # Apply control signal every (control_decimation) steps

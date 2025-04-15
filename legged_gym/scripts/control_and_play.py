@@ -34,6 +34,7 @@ import os
 import isaacgym
 from legged_gym.envs import *
 from legged_gym.utils import  get_args, export_policy_as_jit, task_registry, Logger
+from deploy.deploy_mujoco.gamepad_reader import Gamepad
 
 import numpy as np
 import torch
@@ -53,12 +54,11 @@ def play(args):
     env_cfg.domain_rand.randomize_motor_strength = False
     env_cfg.domain_rand.push_robots = False
 
-    # prepare environment
-    env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
+    # Initialize gamepad
+    gamepad = Gamepad(1.0, 1.0, 1.0) # Should have corresponded with rc_scale :(
 
-    # obs = env.get_observations()
-    # privileged_obs = env.get_privileged_observations()
-    # critic_obs = env.get_critic_observations()
+    # Prepare environment
+    env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
 
     # Load inference policy
     train_cfg.runner.resume = True

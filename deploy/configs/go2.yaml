@@ -1,25 +1,32 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Paths
-policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/adaptation_rough/policy.pt"
-encoder_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/adaptation_rough/encoder.pt"
+policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/cheetah/policy.pt"
+encoder_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/cheetah/encoder.pt"
 
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml" 
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_stairs_015.xml" 
 
 # Action & Observations
 num_actions: 12
 num_proprio: 53
 buffer_length: 10
 
-# ======================================================================
+# ===========================================================================================
+# TODO: Make stumble penalization not just on foot, but also on calf too (DONE)
+
 # TODO: Make period based on linear velocity
-# TODO: Make stumble penalization not just on foot, but also on calf too
-# ======================================================================
+
+# TODO: Fix conflict between resampling commands and terrain level promotion/demotion logic.
+#       i.e if the robot samples a fwd cmd and then a backward cmd, it can be wrongly demoted
+#       to a lower level. SOLUTION: integrate the abs. vel./commanded vel. every env step
+
+# TODO: Implement MIT rl_locomotion curriculum, if you have time. If not, extreme parkour.
+# ===========================================================================================
 
 # Phase Features
-period: 0.42
+period: 0.35
 fr_offset: 0.0 
-bl_offset: 0.0
-fl_offset: 0.5
+bl_offset: 0.5
+fl_offset: 0.0
 br_offset: 0.5
 
 # Protocols
@@ -37,10 +44,10 @@ control_decimation: 4   # Controller update freq (simulation_dt * control_decima
 # (e.g: Isaac and Mujoco are L-R-L-R, but Unitree Go2's joint order is R-L-R-L)
 
                     # hip, thigh, calf
-leg_joint2motor_idx: [3, 4, 5,      # FL
-                      0, 1, 2,      # FR
-                      9, 10, 11,    # BL
-                      6, 7, 8]      # BR
+leg_joint2motor_idx: [3, 4, 5,    # FL
+                      0, 1, 2,    # FR
+                      9, 10, 11,  # BL
+                      6, 7, 8]    # BR
 
     # hip, thigh, calf
 kps: [40.0, 40.0, 40.0,
@@ -60,7 +67,7 @@ default_angles: [0.1, 0.8, -1.5,    # Front left
                  0.1, 1.0, -1.5,    # Rear left
                 -0.1, 1.0, -1.5]    # Rear right
 
-# Empirical joint limits
+# Empirically-tested joint ranges
 # Hips (all):   [ -0.75,  0.75 ]
 # Front thighs: [ -1.50,  1.75 ]
 # Rear thighs:  [  0.00,  2.75 ]
@@ -78,4 +85,4 @@ clip_observations: 100.0
 clip_actions: 3.8
 
 # Remote controller scale
-rc_scale: [1.2, 1.0, 1.5]
+rc_scale: [2.0, 0.0, 1.5]

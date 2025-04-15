@@ -13,10 +13,10 @@ class Go2Cfg( LeggedRobotCfg ):
         num_observations = num_proprio+(num_proprio*history_buffer_length)
 
         # Phase features
-        period = 0.42
+        period = 0.35
         fr_offset = 0.0 
-        bl_offset = 0.0
-        fl_offset = 0.5
+        bl_offset = 0.5
+        fl_offset = 0.0
         br_offset = 0.5
 
 
@@ -25,7 +25,7 @@ class Go2Cfg( LeggedRobotCfg ):
         # General parameters
         num_rows = 10               # num. difficulties     ->    (0/n, 1/n, 2/n ... (n-1)/n)
         num_cols = 20               # max. terrain choices  ->    affects terrain_proportions "accuracy"
-        mesh_type = 'trimesh'
+        mesh_type = 'plane'
         measure_heights = False     # add a height measurement to the observations
         
         # Extreme parkour (132 SCANDOTS)
@@ -66,7 +66,7 @@ class Go2Cfg( LeggedRobotCfg ):
         }
         # ========================================================
         # Terrain curriculum
-        curriculum = True
+        curriculum = False
         max_init_terrain_level = 1      # starting curriculum state
         promote_threshold = 0.5         # [%] of terrain traversed
         demote_threshold = 0.4          # [%] of terrain traversed
@@ -144,8 +144,8 @@ class Go2Cfg( LeggedRobotCfg ):
         zero_command_prob = 0.10 # Resampling probability
         
         # Command curriculum
-        curriculum = False
-        max_curriculum = 3.0 # [m/s]
+        curriculum = True
+        max_curriculum = 2.2 # [m/s]
         
         class ranges:
             # Default
@@ -154,14 +154,9 @@ class Go2Cfg( LeggedRobotCfg ):
             # ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
             # heading = [-3.14, 3.14]
 
-            # Reduced
-            # lin_vel_x = [-0.85, 0.85]   # [m/s]
-            # lin_vel_y = [-0.75, 0.75]   # [m/s]
-            # ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
-
-            # Stairs fine-tuning
-            lin_vel_x = [-1.0, 1.0]     # [m/s]
-            lin_vel_y = [-0.2, 0.2]     # [m/s]
+            # Cheetah
+            lin_vel_x = [-0.2, 0.5]     # [m/s]
+            lin_vel_y = [-0.0, 0.0]     # [m/s]
             ang_vel_yaw = [-0.5, 0.5]   # [rad/s]
 
 
@@ -192,28 +187,28 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9
-        base_height_target = 0.29
+        base_height_target = 0.295
         only_positive_rewards = True
 
         class scales( LeggedRobotCfg.rewards.scales ):
-            tracking_lin_vel = 1.5
-            tracking_ang_vel = 1.0
+            tracking_lin_vel = 1.2
+            tracking_ang_vel = 0.6
             # ======================
-            lin_vel_z = -2.0
+            lin_vel_z = -0.1
             ang_vel_xy = -0.01
-            torques = -0.00001
+            torques = -0.00001 * 0.5
             dof_acc = -2.5e-7
             collision = -10.0
             delta_torques = -1.0e-7
             dof_error = -0.04 
             hip_pos = -0.75
-            orientation = -1.0          # -5.0 for super stable
+            orientation = -2.5            # -5.0 for super stable
             # ====================== 
             contact_phase_match = 1.0
-            stumble_feet = -2.5         # renamed
-            stumble_calves = -2.5       # new
-            action_rate = -0.01         # decreased (-0.025 to -0.010) 
-            base_height = -20.0         # decreased (-30.0 to -20.0)
+            action_rate = -0.01           # decreased (-0.025 to -0.010) 
+            # base_height = -20.0         
+            # stumble_feet = -2.5         # renamed
+            # stumble_calves = -2.5       # new
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -230,9 +225,9 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         schedule = 'fixed' # fixed or adaptive
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'adaptation_rough_ft_v5'
+        run_name = 'cheetah'
         experiment_name = 'go2'
         load_run = -1
         num_steps_per_env = 24
-        max_iterations = 5000
+        max_iterations = 10000
         save_interval = 50
