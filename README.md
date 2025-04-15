@@ -9,7 +9,15 @@ Legged Gym Custom is an extension of NVIDIA and RSL's Legged Gym RL framework.
 
 Originally used by the Robotic Systems Lab to train the ANYmal quadruped on a variety of different environments, this fork adds a sim-to-sim-to-real verification and training pipeline from Isaac Sim to Mujoco and then onto the real robot, as well as a unified robot config format and improved terrain selection/curriculum specifications. The original repo has a surprisingly large number of bugs, so critical improvements and bug fixes have been made to the codebase to ensure more reliable experimentation. 
 
-In addition, lots of custom rewards from papers like "Extreme Parkour" and "Deep Whole-Body Control" have been added (to great success!), the observation space (currently only for the Go2) has been tweaked to no longer rely on data that would require a state estimator (e.g: linear velocity), and the sim2sim2real deployment pipeline has been designed to be as clean as possible without compromising any of the original Legged Gym functionality.
+Custom functions implemented:
+- Regularized Online Adaptation (ROA), using encoder neural networks to estimate environment extrinsics
+- MLP State Estimator - currently used to estimate linear velocity
+- Sim2Sim deployment in Mujoco
+- Sim2Real deployment to the Go2 robot
+- Xbox ontroller support for Mujoco and Isaac Sim 
+- Lidar and vision support via a heightmap neural network for the Go2 (WIP)
+- Autoencoder support for all auxiliary neural nets (WIP)
+
 
 **Affiliation**: ARCAD Lab, University of Michigan  
 
