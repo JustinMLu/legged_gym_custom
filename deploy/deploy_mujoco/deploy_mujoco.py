@@ -33,10 +33,14 @@ class MujocoController(BaseController):
                 - ang_vel (in the local frame)
                 - base_quat (base orientation quaternion)
         """
-        self.cmd[0] = self.gamepad.vx
-        self.cmd[1] = self.gamepad.vy
-        self.cmd[2] = self.gamepad.wz
 
+        # Input smoothed commands
+        smoothed_cmd = self.get_smoothed_command([self.gamepad.vx, self.gamepad.vy, self.gamepad.wz], 0.05)
+        self.cmd[0] = smoothed_cmd[0]
+        self.cmd[1] = smoothed_cmd[1]
+        self.cmd[2] = smoothed_cmd[2]
+        
+        # Refresh robot states
         self.qj = self.mj_data.qpos[7:]          # joint pos
         self.dqj = self.mj_data.qvel[6:]         # joint vel
         self.ang_vel = self.mj_data.qvel[3:6]    # angular vel (local frame)
@@ -86,9 +90,11 @@ if __name__ == "__main__":
         decimation_counter += 1
 
         # DEBUG: print stuff!
-        if decimation_counter % 100 == 0:
-            print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
+        if decimation_counter % 50 == 0:
             # print("Mean join torques: ", np.mean(np.abs(controller.mj_data.ctrl[:])))
+            # print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
+            print(f"Pitch angle: {controller.pitch:.3f} radians")
+
 
         # Apply control signal every (control_decimation) steps
         if decimation_counter % cfg.control_decimation == 0:

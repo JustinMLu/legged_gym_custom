@@ -6,6 +6,28 @@ import torch
 import numpy as np
 import os
 
+def quaternion_to_euler(quat_angle):
+        """
+        Converts a quaternion into euler angles (roll, pitch, yaw).
+        Roll: rotation around x in radians (counterclockwise)
+        Pitch: rotation around y in radians (counterclockwise)
+        Yaw: rotation around z in radians (counterclockwise)
+        """
+        x = quat_angle[:,0]; y = quat_angle[:,1]; z = quat_angle[:,2]; w = quat_angle[:,3]
+        t0 = +2.0 * (w * x + y * z)
+        t1 = +1.0 - 2.0 * (x * x + y * y)
+        roll_x = torch.atan2(t0, t1)
+     
+        t2 = +2.0 * (w * y - z * x)
+        t2 = torch.clip(t2, -1, 1)
+        pitch_y = torch.asin(t2)
+     
+        t3 = +2.0 * (w * z + x * y)
+        t4 = +1.0 - 2.0 * (y * y + z * z)
+        yaw_z = torch.atan2(t3, t4)
+     
+        return roll_x, pitch_y, yaw_z # in radians
+
 class Go2Robot(LeggedRobot):
     def __init__(self, cfg, sim_params, physics_engine, sim_device, headless):
         super().__init__(cfg, sim_params, physics_engine, sim_device, headless)
@@ -46,29 +68,27 @@ class Go2Robot(LeggedRobot):
     def _get_noise_scale_vec(self, cfg):
         """ Sets a vector used to scale the noise added to the observations.
             [NOTE]: Must be adapted when changing the observations structure
-
-        Args:
-            cfg (Dict): Environment config file
-        Returns:
-            [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
         """
         # Build noise vector
         noise_vec = torch.zeros(self.cfg.env.num_proprio, device=self.device)
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         noise_level = self.cfg.noise.noise_level
-
+        # ==========================================================================
         noise_vec[:3] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
-        noise_vec[3:6] = noise_scales.gravity * noise_level
-        noise_vec[6:9] = 0. # commands 
-        noise_vec[9:21] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
-        noise_vec[21:33] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
-        noise_vec[33:45] = 0. # previous actions (12)
-        noise_vec[45:53] = 0. # phase observations (8)
+        # noise_vec[3:6] = noise_scales.gravity * noise_level # projected gravity
+        # ==========================================================================
+        noise_vec[3:5] = noise_scales.gravity * noise_level  # roll, pitch
+        noise_vec[5:8] = 0. # commands 
+        noise_vec[8:20] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
+        noise_vec[20:32] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
+        noise_vec[32:44] = 0. # prev. actions (12)
+        noise_vec[44:52] = 0. # phase obs (8)
         return noise_vec
 
     def _init_custom_buffers(self):
-        # ==================================== FEET RELATED INITS ====================================
+        """ Initialize some custom buffers that are special to my Go2 implementation.
+        """
         # Get feet indices and rigid body states
         rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)
         self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_state)
@@ -105,8 +125,6 @@ class Go2Robot(LeggedRobot):
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, 
                                                                                     device=self.device, 
                                                                                     requires_grad=False)
-        # ============================================================================================
-
 
     def _init_buffers(self):
         """ Initializes the buffers used to store the simulation state and observational data.
@@ -195,15 +213,18 @@ class Go2Robot(LeggedRobot):
 
 
     def _post_physics_step_callback(self):
+        """ Override of post physics step callback that will update my custom feet 
+            state buffers and update my roll pitch yaw IMU observations.
+        """
         # Update feet states, positions, velociites
         self.update_feet_states()
+        self.roll, self.pitch, self.yaw = quaternion_to_euler(self.base_quat)
         return super()._post_physics_step_callback()
     
 
     def compute_observations(self):
         """ Computes observations for the robot. Overloaded to include unique observations for Go2.
         """
-        # print(self.projected_gravity[:, 0])
         # Calculate sine and cosine of phases for smooth transitions
         sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl); cos_phase_fl = torch.cos(2 * np.pi * self.phase_fl)
         sin_phase_fr = torch.sin(2 * np.pi * self.phase_fr); cos_phase_fr = torch.cos(2 * np.pi * self.phase_fr)
@@ -217,18 +238,21 @@ class Go2Robot(LeggedRobot):
             sin_phase_bl, cos_phase_bl,
             sin_phase_br, cos_phase_br
         ], dim=1)
-       
+
+        # Use IMU obs instead of proj. gravity
+        imu_obs = torch.stack((self.roll, self.pitch), dim=1)
+
         # Construct observations       
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                     # (3,)
-                                self.projected_gravity,                                            # (3,)
+                                imu_obs,                                                           # (2,)      
                                 self.commands[:, :3] * self.commands_scale,                        # (3,)  
                                 (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,   # (12,) for quadruped
                                 self.dof_vel * self.obs_scales.dof_vel,                            # (12,)
                                 self.actions,                                                      # (12,) last actions
-                                ),dim=-1)                                                          # total: (48,)
+                                ),dim=-1)                                                          
         
         # Add phase features
-        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # total: (56,)
+        cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # add 8
 
         # Add noise vector
         if self.add_noise:
@@ -240,21 +264,21 @@ class Go2Robot(LeggedRobot):
             cur_obs_buf                                    # Current observation
         ], dim=-1)
 
-        # EXTREME PARKOUR
-        # if self.cfg.terrain.measure_heights:
-        #     heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.3 - self.measured_heights, -1, 1.)
-        #     self.obs_buf = torch.cat([obs_buf, heights, priv_explicit, priv_latent, self.obs_history_buf.view(self.num_envs, -1)], dim=-1)
         
         # Update privileged obs buffer
-        self.privileged_obs_buf = torch.cat((self.privileged_mass_params,     # 4 -> latent
-                                             self.privileged_friction_coeffs, # 1 -> latent
-                                             self.motor_strength[0] - 1,      # 12 -> latent
-                                             self.motor_strength[1] - 1,      # 12 -> latent
+        self.privileged_obs_buf = torch.cat((self.privileged_mass_params,     # 4
+                                             self.privileged_friction_coeffs, # 1
+                                             self.motor_strength[0] - 1,      # 12
+                                             self.motor_strength[1] - 1,      # 12
                                              ), dim=-1)
         
         # Update estimated obs buffer
         self.estimated_obs_buf = self.base_lin_vel * self.obs_scales.lin_vel
         
+        # Scan obs. buffer EXTREME PARKOUR
+        # if self.cfg.terrain.measure_heights:
+        #     heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.3 - self.measured_heights, -1, 1.)
+        #     self.obs_buf = torch.cat([obs_buf, heights, priv_explicit, priv_latent, self.obs_history_buf.view(self.num_envs, -1)], dim=-1)
         
         # Update critic obs buffer
         self.critic_obs_buf = torch.cat((
@@ -270,7 +294,7 @@ class Go2Robot(LeggedRobot):
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
 
-    # =========================== NEW REWARD FUNCTIONS ===========================
+    # ============================== CUSTOM GO2 FUNCTIONS ==============================
     def _reward_delta_torques(self): # Extreme Parkour -1.0e-7
         """ Penalize changes in torques
         """
@@ -322,7 +346,6 @@ class Go2Robot(LeggedRobot):
         return torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
              5 *torch.abs(self.contact_forces[:, self.feet_indices, 2]), dim=1)
     
-
     def _reward_stumble_calves(self):
         """ Penalize calves hitting vertical surfaces. Uses norm of the X and Y contact forces
         """
@@ -330,14 +353,24 @@ class Go2Robot(LeggedRobot):
              5 *torch.abs(self.contact_forces[:, self.calf_indices, 2]), dim=1)
     
     def _reward_minimum_base_height(self):
-        """ Penalizes base hight BELOW target threshold only
+        """ Penalizes base hight BELOW target threshold only.
         """
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
         height_deficit = (self.cfg.rewards.base_height_target - base_height).clamp(min=0.0)
         return torch.square(height_deficit)
-
-# ============================ REWARD FUNCTIONS THAT I DON'T USE lol ===========================
     
+    def _reward_pitch_penalty(self):
+        """ Penalize the pitch of the robot base.
+        """
+        return torch.square(self.pitch)
+    
+    def _reward_pitch_down_penalty(self):
+        """ Penalize pitching downwards ONLY.
+            Pitch: (+) is head down, (-) is head up
+        """
+        clamped_pitch = self.pitch.clamp(min=0.0)
+        return torch.square(clamped_pitch)
+
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 
             the contact reporting of PhysX is unreliable on meshes 

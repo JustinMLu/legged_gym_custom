@@ -80,16 +80,23 @@ class RobotController(BaseController):
                 - ang_vel (in the local frame)
                 - base_quat (base orientation quaternion)
         """
-        self.cmd[0] = self.remote_controller.ly
-        self.cmd[1] = self.remote_controller.lx * -1
-        self.cmd[2] = self.remote_controller.rx * -1
 
+        # Input smoothed commands
+        smoothed_cmd = self.get_smoothed_command([self.remote_controller.ly, -1*self.remote_controller.lx, -1*self.remote_controller.wz], 0.05)
+        self.cmd[0] = smoothed_cmd[0]
+        self.cmd[1] = smoothed_cmd[1]
+        self.cmd[2] = smoothed_cmd[2]
+
+        # self.cmd[0] = self.remote_controller.ly
+        # self.cmd[1] = self.remote_controller.lx * -1
+        # self.cmd[2] = self.remote_controller.rx * -1
+
+        # Refresh robot states
         for i in range(len(self.cfg.leg_joint2motor_idx)):
             self.qj[i] = self.low_state.motor_state[self.cfg.leg_joint2motor_idx[i]].q
             self.dqj[i] = self.low_state.motor_state[self.cfg.leg_joint2motor_idx[i]].dq
 
-        # imu_state quaternion: w, x, y, z
-        self.base_quat = self.low_state.imu_state.quaternion
+        self.base_quat = self.low_state.imu_state.quaternion  # imu_state quaternion: w, x, y, z
         self.ang_vel = np.array([self.low_state.imu_state.gyroscope], dtype=np.float32)
 
     def LowStateHgHandler(self, msg: LowStateHG):

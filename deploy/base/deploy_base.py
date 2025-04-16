@@ -2,6 +2,27 @@ import numpy as np
 import torch
 from deploy.base.config_parser import ConfigParser
 
+def mujoco_quaternion_to_euler(quat_angle):
+        """ Converts a quaternion into euler angles (roll, pitch, yaw).
+            - Roll: rotation around x in radians (counterclockwise)
+            - Pitch: rotation around y in radians (counterclockwise)
+            - Yaw: rotation around z in radians (counterclockwise)
+        """
+        w = quat_angle[0]; x = quat_angle[1]; y = quat_angle[2]; z = quat_angle[3]
+        t0 = +2.0 * (w * x + y * z)
+        t1 = +1.0 - 2.0 * (x * x + y * y)
+        roll_x = np.arctan2(t0, t1)
+     
+        t2 = +2.0 * (w * y - z * x)
+        t2 = np.clip(t2, -1, 1)
+        pitch_y = np.arcsin(t2)
+     
+        t3 = +2.0 * (w * z + x * y)
+        t4 = +1.0 - 2.0 * (y * y + z * z)
+        yaw_z = np.arctan2(t3, t4)
+     
+        return roll_x, pitch_y, yaw_z # in radians
+
 class BaseController:
     def __init__(self, cfg: ConfigParser) -> None:
 
@@ -26,6 +47,9 @@ class BaseController:
         # Initialize projected gravity (not really needed, immediately overwritten on first use)
         self.projected_gravity = np.zeros(3, dtype=np.float32)
         self.projected_gravity[2] = -1.0
+
+        # Command smoothing - used for both controllers
+        self.smoothed_cmd = np.zeros(3, dtype=np.float32)
         
 
     def get_gravity_orientation(self, quaternion):
@@ -48,6 +72,18 @@ class BaseController:
         gravity_orientation[1] = -2 * (qz * qy + qw * qx)
         gravity_orientation[2] = 1 - 2 * (qw * qw + qz * qz)
         return gravity_orientation
+    
+
+    def get_smoothed_command(self, raw_cmd, smoothing_factor):
+        """ Smooths the controller command by gradually blending the new commands with the previous.
+            Lower values (0.01 - 0.05) give smoother but slower responses, while higher values (0.1 - 0.2)
+            give faster but less smooth responses.
+            Args:
+                raw_cmd (np.array): The controller command [vx, vy, wz].
+                smoothing_factor (float): The factor by which to smooth the command.
+        """
+        self.smoothed_cmd = self.smoothed_cmd + smoothing_factor * (raw_cmd - self.smoothed_cmd)
+        return self.smoothed_cmd
 
 
     def refresh_robot_states(self):
@@ -76,6 +112,7 @@ class BaseController:
         # Refresh robot states
         self.refresh_robot_states()
         self.projected_gravity = self.get_gravity_orientation(self.base_quat)
+        self.roll, self.pitch, self.yaw = mujoco_quaternion_to_euler(self.base_quat)
         
         # Calculate per-leg phase variables
         phase = (elapsed_time_s % self.cfg.period) / self.cfg.period
@@ -110,12 +147,13 @@ class BaseController:
         num_actions = self.cfg.num_actions
         cur_obs = np.zeros(self.cfg.num_proprio, dtype=np.float32)
         cur_obs[:3] = self.ang_vel * self.cfg.ang_vel_scale
-        cur_obs[3:6] = self.projected_gravity
-        cur_obs[6:9] = self.cmd * self.cfg.cmd_scale * self.cfg.rc_scale # controller
-        cur_obs[9 : 9+num_actions] = (self.qj - self.cfg.default_angles) * self.cfg.dof_pos_scale 
-        cur_obs[9+num_actions : 9+2*num_actions] = self.dqj * self.cfg.dof_vel_scale
-        cur_obs[9+2*num_actions : 9+3*num_actions] = self.actions
-        cur_obs[9+3*num_actions:9+3*num_actions+8] = phase_features
+        # cur_obs[3:6] = self.projected_gravity          # Projected gravity (not used anymore)
+        cur_obs[3:5] = np.stack([self.roll, self.pitch]) # Roll and pitch now
+        cur_obs[5:8] = self.cmd * self.cfg.cmd_scale * self.cfg.rc_scale # controller
+        cur_obs[8 : 8+num_actions] = (self.qj - self.cfg.default_angles) * self.cfg.dof_pos_scale 
+        cur_obs[8+num_actions : 8+2*num_actions] = self.dqj * self.cfg.dof_vel_scale
+        cur_obs[8+2*num_actions : 8+3*num_actions] = self.actions
+        cur_obs[8+3*num_actions:8+3*num_actions+8] = phase_features
 
         # Update obs buffer (concat. history)
         self.obs[:] = np.concatenate([self.obs_history.flatten(), cur_obs])
@@ -123,7 +161,7 @@ class BaseController:
         # Update the history buffer
         if self.first_step_ever:
             self.first_step_ever = False
-            self.obs_history = np.tile(cur_obs, (self.cfg.buffer_length, 1))  # (4x1, 1x53)
+            self.obs_history = np.tile(cur_obs, (self.cfg.buffer_length, 1))
         else:
             self.obs_history = np.roll(self.obs_history, -1, axis=0)
             self.obs_history[-1] = cur_obs

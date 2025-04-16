@@ -56,7 +56,7 @@ def play(args):
     env_cfg.domain_rand.push_robots = False
 
     # Initialize gamepad
-    gamepad = Gamepad(1.5, 1.0, 1.5) # Manually have to calibrate with rc_scale :(
+    gamepad = Gamepad(1.0, 1.0, 1.0) # Manually have to calibrate with rc_scale :(
 
     # Prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
@@ -96,7 +96,7 @@ def play(args):
         env.commands[:, 1] = gamepad.vy * env.cfg.normalization.obs_scales.lin_vel * 0.0 # Disabled for cheetah
         env.commands[:, 2] = gamepad.wz * env.cfg.normalization.obs_scales.ang_vel
     
-        actions = inference_policy(obs.detach(), privileged_obs.detach(), estimated_obs.detach(), scan_obs.detach(), adaptation_mode=True) # use adaption module
+        actions = inference_policy(obs.detach(), privileged_obs.detach(), estimated_obs.detach(), scan_obs.detach(), adaptation_mode=False) # use adaption module
         obs, privileged_obs, critic_obs, estimated_obs, scan_obs, rews, dones, infos = env.step(actions.detach())
 
         if RECORD_FRAMES:

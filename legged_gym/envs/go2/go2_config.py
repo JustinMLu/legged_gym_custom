@@ -5,8 +5,8 @@ class Go2Cfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         # Extremely important ones
         num_envs = 4096
-        num_proprio = 53
-        num_scan_obs =  0 # 132 # Not used yet
+        num_proprio = 52    # I removed projected gravity and replaced it with roll and pitch
+        num_scan_obs =  0   # 132 but not used yet
         num_estimated_obs = 3
         num_privileged_obs = 4+1+12+12
         history_buffer_length = 10
@@ -98,16 +98,16 @@ class Go2Cfg( LeggedRobotCfg ):
         # ========================================================
     class domain_rand:      
         randomize_friction = True
-        friction_range = [0.1, 1.0]
+        friction_range = [0.3, 1.2]
 
         randomize_base_mass = True
-        added_mass_range = [0., 3.]
+        added_mass_range = [2.0, 4.0]
 
         randomize_center_of_mass = True
         added_com_range = [-0.15, 0.15]
 
         randomize_motor_strength = True
-        motor_strength_range = [0.8, 1.2]
+        motor_strength_range = [0.7, 1.2]
 
         push_robots = True
         push_interval_s = 8
@@ -118,8 +118,8 @@ class Go2Cfg( LeggedRobotCfg ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
         
         default_joint_angles = {
-            'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.7, 'FL_calf_joint': -1.5, 
-            'FR_hip_joint': -0.1, 'FR_thigh_joint': 0.7, 'FR_calf_joint': -1.5,
+            'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.8, 'FL_calf_joint': -1.5, 
+            'FR_hip_joint': -0.1, 'FR_thigh_joint': 0.8, 'FR_calf_joint': -1.5,
             'RL_hip_joint':  0.1, 'RL_thigh_joint': 1.0, 'RL_calf_joint': -1.5, 
             'RR_hip_joint': -0.1, 'RR_thigh_joint': 1.0, 'RR_calf_joint': -1.5
         }
@@ -151,7 +151,7 @@ class Go2Cfg( LeggedRobotCfg ):
         
         # Command curriculum
         curriculum = True
-        max_curriculum = 1.6 # [m/s]
+        max_curriculum = 1.5 # [m/s]
         
         class ranges:
             # Default
@@ -187,34 +187,36 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_pos = 0.01
             dof_vel = 0.05
             ang_vel = 0.05
-            gravity = 0.02
+            gravity = 0.02 # or just use for rpy
             height_measurements = 0.02
         
 
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9
-        base_height_target = 0.305
+        base_height_target = 0.31
         only_positive_rewards = True
 
         class scales( LeggedRobotCfg.rewards.scales ):
+            # ======================
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.0
             contact_phase_match = 1.0
             # ======================
+            action_rate = -0.01           
             lin_vel_z = -0.1
-            ang_vel_xy = -0.01 * 5.0
+            ang_vel_xy = -0.01
             torques = -0.00001
             dof_acc = -2.5e-7
             collision = -10.0
             delta_torques = -1.0e-7
             dof_error = -0.04 
             hip_pos = -0.5
-            orientation = -1.0
             # ====================== 
-            action_rate = -0.01           
-            minimum_base_height = -25.0         
-            # stumble_feet = -2.5
-            # stumble_calves = -2.5
+            orientation = -1.0      # uses projected grav.
+            pitch_penalty = -1.0    # directly uses pitch
+            minimum_base_height = -30.0
+            # ====================== 
+           
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -235,5 +237,5 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         experiment_name = 'go2'
         load_run = -1
         num_steps_per_env = 24 # 24 -> 40
-        max_iterations = 10000
+        max_iterations = 5000
         save_interval = 50
