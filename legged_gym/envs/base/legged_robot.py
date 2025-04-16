@@ -229,6 +229,7 @@ class LeggedRobot(BaseTask):
     def compute_observations(self):
         """ Computes (i.e constructs) the observation tensor that is fed into the policy network.
         """
+
         cur_obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel,                        # (3,)
                                  self.base_ang_vel  * self.obs_scales.ang_vel,                       # (3,)
                                  self.projected_gravity,                                             # (3,)

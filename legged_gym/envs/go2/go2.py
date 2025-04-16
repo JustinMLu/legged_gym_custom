@@ -203,7 +203,7 @@ class Go2Robot(LeggedRobot):
     def compute_observations(self):
         """ Computes observations for the robot. Overloaded to include unique observations for Go2.
         """
-       
+        # print(self.projected_gravity[:, 0])
         # Calculate sine and cosine of phases for smooth transitions
         sin_phase_fl = torch.sin(2 * np.pi * self.phase_fl); cos_phase_fl = torch.cos(2 * np.pi * self.phase_fl)
         sin_phase_fr = torch.sin(2 * np.pi * self.phase_fr); cos_phase_fr = torch.cos(2 * np.pi * self.phase_fr)
@@ -328,24 +328,15 @@ class Go2Robot(LeggedRobot):
         """
         return torch.any(torch.norm(self.contact_forces[:, self.calf_indices, :2], dim=2) >\
              5 *torch.abs(self.contact_forces[:, self.calf_indices, 2]), dim=1)
-
+    
+    def _reward_minimum_base_height(self):
+        """ Penalizes base hight BELOW target threshold only
+        """
+        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
+        height_deficit = (self.cfg.rewards.base_height_target - base_height).clamp(min=0.0)
+        return torch.square(height_deficit)
 
 # ============================ REWARD FUNCTIONS THAT I DON'T USE lol ===========================
-    def _reward_stand_still_v2(self):
-        """ Reward maintaining pose with zero commands """
-        small_command = torch.norm(self.commands[:, :3], dim=1) < 0.15
-        
-        # Reward joint positions matching default pose
-        dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
-        
-        # Reward minimal joint velocities
-        vel_reward = torch.sum(torch.abs(self.dof_vel), dim=1)
-        
-        # Reward minimal base movement
-        base_vel_reward = torch.sum(torch.abs(self.base_lin_vel), dim=1) + torch.sum(torch.abs(self.base_ang_vel), dim=1)
-        
-        # Only apply when commands are small
-        return (dof_error + vel_reward + base_vel_reward) * small_command
     
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 
