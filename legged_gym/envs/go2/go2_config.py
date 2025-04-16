@@ -151,7 +151,7 @@ class Go2Cfg( LeggedRobotCfg ):
         
         # Command curriculum
         curriculum = True
-        max_curriculum = 1.75 # [m/s]
+        max_curriculum = 1.6 # [m/s]
         
         class ranges:
             # Default
@@ -202,19 +202,19 @@ class Go2Cfg( LeggedRobotCfg ):
             contact_phase_match = 1.0
             # ======================
             lin_vel_z = -0.1
-            ang_vel_xy = -0.01
+            ang_vel_xy = -0.01 * 5.0
             torques = -0.00001
             dof_acc = -2.5e-7
             collision = -10.0
             delta_torques = -1.0e-7
             dof_error = -0.04 
             hip_pos = -0.5
-            orientation = -1.0            # -5.0 for super stable
+            orientation = -1.0
             # ====================== 
-            action_rate = -0.01           # decreased (-0.02 to -0.01) 
+            action_rate = -0.01           
             minimum_base_height = -25.0         
-            # stumble_feet = -2.5         # renamed
-            # stumble_calves = -2.5       # new
+            # stumble_feet = -2.5
+            # stumble_calves = -2.5
 
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -234,6 +234,6 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         run_name = 'cheetah'
         experiment_name = 'go2'
         load_run = -1
-        num_steps_per_env = 40 # 24 -> 40
+        num_steps_per_env = 24 # 24 -> 40
         max_iterations = 10000
         save_interval = 50
