@@ -111,7 +111,7 @@ class Go2Cfg( LeggedRobotCfg ):
 
         push_robots = True
         push_interval_s = 8
-        max_push_vel_xy = 1.0 # 25.0 for extra robust
+        max_push_vel_xy = 10.0 # v2: 1.0 -> 10.0
     
 
     class init_state( LeggedRobotCfg.init_state ):
@@ -210,11 +210,13 @@ class Go2Cfg( LeggedRobotCfg ):
             collision = -10.0
             delta_torques = -1.0e-7
             dof_error = -0.04 
-            hip_pos = -0.5
+            hip_pos = -0.75           # v2: -0.5 -> -0.75
             # ====================== 
-            orientation = -1.0      # uses projected grav.
-            pitch_penalty = -1.0    # directly uses pitch
-            minimum_base_height = -30.0
+            # orientation = -1.
+            minimum_base_height = -30.
+            roll_deg_penalty = -0.005 # v2: -0.002 -> -0.005
+            pitch_deg_penalty = -0.002
+            pitch_down_deg_penalty = -0.001
             # ====================== 
            
 
@@ -233,7 +235,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         schedule = 'fixed' # fixed or adaptive
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'cheetah'
+        run_name = 'cheetah_v2'
         experiment_name = 'go2'
         load_run = -1
         num_steps_per_env = 24 # 24 -> 40

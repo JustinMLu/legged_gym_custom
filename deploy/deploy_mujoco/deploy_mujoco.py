@@ -91,9 +91,10 @@ if __name__ == "__main__":
 
         # DEBUG: print stuff!
         if decimation_counter % 50 == 0:
+            print(f"Pitch: {controller.pitch * (180 / np.pi):.3f} deg", 
+                  f"Roll: {controller.roll * (180 / np.pi):.3f} deg",
+                  f"| Base height: {controller.mj_data.qpos[2]:.3f} m")
             # print("Mean join torques: ", np.mean(np.abs(controller.mj_data.ctrl[:])))
-            # print(f"Base height: {controller.mj_data.qpos[2]:.3f} meters")
-            print(f"Pitch angle: {controller.pitch:.3f} radians")
 
 
         # Apply control signal every (control_decimation) steps

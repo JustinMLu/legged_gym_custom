@@ -87,16 +87,17 @@ def play(args):
     critic_obs = env.get_critic_observations()
     estimated_obs = env.get_estimated_observations()
     scan_obs = env.get_scan_observations()
-
-    # for i in range(10*int(env.max_episode_length)):
+    
     i = 0
     while True:
+        # print(gamepad.vx * env.cfg.normalization.obs_scales.lin_vel)
+
         # gamepad control
         env.commands[:, 0] = gamepad.vx * env.cfg.normalization.obs_scales.lin_vel
         env.commands[:, 1] = gamepad.vy * env.cfg.normalization.obs_scales.lin_vel * 0.0 # Disabled for cheetah
         env.commands[:, 2] = gamepad.wz * env.cfg.normalization.obs_scales.ang_vel
     
-        actions = inference_policy(obs.detach(), privileged_obs.detach(), estimated_obs.detach(), scan_obs.detach(), adaptation_mode=False) # use adaption module
+        actions = inference_policy(obs.detach(), privileged_obs.detach(), estimated_obs.detach(), scan_obs.detach(), adaptation_mode=True) # use adaption module
         obs, privileged_obs, critic_obs, estimated_obs, scan_obs, rews, dones, infos = env.step(actions.detach())
 
         if RECORD_FRAMES:
@@ -104,9 +105,15 @@ def play(args):
                 filename = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'frames', f"{img_idx}.png")
                 env.gym.write_viewer_image_to_file(env.viewer, filename)
                 img_idx += 1 
-        if MOVE_CAMERA:
-            camera_position += camera_vel * env.dt
-            env.set_camera(camera_position, camera_position + camera_direction)
+
+        robot_pos = env.root_states[0, :3].cpu().numpy()
+        camera_offset = np.array([-2.0, 0.0, 0.75])  # 2m behind, same y, 1.5m above
+        camera_position = robot_pos + camera_offset
+        env.set_camera(camera_position, robot_pos)  # Camera position, look-at position
+
+        # if MOVE_CAMERA:
+        #     camera_position += camera_vel * env.dt
+        #     env.set_camera(camera_position, camera_position + camera_direction)
 
         if i < stop_state_log:
             logger.log_states(

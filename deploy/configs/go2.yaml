@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Model folder name
-model_name: &model "cheetah_rpy"
+model_name: &model "cheetah_v1"
 
 # Paths
 policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/*model/policy.pt"

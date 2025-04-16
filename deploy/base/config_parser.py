@@ -48,11 +48,12 @@ class ConfigParser:
             self.dof_pos_scale = cfg["dof_pos_scale"]
             self.dof_vel_scale = cfg["dof_vel_scale"]
             self.action_scale = cfg["action_scale"]
+
+            # Scaling for commands
+            self.rc_scale = np.array(cfg["rc_scale"], dtype=np.float32)
             self.cmd_scale = np.array([self.lin_vel_scale, 
                                        self.lin_vel_scale, 
                                        self.ang_vel_scale], dtype=np.float32)
-            
-            self.rc_scale = np.array(cfg["rc_scale"], dtype=np.float32)
 
             # Clipping
             self.clip_obs = cfg["clip_observations"]

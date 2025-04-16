@@ -242,6 +242,9 @@ class Go2Robot(LeggedRobot):
         # Use IMU obs instead of proj. gravity
         imu_obs = torch.stack((self.roll, self.pitch), dim=1)
 
+        # DEBUG: Print pitch
+        # print(f"Pitch: {self.pitch.item():.3f} radians")
+
         # Construct observations       
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                     # (3,)
                                 imu_obs,                                                           # (2,)      
@@ -359,16 +362,22 @@ class Go2Robot(LeggedRobot):
         height_deficit = (self.cfg.rewards.base_height_target - base_height).clamp(min=0.0)
         return torch.square(height_deficit)
     
-    def _reward_pitch_penalty(self):
-        """ Penalize the pitch of the robot base.
+    def _reward_pitch_deg_penalty(self):
+        """ Penalize the pitch, in degrees, of the robot base.
         """
-        return torch.square(self.pitch)
+        return torch.square(self.pitch * (180.0 / np.pi))
     
-    def _reward_pitch_down_penalty(self):
+    def _reward_roll_deg_penalty(self):
+        """ Penalize the roll, in degrees, of the robot base.
+        """
+        return torch.square(self.roll * (180.0 / np.pi))
+    
+    def _reward_pitch_down_deg_penalty(self):
         """ Penalize pitching downwards ONLY.
             Pitch: (+) is head down, (-) is head up
         """
-        clamped_pitch = self.pitch.clamp(min=0.0)
+        pitch_deg = self.pitch * (180.0 / np.pi)
+        clamped_pitch = pitch_deg.clamp(min=0.0)
         return torch.square(clamped_pitch)
 
     def _reward_feet_air_time(self):
