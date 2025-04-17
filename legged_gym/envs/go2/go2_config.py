@@ -15,7 +15,7 @@ class Go2Cfg( LeggedRobotCfg ):
         num_observations = num_proprio+(num_proprio*history_buffer_length)
 
         # Phase features
-        period = 0.35
+        period = 0.38
         fr_offset = 0.0 
         bl_offset = 0.5
         fl_offset = 0.0
@@ -84,7 +84,7 @@ class Go2Cfg( LeggedRobotCfg ):
                                0.00,    # stairs down
                                0.20,    # discrete terrain
                                0.00,    # stepping stones
-                               0.20]    # random uniform NOTE: Turning this on artificially boosts terrain difficulty, as it doesn't get harder
+                               0.20]    # random uniform NOTE: Turning this on artificially boosts terrain_level
         
         terrain_stairs      = [0.00,    # smooth slope
                                0.00,    # rough slope
@@ -98,10 +98,10 @@ class Go2Cfg( LeggedRobotCfg ):
         # ========================================================
     class domain_rand:      
         randomize_friction = True
-        friction_range = [0.3, 1.2]
+        friction_range = [0.4, 1.2]
 
         randomize_base_mass = True
-        added_mass_range = [2.0, 4.0]
+        added_mass_range = [0.0, 3.0]
 
         randomize_center_of_mass = True
         added_com_range = [-0.15, 0.15]
@@ -111,17 +111,17 @@ class Go2Cfg( LeggedRobotCfg ):
 
         push_robots = True
         push_interval_s = 8
-        max_push_vel_xy = 10.0 # v2: 1.0 -> 10.0
+        max_push_vel_xy = 1.0      # cheetah_v2: 1.0 -> 10.0
     
 
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
         
         default_joint_angles = {
-            'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.8, 'FL_calf_joint': -1.5, 
-            'FR_hip_joint': -0.1, 'FR_thigh_joint': 0.8, 'FR_calf_joint': -1.5,
-            'RL_hip_joint':  0.1, 'RL_thigh_joint': 1.0, 'RL_calf_joint': -1.5, 
-            'RR_hip_joint': -0.1, 'RR_thigh_joint': 1.0, 'RR_calf_joint': -1.5
+            'FL_hip_joint':  0.1, 'FL_thigh_joint': 1.0, 'FL_calf_joint': -1.8, 
+            'FR_hip_joint': -0.1, 'FR_thigh_joint': 1.0, 'FR_calf_joint': -1.8,
+            'RL_hip_joint':  0.1, 'RL_thigh_joint': 1.3, 'RL_calf_joint': -1.8, 
+            'RR_hip_joint': -0.1, 'RR_thigh_joint': 1.3, 'RR_calf_joint': -1.8
         }
 
 
@@ -145,13 +145,14 @@ class Go2Cfg( LeggedRobotCfg ):
 
 
     class commands ( LeggedRobotCfg.commands ):
+        # TODO: NEED TO REWORK THE COMMAND CURRICULUM (MIT)
         heading_command = False
         resampling_time = 10.
-        zero_command_prob = 0.10 # Resampling probability
+        zero_command_prob = 0.10 # Probability of resampling a zero cmd
         
         # Command curriculum
         curriculum = True
-        max_curriculum = 1.5 # [m/s]
+        max_curriculum = 1.75 # [m/s]
         
         class ranges:
             # Default
@@ -161,7 +162,7 @@ class Go2Cfg( LeggedRobotCfg ):
             # heading = [-3.14, 3.14]
 
             # Cheetah
-            lin_vel_x = [-0.1, 0.8]     # [m/s]
+            lin_vel_x = [-0.1, 0.5]     # [m/s]
             lin_vel_y = [-0.0, 0.0]     # [m/s]
             ang_vel_yaw = [-0.8, 0.8]   # [rad/s]
 
@@ -187,36 +188,41 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_pos = 0.01
             dof_vel = 0.05
             ang_vel = 0.05
-            gravity = 0.02 # or just use for rpy
+            gravity = 0.02 # also used for roll,pitch imu noise
             height_measurements = 0.02
         
 
     class rewards( LeggedRobotCfg.rewards ):
-        soft_dof_pos_limit = 0.9
-        base_height_target = 0.31
         only_positive_rewards = True
+        soft_dof_pos_limit = 0.9        # [%]
+
+        pitch_deg_target = -2.0         # [deg] - (+) is down, (-) is up
+        roll_deg_target = 0.0           # [deg] - (+) is right, (-) is left
+
+        percent_time_on_ground = 0.70   # [%]
+        base_height_target = 0.26       # [m]
+        max_foot_height = 0.08          # [m]
 
         class scales( LeggedRobotCfg.rewards.scales ):
             # ======================
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.0
             contact_phase_match = 1.0
+            swing_phase_lifting = 1.0
             # ======================
-            action_rate = -0.01           
-            lin_vel_z = -0.1
+            action_rate = -0.1         
+            lin_vel_z = -0.1 # extreme parkour had this at -1.0
             ang_vel_xy = -0.01
             torques = -0.00001
             dof_acc = -2.5e-7
-            collision = -10.0
+            collision = -20.0
             delta_torques = -1.0e-7
             dof_error = -0.04 
-            hip_pos = -0.75           # v2: -0.5 -> -0.75
+            hip_pos = -0.5             
             # ====================== 
-            # orientation = -1.
-            minimum_base_height = -30.
-            roll_deg_penalty = -0.005 # v2: -0.002 -> -0.005
-            pitch_deg_penalty = -0.002
-            pitch_down_deg_penalty = -0.001
+            minimum_base_height = -20.
+            roll_deg = -0.0025
+            pitch_deg = -0.0025
             # ====================== 
            
 
@@ -235,9 +241,9 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         schedule = 'fixed' # fixed or adaptive
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'cheetah_v2'
+        run_name = 'cheetah_v3'
         experiment_name = 'go2'
         load_run = -1
-        num_steps_per_env = 24 # 24 -> 40
-        max_iterations = 5000
+        num_steps_per_env = 24
+        max_iterations = 10000
         save_interval = 50

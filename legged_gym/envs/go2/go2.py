@@ -148,7 +148,7 @@ class Go2Robot(LeggedRobot):
             Also updates the period and phase of the gait based on commanded velocity.
             Gait phase stuff is put here so it updates every physics step.
         """
-        # DEBUG
+        # DEBUG: Print base heights
         # base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
         # print("Base height: ", base_height)
 
@@ -243,7 +243,7 @@ class Go2Robot(LeggedRobot):
         imu_obs = torch.stack((self.roll, self.pitch), dim=1)
 
         # DEBUG: Print pitch
-        # print(f"Pitch: {self.pitch.item():.3f} radians")
+        # print(f"Pitch: {(180 / np.pi) * self.pitch.item():.3f} degrees")
 
         # Construct observations       
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                     # (3,)
@@ -322,10 +322,9 @@ class Go2Robot(LeggedRobot):
             - FR and BL feet should contact when phase < 0.5
             - FL and BR feet should contact when phase >= 0.5
         """
-        percent_time_on_ground = 0.5 # TODO: Make this a config variable
         
         # 1 is 100% on ground, 0 is 50% on ground, -1 is 0% on ground
-        stance_threshold = 2.0 * percent_time_on_ground - 1.0
+        stance_threshold = 2.0 * self.cfg.rewards.percent_time_on_ground - 1.0
 
         # Check if feet are supposed to be in stance
         fl_stance = torch.sin(2*np.pi*self.phase_fl) <= stance_threshold
@@ -336,12 +335,42 @@ class Go2Robot(LeggedRobot):
 
         # Reward each foot for contact when it's meant to be stance
         reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
-        reward += torch.where(~(self.fl_contact ^ fl_stance), 0.25, 0.0)
-        reward += torch.where(~(self.fr_contact ^ fr_stance), 0.25, 0.0)
-        reward += torch.where(~(self.bl_contact ^ bl_stance), 0.25, 0.0)
-        reward += torch.where(~(self.br_contact ^ br_stance), 0.25, 0.0)
-        
+        reward += torch.where(~(self.fl_contact ^ fl_stance), 0.25, -0.25)
+        reward += torch.where(~(self.fr_contact ^ fr_stance), 0.25, -0.25)
+        reward += torch.where(~(self.bl_contact ^ bl_stance), 0.25, -0.25)
+        reward += torch.where(~(self.br_contact ^ br_stance), 0.25, -0.25)
         return reward
+    
+
+    def _reward_swing_phase_lifting(self):
+        # 1 is 100% on ground, 0 is 50% on ground, -1 is 0% on ground
+        stance_threshold = 2.0 * self.cfg.rewards.percent_time_on_ground - 1.0
+
+        # Check if feet are supposed to be in stance
+        fl_stance = torch.sin(2*np.pi*self.phase_fl) <= stance_threshold
+        fr_stance = torch.sin(2*np.pi*self.phase_fr) <= stance_threshold
+        bl_stance = torch.sin(2*np.pi*self.phase_bl) <= stance_threshold
+        br_stance = torch.sin(2*np.pi*self.phase_br) <= stance_threshold
+
+        # Calculate foot heights relative to terrain or last contact
+        foot_heights = torch.stack([
+            self.feet_pos[:, 0, 2] - self.last_contact_heights[:, 0],  # FL foot height 
+            self.feet_pos[:, 1, 2] - self.last_contact_heights[:, 1],  # FR foot height
+            self.feet_pos[:, 2, 2] - self.last_contact_heights[:, 2],  # BL foot height
+            self.feet_pos[:, 3, 2] - self.last_contact_heights[:, 3]   # BR foot height
+        ], dim=1)
+
+        # Clamp to a good range
+        foot_heights = torch.clamp(foot_heights, min=0.0, max=self.cfg.rewards.max_foot_height)
+
+        # Swing mask to only apply this reward when feet aren't stance
+        swing_masks = torch.stack([~fl_stance, ~fr_stance, ~bl_stance, ~br_stance], dim=1)
+        
+        # Normalize each foot & apply swing mask
+        height_rewards = (foot_heights / self.cfg.rewards.max_foot_height) * swing_masks.float()
+        
+        # Normalize the SUM by expected number of feet in swing phase
+        return torch.sum(height_rewards, dim=1) / 2.0 
 
     def _reward_stumble_feet(self): # Extreme Parkour -1.0
         """ Penalize feet hitting vertical surfaces. Uses norm of the X and Y contact forces
@@ -362,24 +391,18 @@ class Go2Robot(LeggedRobot):
         height_deficit = (self.cfg.rewards.base_height_target - base_height).clamp(min=0.0)
         return torch.square(height_deficit)
     
-    def _reward_pitch_deg_penalty(self):
+    def _reward_pitch_deg(self):
         """ Penalize the pitch, in degrees, of the robot base.
         """
-        return torch.square(self.pitch * (180.0 / np.pi))
+        pitch_deg = self.pitch * (180.0 / np.pi)
+        return torch.square(pitch_deg - self.cfg.rewards.pitch_deg_target)
     
-    def _reward_roll_deg_penalty(self):
+    def _reward_roll_deg(self):
         """ Penalize the roll, in degrees, of the robot base.
         """
-        return torch.square(self.roll * (180.0 / np.pi))
+        roll_deg = self.roll * (180.0 / np.pi)
+        return torch.square(roll_deg - self.cfg.rewards.roll_deg_target)
     
-    def _reward_pitch_down_deg_penalty(self):
-        """ Penalize pitching downwards ONLY.
-            Pitch: (+) is head down, (-) is head up
-        """
-        pitch_deg = self.pitch * (180.0 / np.pi)
-        clamped_pitch = pitch_deg.clamp(min=0.0)
-        return torch.square(clamped_pitch)
-
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 
             the contact reporting of PhysX is unreliable on meshes 
