@@ -71,6 +71,7 @@ class PPO:
         self.use_clipped_value_loss = use_clipped_value_loss
         self.total_updates = 0.0 # number of total updates - either update() or update_dagger()
 
+
     def init_storage(self, 
                      num_envs, 
                      num_transitions_per_env, 
@@ -107,19 +108,19 @@ class PPO:
     def test_mode(self):
         self.actor_critic.test()
     
+
     def train_mode(self):
         self.actor_critic.train()
 
+
     def act(self, obs, privileged_obs, critic_obs, true_estimated_obs, scan_obs, adaptation_mode=False):
         """ Perform an action using the actor-critic model, and store experiences in the transition object.
-            This method will simply call the actor_critic.act() method, while performing the necessary
-            assignments to store experiences into the PPO's transition object/instance.
+            Essentially wraps ActorCritic.act(), but stores data too.
         """
-        # ================== Modified with Linear Velocity Estimator ==================
         # Get estimated quantities
         estimated_obs = self.estimator(obs)
         
-        # Compute actions (use priv. clone), store in transition -> ACT USING THE ACTUALLY ESTIMATED OBS
+        # Compute actions (use priv. clone), store in transition -> ACT USING THE ESTIMATED OBS
         self.transition.actions = self.actor_critic.act(obs, privileged_obs, estimated_obs, scan_obs, adaptation_mode).detach()
 
         # Compute values, store in transition
@@ -130,39 +131,50 @@ class PPO:
         self.transition.action_mean = self.actor_critic.action_mean.detach()
         self.transition.action_sigma = self.actor_critic.action_std.detach()
         
-        # Store observations
+        # Store observations, return action
         self.transition.observations = obs
         self.transition.privileged_observations = privileged_obs
         self.transition.critic_observations = critic_obs
-        self.transition.true_estimated_observations = true_estimated_obs # This stores the TRUE estimated observations
+        self.transition.true_estimated_observations = true_estimated_obs
         self.transition.scan_observations = scan_obs
-
-        # Return actions
         return self.transition.actions
     
+
     def process_env_step(self, rewards, dones, infos):
+        """ Essentially the 'latter half' of PPO.act() where the returned rewards/done flags from 
+            env.step() are stored into the Transition object, and the state transition is recorded.
+        """
+        # Store rewards and dones
         self.transition.rewards = rewards.clone()
         self.transition.dones = dones
+
         # Bootstrapping on time outs
         if 'time_outs' in infos:
             self.transition.rewards += self.gamma * torch.squeeze(self.transition.values * infos['time_outs'].unsqueeze(1).to(self.device), 1)
 
-        # Record the transition
+        # Record state transition
         self.storage.add_transitions(self.transition)
         self.transition.clear()
         self.actor_critic.reset(dones)
     
+
     def compute_returns(self, last_critic_obs):
-        last_values= self.actor_critic.evaluate(last_critic_obs).detach()    # Forward pass thru critic network
+        """ Compute the returns for the observation. Essentially wraps ActorCritic.evaluate(), 
+            but uses the last critic observation to compute the value function (and stores the result).
+        """
+        last_values = self.actor_critic.evaluate(last_critic_obs).detach()    # Forward pass thru critic network
         self.storage.compute_returns(last_values, self.gamma, self.lam)
 
+
     def update(self):
+        """ Update the actor-critic model using batches of the stored transitions.
+            This is the main training loop of the PPO algorithm.
+        """
         mean_value_loss = 0
         mean_surrogate_loss = 0
         mean_regularization_loss = 0
         mean_estimator_loss = 0
 
-           
         generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
         
         # Loop over minibatches
@@ -197,7 +209,6 @@ class PPO:
                 regularization_coef = start_val + stage * (end_val - start_val)           # Interpolate coefficient
                 # =======================================================================
                 
-                # ====================== Linear Velocity Estimator ======================
                 # Estimator loss
                 pred = self.estimator(obs_batch)
                 estimator_loss = (pred - true_estimated_obs_batch).norm(p=2, dim=1).pow(2).mean()
@@ -207,8 +218,7 @@ class PPO:
                 estimator_loss.backward()
                 nn.utils.clip_grad_norm_(self.estimator.parameters(), self.max_grad_norm)
                 self.estimator_optimizer.step()
-                # =======================================================================
-
+               
                 # KL
                 if self.desired_kl != None and self.schedule == 'adaptive':
                     with torch.inference_mode():
@@ -223,7 +233,6 @@ class PPO:
                         
                         for param_group in self.optimizer.param_groups:
                             param_group['lr'] = self.learning_rate
-
 
                 # Surrogate loss
                 ratio = torch.exp(actions_log_prob_batch - torch.squeeze(old_actions_log_prob_batch))
@@ -242,7 +251,7 @@ class PPO:
                 else:
                     value_loss = (returns_batch - value_batch).pow(2).mean()
 
-                # Compute loss - privileged encoder should mimic adaptation encoder
+                # Compute total loss
                 loss = surrogate_loss \
                      + self.value_loss_coef * value_loss \
                      - self.entropy_coef * entropy_batch.mean() \
@@ -260,7 +269,7 @@ class PPO:
                 mean_regularization_loss += regularization_loss.item()
                 mean_estimator_loss += estimator_loss.item()
 
-        # Finalize metrics, clear storage, and increase update count
+        # Finalize metrics, clear storage, increase update count
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_value_loss /= num_updates
         mean_surrogate_loss /= num_updates
@@ -270,13 +279,16 @@ class PPO:
         self.increase_update_count()
         return mean_value_loss, mean_surrogate_loss, mean_regularization_loss, regularization_coef, mean_estimator_loss
 
+
     def increase_update_count(self):
         """ Increase the counter that tracks the total number of updates 
         """
         self.total_updates += 1
 
+
     def update_dagger(self):
-        """ Update only the adaptation encoder to mimic the privileged encoder 
+        """ Update the adaptation encoder using DAgger. This is a form of imitation learning where the model is 
+            trained to mimic the privileged encoder. This is a separate update from the main PPO update.
         """
         mean_adaptation_loss = 0
 
@@ -288,7 +300,7 @@ class PPO:
             
             # Act without updating anything (inference mode)
             with torch.inference_mode():
-                self.actor_critic.act(obs_batch, privileged_obs_batch, true_estimated_obs_batch, scan_obs_batch, adaptation_mode=True) # original code stored the true ones too
+                self.actor_critic.act(obs_batch, privileged_obs_batch, true_estimated_obs_batch, scan_obs_batch, adaptation_mode=True)
 
             # Get latent vector from privileged encoder
             with torch.inference_mode():
@@ -309,7 +321,7 @@ class PPO:
             # Update mean loss sums
             mean_adaptation_loss += adaptation_loss.item()
         
-        # Finalize metrics, clear storage, and increase update count
+        # Finalize metrics, clear storage, increase update count
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_adaptation_loss /= num_updates
         self.storage.clear()

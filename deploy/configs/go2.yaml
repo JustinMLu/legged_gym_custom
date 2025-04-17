@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Model folder name
-model_name: &model "cheetah_v6"
+model_name: &model "cheetah_v7"
 
 # Paths
 policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/*model/policy.pt"
@@ -25,7 +25,7 @@ buffer_length: 10
 # ===========================================================================================
 
 # Phase Features (max 0.40, min. 0.30)
-period: 0.36
+period: 0.38
 fr_offset: 0.0 
 bl_offset: 0.5
 fl_offset: 0.0
@@ -65,8 +65,8 @@ kds: [1.0, 1.0, 1.0,
 
 # CHEETAH
                 # hip, thigh, calf
-default_angles: [0.1, 0.65, -1.5,    # Front left
-                -0.1, 0.65, -1.5,    # Front right
+default_angles: [0.1, 0.7, -1.5,    # Front left
+                -0.1, 0.7, -1.5,    # Front right
                  0.1, 1.0, -1.5,    # Rear left
                 -0.1, 1.0, -1.5]    # Rear right
 

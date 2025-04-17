@@ -206,7 +206,7 @@ class LeggedRobot(BaseTask):
             self.extras["episode"]["max_command_x"] = self.command_ranges["lin_vel_x"][1]
             self.extras["episode"]["max_command_y"] = self.command_ranges["lin_vel_y"][1]
             self.extras["episode"]["max_command_yaw"] = self.command_ranges["ang_vel_yaw"][1]
-            
+
         # send timeout info to the algorithm
         if self.cfg.env.send_timeouts:
             self.extras["time_outs"] = self.time_out_buf
@@ -400,8 +400,7 @@ class LeggedRobot(BaseTask):
             self._push_robots()
 
     def _resample_commands(self, env_ids):
-        """ Randommly select commands of some environments
-
+        """ Randomly select commands of some environments
         Args:
             env_ids (List[int]): Environments ids for which new commands are needed
         """
@@ -427,7 +426,7 @@ class LeggedRobot(BaseTask):
         # Set small commands to zero
         self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
 
-        # Randomly zero out some commands
+        # Randomly zero out
         zero_mask = torch.rand(len(env_ids), device=self.device) < self.cfg.commands.zero_command_prob
         selected_env_ids = env_ids[zero_mask]
         self.commands[selected_env_ids, :] *= 0.0
@@ -567,9 +566,6 @@ class LeggedRobot(BaseTask):
             self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
             self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
 
-            # self.command_ranges["lin_vel_y"][0] = np.clip(self.command_ranges["lin_vel_y"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
-            # self.command_ranges["lin_vel_y"][1] = np.clip(self.command_ranges["lin_vel_y"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
-        
     def _get_noise_scale_vec(self, cfg):
     # TODO Need to ENSURE compatibility with the history obs. buffer implementation in the future
         """ Sets a vector used to scale the noise added to the observations.

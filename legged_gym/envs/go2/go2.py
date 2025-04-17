@@ -64,29 +64,73 @@ class Go2Robot(LeggedRobot):
             self.hip_joint_indices[i] = self.dof_names.index(name)
 
 
+    def _resample_commands(self, env_ids):
+        """ Randomly select commands of some environments
+        Args:
+            env_ids (List[int]): Environments ids for which new commands are needed
+        """
+        # if empty env_ids provided, do nothing
+        if len(env_ids)==0:
+            return
+
+        # User override
+        if len(self.cfg.commands.user_command) > 0:
+            self.commands[env_ids, :] = torch.as_tensor(self.cfg.commands.user_command, device=self.device).unsqueeze(0)
+            return
+        
+        # Resample linear velocity commands
+        self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], 
+                                                     self.command_ranges["lin_vel_x"][1], 
+                                                     (len(env_ids), 1), 
+                                                     device=self.device).squeeze(1)
+        
+        self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], 
+                                                     self.command_ranges["lin_vel_y"][1], 
+                                                     (len(env_ids), 1), 
+                                                     device=self.device).squeeze(1)
+        
+        # Resample angular velocity commands
+        if self.cfg.commands.heading_command:
+            self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], 
+                                                         self.command_ranges["heading"][1], 
+                                                         (len(env_ids), 1), 
+                                                         device=self.device).squeeze(1)
+        else:
+            self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], 
+                                                         self.command_ranges["ang_vel_yaw"][1], 
+                                                         (len(env_ids), 1), 
+                                                         device=self.device).squeeze(1)
+
+        # Set small commands to zero
+        self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
+
+        # Randomly zero out
+        zero_mask = torch.rand(len(env_ids), device=self.device) < self.cfg.commands.zero_command_prob
+        selected_env_ids = env_ids[zero_mask]
+        self.commands[selected_env_ids, :] *= 0.0
+
+    
     def update_command_curriculum(self, env_ids):
-        # TODO: Split tracking lin velocity into tracking_x_vel and tracking_y_vel!!!
         """ Implements a curriculum of increasing commands
 
         Args:
             env_ids (List[int]): ids of environments being reset
         """
-
         # If the tracking reward is above 80% of the max. tracking reward, increase cmd range
         mean_lin_vel_reward = torch.mean(self.episode_sums["tracking_lin_vel"][env_ids]) / self.max_episode_length
-        delta = self.cfg.commands.cmd_increment
+        delta = self.cfg.commands.vel_increment
         
         # Linear velocities
         if mean_lin_vel_reward > 0.8 * self.reward_scales["tracking_lin_vel"]:
 
             # Increase lower range
             self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - delta, 
-                                                          -self.cfg.commands.max_forward, 
+                                                          -self.cfg.commands.max_reverse_vel, 
                                                           0.)
             # Increase upper range
             self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + delta, 
                                                           0., 
-                                                          self.cfg.commands.max_reverse)
+                                                          self.cfg.commands.max_forward_vel)
 
             
 
@@ -239,7 +283,7 @@ class Go2Robot(LeggedRobot):
         self.phase_br = (self.phase + self.cfg.env.br_offset) % 1
 
         # Zero out phase variables if small command
-        mask = torch.norm(self.commands[:, :3], dim=1) < 0.15 # considers all 3 commands 
+        mask = torch.norm(self.commands[:, :3], dim=1) < 0.2 # considers all 3 commands 
         self.phase_fr *= torch.where(mask, 0.0, 1.0)
         self.phase_fl *= torch.where(mask, 0.0, 1.0)
         self.phase_bl *= torch.where(mask, 0.0, 1.0)

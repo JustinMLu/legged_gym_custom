@@ -97,12 +97,12 @@ class ActorCritic(nn.Module):
         # Build encoders (4096 x 9 x 45) --> (4096 x 9 x 30)
         self.adaptation_encoder_ = AdaptationEncoder(num_base_obs=self.num_proprio, 
                                                      history_buffer_length=self.history_buffer_length, 
-                                                     output_layer_dim=latent_encoder_output_dim, 
+                                                     output_dim=latent_encoder_output_dim, 
                                                      activation='elu')
         
         self.privileged_encoder_ = PrivilegedEncoder(num_privileged_obs=self.num_privileged_obs, # Linear velocity removed
                                                      encoder_hidden_dims=[64, 20], 
-                                                     output_layer_dim=latent_encoder_output_dim, 
+                                                     output_dim=latent_encoder_output_dim, 
                                                      activation='elu') 
 
         # Print the network architecture
@@ -159,7 +159,7 @@ class ActorCritic(nn.Module):
             Input: full observation tensor - assumes history is at the back for now
             Returns: Latent vector encoding
         """
-        hist = obs_buf[:, :-self.num_proprio] # Only the history part
+        hist = obs_buf[:, :-self.num_proprio] # Only the history part -> TODO: Change the CNN architecture to support current as well
         return self.adaptation_encoder_(hist.reshape(-1, self.history_buffer_length, self.num_proprio))
     
     def get_latent(self, obs_buf, privileged_obs_buf, adaptation_mode=False):
@@ -173,8 +173,8 @@ class ActorCritic(nn.Module):
     def update_distribution(self, obs_buf, privileged_obs_buf, estimated_obs_buf, scan_obs_buf, adaptation_mode=False):
         """ Forward pass through actor network, updating action distribution.
         """
-        latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode) # Linear velocity removed
-        actor_input = torch.cat((obs_buf, latent, estimated_obs_buf), dim=-1) # Linear velocity added
+        latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode) 
+        actor_input = torch.cat((obs_buf, latent, estimated_obs_buf), dim=-1)
         mean = self.actor(actor_input)
         self.distribution = Normal(mean, mean*0. + self.std)
 
@@ -190,8 +190,8 @@ class ActorCritic(nn.Module):
             Does not call update_distribution().
         """
         
-        latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode) # Linear velocity removed
-        actor_input = torch.cat((obs_buf, latent, estimated_obs_buf), dim=-1) # Linear velocity added
+        latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode)
+        actor_input = torch.cat((obs_buf, latent, estimated_obs_buf), dim=-1)
         return self.actor(actor_input)
     # ==================================================================================================
 

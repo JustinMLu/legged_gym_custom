@@ -123,7 +123,7 @@ class BaseController:
 
         # Zero out phase variables if small command
         cmd_norm = np.linalg.norm(self.cmd[:3])
-        if cmd_norm < 0.15:
+        if cmd_norm < 0.2:
             phase_fr *= 0.0
             phase_bl *= 0.0
             phase_fl *= 0.0
