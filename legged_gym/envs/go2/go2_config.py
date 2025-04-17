@@ -15,7 +15,7 @@ class Go2Cfg( LeggedRobotCfg ):
         num_observations = num_proprio+(num_proprio*history_buffer_length)
 
         # Phase features
-        period = 0.30 
+        period = 0.38
         fr_offset = 0.0 
         bl_offset = 0.5
         fl_offset = 0.0
@@ -118,8 +118,8 @@ class Go2Cfg( LeggedRobotCfg ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
         
         default_joint_angles = {
-            'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.8, 'FL_calf_joint': -1.5, 
-            'FR_hip_joint': -0.1, 'FR_thigh_joint': 0.8, 'FR_calf_joint': -1.5,
+            'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.65, 'FL_calf_joint': -1.5, 
+            'FR_hip_joint': -0.1, 'FR_thigh_joint': 0.65, 'FR_calf_joint': -1.5,
             'RL_hip_joint':  0.1, 'RL_thigh_joint': 1.0, 'RL_calf_joint': -1.5, 
             'RR_hip_joint': -0.1, 'RR_thigh_joint': 1.0, 'RR_calf_joint': -1.5
         }
@@ -151,8 +151,10 @@ class Go2Cfg( LeggedRobotCfg ):
         
         # Command curriculum
         curriculum = True
-        max_curriculum = 1.5 # [m/s]
-        
+        max_forward = 1.75      # [m/s]
+        max_reverse = 1.0       # [m/s]
+        cmd_increment = 0.05    # [m/s]
+
         class ranges:
             # Default
             # lin_vel_x = [-1.0, 1.0]     # [m/s]
@@ -219,10 +221,8 @@ class Go2Cfg( LeggedRobotCfg ):
             hip_pos = -0.5
             # ====================== 
             minimum_base_height = -20.
-            # roll_deg = -0.0025
-            # pitch_deg = -0.0025
-            roll_deg = -0.002
-            pitch_deg = -0.004
+            roll_deg = -0.0025
+            pitch_deg = -0.0025
             # ====================== 
             collision = -10.0
             calf_collision = -20.0
@@ -244,7 +244,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         schedule = 'fixed' # fixed or adaptive
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'cheetah_v4_resume'
+        run_name = 'cheetah_v6'
         experiment_name = 'go2'
         load_run = -1
         num_steps_per_env = 24

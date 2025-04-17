@@ -197,13 +197,16 @@ class LeggedRobot(BaseTask):
         for key in self.episode_sums.keys():
             self.extras["episode"]['rew_' + key] = torch.mean(self.episode_sums[key][env_ids]) / self.max_episode_length_s
             self.episode_sums[key][env_ids] = 0.
+
         # log additional curriculum info
         if self.cfg.terrain.curriculum:
             self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
+
         if self.cfg.commands.curriculum:
             self.extras["episode"]["max_command_x"] = self.command_ranges["lin_vel_x"][1]
             self.extras["episode"]["max_command_y"] = self.command_ranges["lin_vel_y"][1]
             self.extras["episode"]["max_command_yaw"] = self.command_ranges["ang_vel_yaw"][1]
+            
         # send timeout info to the algorithm
         if self.cfg.env.send_timeouts:
             self.extras["time_outs"] = self.time_out_buf
@@ -564,7 +567,6 @@ class LeggedRobot(BaseTask):
             self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
             self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
 
-            # This wasn't originally in the curriculum...it used to just be lin_vel_x
             # self.command_ranges["lin_vel_y"][0] = np.clip(self.command_ranges["lin_vel_y"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
             # self.command_ranges["lin_vel_y"][1] = np.clip(self.command_ranges["lin_vel_y"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
         

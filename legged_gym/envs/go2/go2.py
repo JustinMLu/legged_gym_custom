@@ -64,6 +64,31 @@ class Go2Robot(LeggedRobot):
             self.hip_joint_indices[i] = self.dof_names.index(name)
 
 
+    def update_command_curriculum(self, env_ids):
+        # TODO: Split tracking lin velocity into tracking_x_vel and tracking_y_vel!!!
+        """ Implements a curriculum of increasing commands
+
+        Args:
+            env_ids (List[int]): ids of environments being reset
+        """
+
+        # If the tracking reward is above 80% of the max. tracking reward, increase cmd range
+        mean_lin_vel_reward = torch.mean(self.episode_sums["tracking_lin_vel"][env_ids]) / self.max_episode_length
+        delta = self.cfg.commands.cmd_increment
+        
+        # Linear velocities
+        if mean_lin_vel_reward > 0.8 * self.reward_scales["tracking_lin_vel"]:
+
+            # Increase lower range
+            self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - delta, 
+                                                          -self.cfg.commands.max_forward, 
+                                                          0.)
+            # Increase upper range
+            self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + delta, 
+                                                          0., 
+                                                          self.cfg.commands.max_reverse)
+
+            
 
     def _get_noise_scale_vec(self, cfg):
         """ Sets a vector used to scale the noise added to the observations.
@@ -135,12 +160,59 @@ class Go2Robot(LeggedRobot):
 
 
     def reset_idx(self, env_ids):
-        """ Reset the environment indices. Overloaded to reset some additional buffers. 
+        """ Reset some environments.
+            Calls self._reset_dofs(env_ids), self._reset_root_states(env_ids), and self._resample_commands(env_ids)
+            [Optional] calls self._update_terrain_curriculum(env_ids), self.update_command_curriculum(env_ids) and
+            Logs episode info
+            Resets some buffers
+
+        Args:
+            env_ids (list[int]): List of environment ids which must be reset
         """
-        super().reset_idx(env_ids)
+        if len(env_ids) == 0:
+            return
+        # update curriculum
+        if self.cfg.terrain.curriculum:
+            self._update_terrain_curriculum(env_ids)
+        # avoid updating command curriculum at each step since the maximum command is common to all envs
+        if self.cfg.commands.curriculum and (self.common_step_counter % self.max_episode_length==0):
+            self.update_command_curriculum(env_ids)
+        # reset robot states
+        self._reset_dofs(env_ids)
+        self._reset_root_states(env_ids)
+        # resample commands
+        self._resample_commands(env_ids)
+        # reset buffers
+        self.last_actions[env_ids] = 0.
+        self.last_dof_vel[env_ids] = 0.
+        self.last_root_vel[env_ids] = 0.
+        self.last_base_lin_vel[env_ids] = 0.
+        self.last_torques[env_ids] = 0. 
+        self.obs_history_buf[env_ids, :, :] = 0.
+        self.episode_length_buf[env_ids] = 0
+        self.reset_buf[env_ids] = 1
         self.feet_air_time[env_ids] = 0.
         self.last_contacts[env_ids] = 0.
         self.last_contact_heights[env_ids] = 0.
+        
+        # fill extras
+        self.extras["episode"] = {}
+        for key in self.episode_sums.keys():
+            self.extras["episode"]['rew_' + key] = torch.mean(self.episode_sums[key][env_ids]) / self.max_episode_length_s
+            self.episode_sums[key][env_ids] = 0.
+
+        # log additional curriculum info
+        if self.cfg.terrain.curriculum:
+            self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
+
+        if self.cfg.commands.curriculum:
+            self.extras["episode"]["max_command_x"] = self.command_ranges["lin_vel_x"][1]
+            self.extras["episode"]["max_command_y"] = self.command_ranges["lin_vel_y"][1]
+            self.extras["episode"]["max_command_yaw"] = self.command_ranges["ang_vel_yaw"][1]
+            
+        # send timeout info to the algorithm
+        if self.cfg.env.send_timeouts:
+            self.extras["time_outs"] = self.time_out_buf
 
 
     def update_feet_states(self):
