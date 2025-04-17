@@ -297,25 +297,27 @@ class Go2Robot(LeggedRobot):
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
 
-    # ============================== CUSTOM GO2 FUNCTIONS ==============================
-    def _reward_delta_torques(self): # Extreme Parkour -1.0e-7
+    # =============================================== CUSTOM GO2 REWARDS ===============================================
+    def _reward_delta_torques(self):    # Extreme Parkour -1.0e-7
         """ Penalize changes in torques
         """
         return torch.sum(torch.square(self.torques - self.last_torques), dim=1)
     
-    def _reward_hip_pos(self): # Extreme Parkour -0.5
+
+    def _reward_hip_pos(self):          # Extreme Parkour -0.5
         """ Penalize DOF hip positions away from default"""
         default_hip_pos = self.default_dof_pos[:, self.hip_joint_indices]
         cur_hip_pos = self.dof_pos[:, self.hip_joint_indices]
         return torch.sum(torch.square(cur_hip_pos - default_hip_pos), dim=1)
+       
     
-    
-    def _reward_dof_error(self): # Extreme Parkour -0.04
+    def _reward_dof_error(self):        # Extreme Parkour -0.04
         """ Penalize DOF positions away from default
         """
         dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
         return dof_error
     
+
     def _reward_contact_phase_match(self):
         """ Reward proper foot contact based on gait phase.
             For a trot gait:
@@ -331,7 +333,6 @@ class Go2Robot(LeggedRobot):
         fr_stance = torch.sin(2*np.pi*self.phase_fr) <= stance_threshold
         bl_stance = torch.sin(2*np.pi*self.phase_bl) <= stance_threshold
         br_stance = torch.sin(2*np.pi*self.phase_br) <= stance_threshold
-        
 
         # Reward each foot for contact when it's meant to be stance
         reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
@@ -372,18 +373,29 @@ class Go2Robot(LeggedRobot):
         # Normalize the SUM by expected number of feet in swing phase
         return torch.sum(height_rewards, dim=1) / 2.0 
 
-    def _reward_stumble_feet(self): # Extreme Parkour -1.0
+
+    def _reward_stumble_feet(self):
         """ Penalize feet hitting vertical surfaces. Uses norm of the X and Y contact forces
         """
         return torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
              5 *torch.abs(self.contact_forces[:, self.feet_indices, 2]), dim=1)
     
+
     def _reward_stumble_calves(self):
         """ Penalize calves hitting vertical surfaces. Uses norm of the X and Y contact forces
         """
         return torch.any(torch.norm(self.contact_forces[:, self.calf_indices, :2], dim=2) >\
              5 *torch.abs(self.contact_forces[:, self.calf_indices, 2]), dim=1)
     
+
+    def _reward_calf_collision(self):
+        """ Penalize calves making ANY contact with surfaces (not just vertical ones)
+            This is used to prevent foot-calf strikes. Does it work? You decide!
+        """
+        threshold = 0.1  # Contact force threshold
+        return torch.sum(1.0*(torch.norm(self.contact_forces[:, self.calf_indices, :], dim=-1) > threshold), dim=1)
+    
+
     def _reward_minimum_base_height(self):
         """ Penalizes base hight BELOW target threshold only.
         """
@@ -391,18 +403,22 @@ class Go2Robot(LeggedRobot):
         height_deficit = (self.cfg.rewards.base_height_target - base_height).clamp(min=0.0)
         return torch.square(height_deficit)
     
+
     def _reward_pitch_deg(self):
         """ Penalize the pitch, in degrees, of the robot base.
         """
         pitch_deg = self.pitch * (180.0 / np.pi)
         return torch.square(pitch_deg - self.cfg.rewards.pitch_deg_target)
     
+
     def _reward_roll_deg(self):
         """ Penalize the roll, in degrees, of the robot base.
         """
         roll_deg = self.roll * (180.0 / np.pi)
         return torch.square(roll_deg - self.cfg.rewards.roll_deg_target)
     
+
+    # ============================ Function that I moved into Go2, planning to move it back ============================
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 
             the contact reporting of PhysX is unreliable on meshes 

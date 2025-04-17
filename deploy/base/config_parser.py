@@ -49,6 +49,10 @@ class ConfigParser:
             self.dof_vel_scale = cfg["dof_vel_scale"]
             self.action_scale = cfg["action_scale"]
 
+            # Offsets
+            self.pitch_offset = cfg["pitch_offset"]
+            self.roll_offset = cfg["roll_offset"]
+
             # Scaling for commands
             self.rc_scale = np.array(cfg["rc_scale"], dtype=np.float32)
             self.cmd_scale = np.array([self.lin_vel_scale, 

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from deploy.base.config_parser import ConfigParser
 
-def mujoco_quaternion_to_euler(quat_angle):
+def quaternion_to_euler(quat_angle):
         """ Converts a quaternion into euler angles (roll, pitch, yaw).
             - Roll: rotation around x in radians (counterclockwise)
             - Pitch: rotation around y in radians (counterclockwise)
@@ -112,7 +112,7 @@ class BaseController:
         # Refresh robot states
         self.refresh_robot_states()
         self.projected_gravity = self.get_gravity_orientation(self.base_quat)
-        self.roll, self.pitch, self.yaw = mujoco_quaternion_to_euler(self.base_quat)
+        self.roll, self.pitch, self.yaw = quaternion_to_euler(self.base_quat)
         
         # Calculate per-leg phase variables
         phase = (elapsed_time_s % self.cfg.period) / self.cfg.period
@@ -130,10 +130,10 @@ class BaseController:
             phase_br *= 0.0
 
         # Calculate sine and cosine of phases for smooth transitions
-        sin_phase_fl = np.sin(2 * np.pi * phase_fl);        cos_phase_fl = np.cos(2 * np.pi * phase_fl)
-        sin_phase_fr = np.sin(2 * np.pi * phase_fr);        cos_phase_fr = np.cos(2 * np.pi * phase_fr)
-        sin_phase_bl = np.sin(2 * np.pi * phase_bl);        cos_phase_bl = np.cos(2 * np.pi * phase_bl)
-        sin_phase_br = np.sin(2 * np.pi * phase_br);        cos_phase_br = np.cos(2 * np.pi * phase_br)
+        sin_phase_fl = np.sin(2 * np.pi * phase_fl); cos_phase_fl = np.cos(2 * np.pi * phase_fl)
+        sin_phase_fr = np.sin(2 * np.pi * phase_fr); cos_phase_fr = np.cos(2 * np.pi * phase_fr)
+        sin_phase_bl = np.sin(2 * np.pi * phase_bl); cos_phase_bl = np.cos(2 * np.pi * phase_bl)
+        sin_phase_br = np.sin(2 * np.pi * phase_br); cos_phase_br = np.cos(2 * np.pi * phase_br)
 
         # Construct phase features
         phase_features = np.array([
@@ -142,20 +142,26 @@ class BaseController:
             sin_phase_bl, cos_phase_bl,
             sin_phase_br, cos_phase_br
         ], dtype=np.float32)
+        
+        # These just help legibility
+        num_a = self.cfg.num_actions
+
+        # IMU readings
+        self.pitch += (self.cfg.pitch_offset) * (np.pi / 180) # Degree offset
+        self.roll += (self.cfg.roll_offset) * (np.pi / 180) # Degree offset
+        imu_obs = np.stack([self.roll, self.pitch])
 
         # Construct observation
-        num_actions = self.cfg.num_actions
         cur_obs = np.zeros(self.cfg.num_proprio, dtype=np.float32)
         cur_obs[:3] = self.ang_vel * self.cfg.ang_vel_scale
-        # cur_obs[3:6] = self.projected_gravity          # Projected gravity (not used anymore)
-        cur_obs[3:5] = np.stack([self.roll, self.pitch]) # Roll and pitch now
+        cur_obs[3:5] = imu_obs
         cur_obs[5:8] = self.cmd * self.cfg.cmd_scale * self.cfg.rc_scale # controller
-        cur_obs[8 : 8+num_actions] = (self.qj - self.cfg.default_angles) * self.cfg.dof_pos_scale 
-        cur_obs[8+num_actions : 8+2*num_actions] = self.dqj * self.cfg.dof_vel_scale
-        cur_obs[8+2*num_actions : 8+3*num_actions] = self.actions
-        cur_obs[8+3*num_actions:8+3*num_actions+8] = phase_features
+        cur_obs[8 : 8+num_a] = (self.qj - self.cfg.default_angles) * self.cfg.dof_pos_scale 
+        cur_obs[8+num_a : 8+2*num_a] = self.dqj * self.cfg.dof_vel_scale
+        cur_obs[8+2*num_a : 8+3*num_a] = self.actions
+        cur_obs[8+3*num_a:8+3*num_a+8] = phase_features
 
-        # Update obs buffer (concat. history)
+        # Update observation buffer
         self.obs[:] = np.concatenate([self.obs_history.flatten(), cur_obs])
         
         # Update the history buffer
@@ -170,13 +176,12 @@ class BaseController:
         obs_tensor = torch.from_numpy(self.obs).unsqueeze(0)
         obs_tensor = torch.clip(obs_tensor, -self.cfg.clip_obs, self.cfg.clip_obs)
         
-        
-        # Get latent vector using adaptation module
+        # Use adaptation module
         hist_len = self.cfg.buffer_length * self.cfg.num_proprio
         hist_tensor = obs_tensor[:, :hist_len].reshape(1, self.cfg.buffer_length, self.cfg.num_proprio)
         latent = self.encoder(hist_tensor)
 
-        # Get estimated quantities using estimator 
+        # Use estimator 
         estimated_vel = self.estimator(obs_tensor)
 
         # Concatenate

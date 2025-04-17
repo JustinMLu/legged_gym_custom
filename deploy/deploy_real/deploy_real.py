@@ -82,7 +82,9 @@ class RobotController(BaseController):
         """
 
         # Input smoothed commands
-        smoothed_cmd = self.get_smoothed_command([self.remote_controller.ly, -1*self.remote_controller.lx, -1*self.remote_controller.wz], 0.05)
+        smoothed_cmd = self.get_smoothed_command([self.remote_controller.ly, 
+                                                  self.remote_controller.lx*-1, 
+                                                  self.remote_controller.rx*-1], 0.05)
         self.cmd[0] = smoothed_cmd[0]
         self.cmd[1] = smoothed_cmd[1]
         self.cmd[2] = smoothed_cmd[2]
@@ -126,7 +128,7 @@ class RobotController(BaseController):
             time.sleep(self.cfg.control_dt)
 
     def move_to_default_pos(self):
-        move_time = 3.0 # seconds
+        move_time = 2.0 # seconds
         num_step = int(move_time / self.cfg.control_dt)
         
         print("Moving to default position...")
@@ -135,7 +137,7 @@ class RobotController(BaseController):
         dof_idx = self.cfg.leg_joint2motor_idx
         kps = self.cfg.kps
         kds = self.cfg.kds
-        default_pos = self.cfg.default_angles # already np array
+        default_pos = self.cfg.default_angles
         dof_size = len(dof_idx)
         
         # record the current pos
