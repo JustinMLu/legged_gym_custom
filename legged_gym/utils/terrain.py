@@ -1,38 +1,8 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: BSD-3-Clause
-# 
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# Copyright (c) 2021 ETH Zurich, Nikita Rudin
-
 import numpy as np
 from numpy.random import choice
 from scipy import interpolate
 
-from isaacgym import terrain_utils
+from legged_gym.utils import terrain_utils
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg
 
 class Terrain:
@@ -79,7 +49,6 @@ class Terrain:
                 self.cfg.slope_treshold
             )
     
-
     def randomized_terrain(self):
         for k in range(self.cfg.num_sub_terrains):
             # Env coordinates in the world
@@ -90,7 +59,6 @@ class Terrain:
             terrain = self.make_terrain(choice, difficulty)
             self.add_terrain_to_map(terrain, i, j)
         
-    # TODO: Fix this typo, they misspelled it to distinguish from the variable
     def curiculum(self):
         """ Generate a curriculum of terrains with varying difficulty and choice.
             Proportions can be set in the config file to control the amount of each terrain.
@@ -105,22 +73,29 @@ class Terrain:
                 terrain = self.make_terrain(choice, difficulty) # Can make it easier if you'd like
                 self.add_terrain_to_map(terrain, i, j)
 
-
     def selected_terrain(self):
         """ Incredibly stupid way of selecting singular terrain from config.
         """
         terrain_type = self.cfg.terrain_kwargs.pop('type')
         for k in range(self.cfg.num_sub_terrains):
-            # Env coordinates in the world
             (i, j) = np.unravel_index(k, (self.cfg.num_rows, self.cfg.num_cols))
 
             terrain = terrain_utils.SubTerrain("terrain",
-                              width=self.width_per_env_pixels,
-                              length=self.length_per_env_pixels,
-                              vertical_scale=self.cfg.vertical_scale,
-                              horizontal_scale=self.cfg.horizontal_scale)
+                                                width=self.width_per_env_pixels,
+                                                length=self.length_per_env_pixels,
+                                                vertical_scale=self.cfg.vertical_scale,
+                                                horizontal_scale=self.cfg.horizontal_scale)
 
             eval(terrain_type)(terrain, **self.cfg.terrain_kwargs)
+            
+            # add some rough and tumble terrainness
+            if self.cfg.add_roughness_to_selected_terrain:
+                terrain_utils.random_uniform_terrain(terrain, 
+                                                     min_height=-0.06, 
+                                                     max_height=0.06, 
+                                                     step=0.005, 
+                                                     downsampled_scale=0.2)
+
             self.add_terrain_to_map(terrain, i, j)
     
 
@@ -182,25 +157,48 @@ class Terrain:
             
         return terrain
 
-
+    # New
     def add_terrain_to_map(self, terrain, row, col):
         i = row
         j = col
-        # map coordinate system
+        # Compute global slice indices
         start_x = self.border + i * self.length_per_env_pixels
-        end_x = self.border + (i + 1) * self.length_per_env_pixels
+        end_x   = self.border + (i + 1) * self.length_per_env_pixels
         start_y = self.border + j * self.width_per_env_pixels
-        end_y = self.border + (j + 1) * self.width_per_env_pixels
+        end_y   = self.border + (j + 1) * self.width_per_env_pixels
+
+        # Directly assign the generated patch (no transpose needed)
         self.height_field_raw[start_x:end_x, start_y:end_y] = terrain.height_field_raw
 
+        # Update environment origin based on local max height
         env_origin_x = (i + 0.5) * self.env_length
         env_origin_y = (j + 0.5) * self.env_width
         x1 = int((self.env_length/2. - 1) / terrain.horizontal_scale)
         x2 = int((self.env_length/2. + 1) / terrain.horizontal_scale)
         y1 = int((self.env_width/2. - 1) / terrain.horizontal_scale)
         y2 = int((self.env_width/2. + 1) / terrain.horizontal_scale)
-        env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*terrain.vertical_scale
+        env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * terrain.vertical_scale
         self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
+
+    # Old
+    # def add_terrain_to_map(self, terrain, row, col):
+    #     i = row
+    #     j = col
+    #     # map coordinate system
+    #     start_x = self.border + i * self.length_per_env_pixels
+    #     end_x = self.border + (i + 1) * self.length_per_env_pixels
+    #     start_y = self.border + j * self.width_per_env_pixels
+    #     end_y = self.border + (j + 1) * self.width_per_env_pixels
+    #     self.height_field_raw[start_x:end_x, start_y:end_y] = terrain.height_field_raw
+
+    #     env_origin_x = (i + 0.5) * self.env_length
+    #     env_origin_y = (j + 0.5) * self.env_width
+    #     x1 = int((self.env_length/2. - 1) / terrain.horizontal_scale)
+    #     x2 = int((self.env_length/2. + 1) / terrain.horizontal_scale)
+    #     y1 = int((self.env_width/2. - 1) / terrain.horizontal_scale)
+    #     y2 = int((self.env_width/2. + 1) / terrain.horizontal_scale)
+    #     env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*terrain.vertical_scale
+    #     self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
 
 
 def gap_terrain(terrain, gap_size, platform_size=1.):

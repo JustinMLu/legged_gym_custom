@@ -21,10 +21,12 @@ class Go2Cfg( LeggedRobotCfg ):
         br_offset = 0.5
 
     class terrain( LeggedRobotCfg.terrain ):
-        num_rows = 10               # num. difficulties     ->    (0/n, 1/n, 2/n ... (n-1)/n)
-        num_cols = 20               # max. terrain choices  ->    affects terrain_proportions "accuracy"
-        mesh_type = 'plane'
-        measure_heights = False     # add a height measurement to the observations
+        mesh_type = 'trimesh'
+        terrain_length = 20.
+        terrain_width = 8.
+        num_rows = 10               # num. difficulties
+        num_cols = 20               # max. terrain choices
+        measure_heights = False     # reworked to do different stuff
         
         # Extreme parkour (132 SCANDOTS)
         # measured_points_x = [-0.45, -0.3, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2]
@@ -32,15 +34,7 @@ class Go2Cfg( LeggedRobotCfg ):
         
         # Manual terrain selection
         # ========================================================
-        selected = False
-
-        random_uniform_kwargs = {
-            "type": "terrain_utils.random_uniform_terrain",
-            "min_height": -0.07,
-            "max_height": 0.07,
-            "step": 0.005,
-            "downsampled_scale": 0.2
-        }
+        selected = True
 
         discrete_obstacles_kwargs = {
             "type": "terrain_utils.discrete_obstacles_terrain",
@@ -64,7 +58,31 @@ class Go2Cfg( LeggedRobotCfg ):
             "platform_size":2.
         }
 
-        terrain_kwargs = random_uniform_kwargs
+        random_uniform_kwargs = {
+            "type": "terrain_utils.random_uniform_terrain",
+            "min_height": -0.07,
+            "max_height": 0.07,
+            "step": 0.005,
+            "downsampled_scale": 0.2
+        }
+
+        parkour_hurdle_kwargs = {
+            "type": "terrain_utils.parkour_hurdle_terrain",
+            "platform_len": 2.5,                # "Start" platform length
+            "platform_height": 0.5,             # "Start" platform height
+            "num_stones": 1,
+            "stone_len": 0.3,
+            "x_range": [2.4, 2.9],              # MORE negative -> HURDLES MOVE BACKWARDS
+            "y_range": [-6.5, -5.0],            # MORE negative -> HURDLES MOVE RIGHTWARDS
+            "half_valid_width": [3.0, 4.5],     
+            "hurdle_height_range": [0.2, 0.3],  # Hurdle height range
+            "pad_width": 0.1,                   # Border wall thickness
+            "pad_height": 0.5,                  # Border wall height
+            "flat": False,
+        }
+        
+        terrain_kwargs = parkour_hurdle_kwargs
+        add_roughness_to_selected_terrain = True
         # ========================================================
 
         # Terrain curriculum TODO: NEEDS TO BE REWORKED

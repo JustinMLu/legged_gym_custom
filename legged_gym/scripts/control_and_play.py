@@ -106,10 +106,10 @@ def play(args):
                 env.gym.write_viewer_image_to_file(env.viewer, filename)
                 img_idx += 1 
 
-        robot_pos = env.root_states[0, :3].cpu().numpy()
-        camera_offset = np.array([-2.0, 0.0, 0.75])  # 2m behind, same y, 1.5m above
-        camera_position = robot_pos + camera_offset
-        env.set_camera(camera_position, robot_pos)  # Camera position, look-at position
+        # robot_pos = env.root_states[0, :3].cpu().numpy()
+        # camera_offset = np.array([-2.0, 0.0, 0.75])  # 2m behind, same y, 1.5m above
+        # camera_position = robot_pos + camera_offset
+        # env.set_camera(camera_position, robot_pos)  # Camera position, look-at position
 
         # if MOVE_CAMERA:
         #     camera_position += camera_vel * env.dt
