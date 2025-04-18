@@ -35,7 +35,7 @@ class MujocoController(BaseController):
         """
 
         # Input smoothed commands
-        smoothed_cmd = self.get_smoothed_command([self.gamepad.vx, self.gamepad.vy, self.gamepad.wz], 0.05)
+        smoothed_cmd = self.get_smoothed_command([self.gamepad.vx, self.gamepad.vy, self.gamepad.wz], 0.025)
         self.cmd[0] = smoothed_cmd[0]
         self.cmd[1] = smoothed_cmd[1]
         self.cmd[2] = smoothed_cmd[2]
@@ -73,8 +73,8 @@ if __name__ == "__main__":
     viewer = mujoco.viewer.launch_passive(controller.mj_model, controller.mj_data)
     viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
     viewer.cam.trackbodyid = 0
-    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
-    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = False
+    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = False
+    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = True
 
 
     while viewer.is_running():

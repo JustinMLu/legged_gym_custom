@@ -59,10 +59,18 @@ class Go2Robot(LeggedRobot):
         # Get indices of hip, thigh and calf joints
         hip_joint_names = ["FR_hip_joint", "FL_hip_joint", "RR_hip_joint", "RL_hip_joint"]
         self.hip_joint_indices = torch.zeros(len(hip_joint_names), dtype=torch.long, device=self.device, requires_grad=False)
-
         for i, name in enumerate(hip_joint_names):
             self.hip_joint_indices[i] = self.dof_names.index(name)
 
+        thigh_joint_names = ["FR_thigh_joint", "FL_thigh_joint", "RR_thigh_joint", "RL_thigh_joint"]
+        self.thigh_joint_indices = torch.zeros(len(thigh_joint_names), dtype=torch.long, device=self.device, requires_grad=False)
+        for i, name in enumerate(thigh_joint_names):
+            self.thigh_joint_indices[i] = self.dof_names.index(name)
+
+        calf_joint_names = ["FR_calf_joint", "FL_calf_joint", "RR_calf_joint", "RL_calf_joint"]
+        self.calf_joint_indices = torch.zeros(len(calf_joint_names), dtype=torch.long, device=self.device, requires_grad=False)
+        for i, name in enumerate(calf_joint_names):
+            self.calf_joint_indices[i] = self.dof_names.index(name)
 
     def _resample_commands(self, env_ids):
         """ Randomly select commands of some environments
@@ -145,7 +153,6 @@ class Go2Robot(LeggedRobot):
         noise_level = self.cfg.noise.noise_level
         # ==========================================================================
         noise_vec[:3] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
-        # noise_vec[3:6] = noise_scales.gravity * noise_level # projected gravity
         # ==========================================================================
         noise_vec[3:5] = noise_scales.gravity * noise_level  # roll, pitch
         noise_vec[5:8] = 0. # commands 
@@ -425,7 +432,18 @@ class Go2Robot(LeggedRobot):
         default_hip_pos = self.default_dof_pos[:, self.hip_joint_indices]
         cur_hip_pos = self.dof_pos[:, self.hip_joint_indices]
         return torch.sum(torch.square(cur_hip_pos - default_hip_pos), dim=1)
-       
+    
+    def _reward_thigh_pos(self):
+        """ Penalize DOF thigh positions away from default"""
+        default_thigh_pos = self.default_dof_pos[:, self.thigh_joint_indices]
+        cur_thigh_pos = self.dof_pos[:, self.thigh_joint_indices]
+        return torch.sum(torch.square(cur_thigh_pos - default_thigh_pos), dim=1)
+    
+    def _reward_calf_pos(self):
+        """ Penalize DOF calf positions away from default"""
+        default_calf_pos = self.default_dof_pos[:, self.calf_joint_indices]
+        cur_calf_pos = self.dof_pos[:, self.calf_joint_indices]
+        return torch.sum(torch.square(cur_calf_pos - default_calf_pos), dim=1)
     
     def _reward_dof_error(self):        # Extreme Parkour -0.04
         """ Penalize DOF positions away from default
@@ -450,12 +468,13 @@ class Go2Robot(LeggedRobot):
         bl_stance = torch.sin(2*np.pi*self.phase_bl) <= stance_threshold
         br_stance = torch.sin(2*np.pi*self.phase_br) <= stance_threshold
 
-        # Reward each foot for contact when it's meant to be stance
+        # Reward / penalty for each foot
         reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
         reward += torch.where(~(self.fl_contact ^ fl_stance), 0.25, -0.25)
         reward += torch.where(~(self.fr_contact ^ fr_stance), 0.25, -0.25)
         reward += torch.where(~(self.bl_contact ^ bl_stance), 0.25, -0.25)
         reward += torch.where(~(self.br_contact ^ br_stance), 0.25, -0.25)
+
         return reward
     
 
@@ -471,10 +490,10 @@ class Go2Robot(LeggedRobot):
 
         # Calculate foot heights relative to terrain or last contact
         foot_heights = torch.stack([
-            self.feet_pos[:, 0, 2] - self.last_contact_heights[:, 0],  # FL foot height 
-            self.feet_pos[:, 1, 2] - self.last_contact_heights[:, 1],  # FR foot height
-            self.feet_pos[:, 2, 2] - self.last_contact_heights[:, 2],  # BL foot height
-            self.feet_pos[:, 3, 2] - self.last_contact_heights[:, 3]   # BR foot height
+            self.feet_pos[:, 0, 2] - self.last_contact_heights[:, 0],  # FL
+            self.feet_pos[:, 1, 2] - self.last_contact_heights[:, 1],  # FR
+            self.feet_pos[:, 2, 2] - self.last_contact_heights[:, 2],  # BL
+            self.feet_pos[:, 3, 2] - self.last_contact_heights[:, 3]   # BR
         ], dim=1)
 
         # Clamp to a good range
@@ -484,7 +503,10 @@ class Go2Robot(LeggedRobot):
         swing_masks = torch.stack([~fl_stance, ~fr_stance, ~bl_stance, ~br_stance], dim=1)
         
         # Normalize each foot & apply swing mask
-        height_rewards = (foot_heights / self.cfg.rewards.max_foot_height) * swing_masks.float()
+        normalized_heights = (foot_heights / self.cfg.rewards.max_foot_height)
+
+        # Reward / penalty for each foot
+        height_rewards = torch.where(swing_masks, normalized_heights, -normalized_heights)
         
         # Normalize the SUM by expected number of feet in swing phase
         return torch.sum(height_rewards, dim=1) / 2.0 
@@ -534,7 +556,7 @@ class Go2Robot(LeggedRobot):
         return torch.square(roll_deg - self.cfg.rewards.roll_deg_target)
     
 
-    # ============================ Function that I moved into Go2, planning to move it back ============================
+    # Function that I moved into Go2, planning to move it back 
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 
             the contact reporting of PhysX is unreliable on meshes 

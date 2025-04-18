@@ -84,7 +84,7 @@ class RobotController(BaseController):
         # Input smoothed commands
         smoothed_cmd = self.get_smoothed_command([self.remote_controller.ly, 
                                                   self.remote_controller.lx*-1, 
-                                                  self.remote_controller.rx*-1], 0.05)
+                                                  self.remote_controller.rx*-1], 0.025)
         self.cmd[0] = smoothed_cmd[0]
         self.cmd[1] = smoothed_cmd[1]
         self.cmd[2] = smoothed_cmd[2]
