@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Model folder name
-model_name: &model "cheetah_v8_full"
+model_name: &model "cheetah_v8_FULL"
 
 # Paths
 policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/*model/policy.pt"
@@ -25,7 +25,7 @@ buffer_length: 10
 # ===========================================================================================
 
 # Phase Features (max 0.40, min. 0.30)
-period: 0.30
+period: 0.34
 fr_offset: 0.0 
 bl_offset: 0.5
 fl_offset: 0.0

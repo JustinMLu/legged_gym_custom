@@ -14,7 +14,7 @@ class Go2Cfg( LeggedRobotCfg ):
         num_observations = num_proprio+(num_proprio*history_buffer_length)
 
         # Phase features
-        period = 0.35
+        period = 0.34
         fr_offset = 0.0 
         bl_offset = 0.5
         fl_offset = 0.0
@@ -104,7 +104,7 @@ class Go2Cfg( LeggedRobotCfg ):
         added_com_range = [-0.15, 0.15]
 
         randomize_motor_strength = True
-        motor_strength_range = [0.7, 1.2]
+        motor_strength_range = [0.8, 1.2]
 
         push_robots = True
         push_interval_s = 8
@@ -147,8 +147,7 @@ class Go2Cfg( LeggedRobotCfg ):
         
         # Command curriculum
         curriculum = True
-
-        max_forward_vel = 2.0    # [m/s]
+        max_forward_vel = 2.5    # [m/s]
         max_reverse_vel = 1.0    # [m/s]
         vel_increment = 0.10     # [m/s]
 
