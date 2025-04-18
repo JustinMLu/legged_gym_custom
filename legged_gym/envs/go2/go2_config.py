@@ -211,9 +211,9 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_acc = -2.5e-7
             delta_torques = -1.0e-7
             # ========================= 
-            dof_error = -0.04 
-            hip_pos = -0.5
-            calf_pos = -0.5
+            # dof_error = -0.04         # no thigh penalty
+            hip_pos = -0.04 + -0.5
+            calf_pos = -0.04 + -0.5
             # ========================= 
             minimum_base_height = -20.0
             orientation = -1.0
@@ -239,7 +239,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         schedule = 'fixed' # fixed or adaptive
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'skipper_reborn'
+        run_name = 'cheetah_v9'
         experiment_name = 'go2'
         load_run = -1
         num_steps_per_env = 24
