@@ -95,7 +95,7 @@ class Go2Cfg( LeggedRobotCfg ):
     
     class domain_rand:      
         randomize_friction = True
-        friction_range = [0.2, 1.2]
+        friction_range = [0.3, 1.3]
 
         randomize_base_mass = True
         added_mass_range = [0.0, 3.0]
@@ -210,9 +210,9 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_acc = -2.5e-7
             delta_torques = -1.0e-7
             # ========================= 
-            # dof_error = -0.04         # no thigh penalty
-            hip_pos = -0.04 + -0.5
-            calf_pos = -0.04 + -0.5
+            dof_error = -0.04
+            hip_pos = -0.5
+            calf_pos = -0.5
             # ========================= 
             minimum_base_height = -20.0
             orientation = -1.0
@@ -220,7 +220,7 @@ class Go2Cfg( LeggedRobotCfg ):
             collision = -10.0
             calf_collision = -20.0
             # =========================
-            feet_contact_forces = -0.01
+            feet_contact_forces = -0.015
            
 
 
