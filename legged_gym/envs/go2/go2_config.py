@@ -45,12 +45,6 @@ class Go2Cfg( LeggedRobotCfg ):
             "platform_size": 3.
         }
 
-        pyramid_sloped_kwargs = {
-            "type": "terrain_utils.pyramid_sloped_terrain",
-            "slope": 1.0*0.5,
-            "platform_size": 3.
-        }
-
         pyramid_stairs_kwargs = {
             "type": "terrain_utils.pyramid_stairs_terrain",
             "step_width":0.25,
@@ -68,16 +62,19 @@ class Go2Cfg( LeggedRobotCfg ):
 
         parkour_hurdle_kwargs = {
             "type": "terrain_utils.parkour_hurdle_terrain",
-            "platform_len": 2.5,                # "Start" platform length
-            "platform_height": 0.5,             # "Start" platform height
-            "num_stones": 1,
-            "stone_len": 0.3,
-            "x_range": [14.0, 14.1],            # MORE negative -> HURDLES MOVE BACKWARDS
-            "y_range": [-6.2, -6.0],            # MORE negative -> HURDLES MOVE RIGHTWARDS
-            "half_valid_width": [2.4, 2.5],     
-            "hurdle_height_range": [0.2, 0.3],  # Hurdle height range
-            "pad_width": 0.1,                   # Border wall thickness
-            "pad_height": 0.5,                  # Border wall height
+            "platform_len": 2.5,                # starting platform length
+            "platform_height": 0.5,             # starting platform height
+
+            "x_range": [4.0, 14.0],             # (-) backward, (+) forward
+            "y_range": [-6.2, -6.0],            # (-) right, (+) left 
+
+            "num_stones": 1,                    # num. hurdles
+            "stone_len": 0.4,                   # hurdle thickness
+            "half_valid_width": [1.4, 1.5],     # hurdle width range
+            "hurdle_height_range": [0.2, 0.3],  # hurdle height range
+
+            "pad_width": 0.1,                   # border thickness
+            "pad_height": 0.5,                  # border height
             "flat": False,
         }
         
