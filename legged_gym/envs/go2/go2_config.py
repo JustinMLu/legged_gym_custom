@@ -72,9 +72,9 @@ class Go2Cfg( LeggedRobotCfg ):
             "platform_height": 0.5,             # "Start" platform height
             "num_stones": 1,
             "stone_len": 0.3,
-            "x_range": [2.4, 2.9],              # MORE negative -> HURDLES MOVE BACKWARDS
-            "y_range": [-6.5, -5.0],            # MORE negative -> HURDLES MOVE RIGHTWARDS
-            "half_valid_width": [3.0, 4.5],     
+            "x_range": [14.0, 14.1],            # MORE negative -> HURDLES MOVE BACKWARDS
+            "y_range": [-6.1, -6.0],            # MORE negative -> HURDLES MOVE RIGHTWARDS
+            "half_valid_width": [2.4, 2.5],     
             "hurdle_height_range": [0.2, 0.3],  # Hurdle height range
             "pad_width": 0.1,                   # Border wall thickness
             "pad_height": 0.5,                  # Border wall height
