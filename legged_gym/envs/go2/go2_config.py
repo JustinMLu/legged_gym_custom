@@ -95,16 +95,16 @@ class Go2Cfg( LeggedRobotCfg ):
     
     class domain_rand:      
         randomize_friction = True
-        friction_range = [0.3, 1.3]
+        friction_range = [0.1, 1.2]
 
         randomize_base_mass = True
-        added_mass_range = [0.0, 3.0]
+        added_mass_range = [-0.5, 4.0]
 
         randomize_center_of_mass = True
-        added_com_range = [-0.175, 0.175]
+        added_com_range = [-0.2, 0.2]
 
-        randomize_motor_strength = True
-        motor_strength_range = [0.8, 1.2]
+        randomize_kp_kd = True
+        kp_kd_range = [0.8, 1.2]
 
         push_robots = True
         push_interval_s = 8
@@ -114,10 +114,10 @@ class Go2Cfg( LeggedRobotCfg ):
         pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
         
         default_joint_angles = {
-            'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.9, 'FL_calf_joint': -1.65, 
-            'FR_hip_joint': -0.1, 'FR_thigh_joint': 0.9, 'FR_calf_joint': -1.65,
-            'RL_hip_joint':  0.1, 'RL_thigh_joint': 1.1, 'RL_calf_joint': -1.65, 
-            'RR_hip_joint': -0.1, 'RR_thigh_joint': 1.1, 'RR_calf_joint': -1.65
+            'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.9, 'FL_calf_joint': -1.7, 
+            'FR_hip_joint': -0.1, 'FR_thigh_joint': 0.9, 'FR_calf_joint': -1.7,
+            'RL_hip_joint':  0.1, 'RL_thigh_joint': 1.1, 'RL_calf_joint': -1.7, 
+            'RR_hip_joint': -0.1, 'RR_thigh_joint': 1.1, 'RR_calf_joint': -1.7
         }
 
 
@@ -154,13 +154,13 @@ class Go2Cfg( LeggedRobotCfg ):
         class ranges:
             lin_vel_x = [-0.1, 0.5]     # [m/s]
             lin_vel_y = [-0.0, 0.0]     # [m/s]
-            ang_vel_yaw = [-0.8, 0.8]   # [rad/s]
+            ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
             # heading = [-3.14, 3.14]
 
 
     class normalization( LeggedRobotCfg.normalization ):
         clip_observations = 100.
-        clip_actions = 3.8
+        clip_actions = 4.0
         
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
             lin_vel = 2.0
@@ -188,7 +188,7 @@ class Go2Cfg( LeggedRobotCfg ):
         soft_dof_pos_limit = 0.9        # [%]
         base_height_target = 0.25       # [m]
 
-        pitch_deg_target = -2.0         # [deg]   (+) down, (-) up
+        pitch_deg_target = 0.0          # [deg]   (+) down, (-) up
         roll_deg_target = 0.0           # [deg]   (+) right, (-) left
 
         max_foot_height = 0.08          # [m]
@@ -211,8 +211,9 @@ class Go2Cfg( LeggedRobotCfg ):
             delta_torques = -1.0e-7
             # ========================= 
             dof_error = -0.04
+            thigh_pos = -0.06
             hip_pos = -0.5
-            calf_pos = -0.1
+            calf_pos = -0.5
             # ========================= 
             minimum_base_height = -20.0
             orientation = -1.0
@@ -221,6 +222,7 @@ class Go2Cfg( LeggedRobotCfg ):
             calf_collision = -20.0
             # =========================
             feet_contact_forces = -0.01
+            # stumble_feet = -1.0
            
 
 

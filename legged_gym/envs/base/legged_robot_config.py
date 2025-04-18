@@ -139,8 +139,8 @@ class LeggedRobotCfg(BaseConfig):
         randomize_center_of_mass = False
         added_com_range = [-0.2, 0.2]
 
-        randomize_motor_strength = False
-        motor_strength_range = [0.8, 1.2]
+        randomize_kp_kd = False
+        kp_kd_range = [0.8, 1.2]
         
         push_robots = False
         push_interval_s = 15

@@ -394,8 +394,8 @@ class Go2Robot(LeggedRobot):
         # Update privileged obs buffer
         self.privileged_obs_buf = torch.cat((self.privileged_mass_params,     # 4
                                              self.privileged_friction_coeffs, # 1
-                                             self.motor_strength[0] - 1,      # 12
-                                             self.motor_strength[1] - 1,      # 12
+                                             self.kp_kd_multipliers[0] - 1,      # 12
+                                             self.kp_kd_multipliers[1] - 1,      # 12
                                              ), dim=-1)
         
         # Update estimated obs buffer
@@ -420,14 +420,14 @@ class Go2Robot(LeggedRobot):
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
 
-    # =============================================== CUSTOM GO2 REWARDS ===============================================
-    def _reward_delta_torques(self):    # Extreme Parkour -1.0e-7
+
+    def _reward_delta_torques(self):
         """ Penalize changes in torques
         """
         return torch.sum(torch.square(self.torques - self.last_torques), dim=1)
     
 
-    def _reward_hip_pos(self):          # Extreme Parkour -0.5
+    def _reward_hip_pos(self):
         """ Penalize DOF hip positions away from default"""
         default_hip_pos = self.default_dof_pos[:, self.hip_joint_indices]
         cur_hip_pos = self.dof_pos[:, self.hip_joint_indices]
@@ -445,7 +445,7 @@ class Go2Robot(LeggedRobot):
         cur_calf_pos = self.dof_pos[:, self.calf_joint_indices]
         return torch.sum(torch.square(cur_calf_pos - default_calf_pos), dim=1)
     
-    def _reward_dof_error(self):        # Extreme Parkour -0.04
+    def _reward_dof_error(self):
         """ Penalize DOF positions away from default
         """
         dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
@@ -488,7 +488,6 @@ class Go2Robot(LeggedRobot):
         bl_stance = torch.sin(2*np.pi*self.phase_bl) <= stance_threshold
         br_stance = torch.sin(2*np.pi*self.phase_br) <= stance_threshold
 
-        # Calculate foot heights relative to terrain or last contact
         foot_heights = torch.stack([
             self.feet_pos[:, 0, 2] - self.last_contact_heights[:, 0],  # FL
             self.feet_pos[:, 1, 2] - self.last_contact_heights[:, 1],  # FR
@@ -496,19 +495,14 @@ class Go2Robot(LeggedRobot):
             self.feet_pos[:, 3, 2] - self.last_contact_heights[:, 3]   # BR
         ], dim=1)
 
-        # Clamp to a good range
         foot_heights = torch.clamp(foot_heights, min=0.0, max=self.cfg.rewards.max_foot_height)
-
-        # Swing mask to only apply this reward when feet aren't stance
         swing_masks = torch.stack([~fl_stance, ~fr_stance, ~bl_stance, ~br_stance], dim=1)
         
         # Normalize each foot & apply swing mask
         normalized_heights = (foot_heights / self.cfg.rewards.max_foot_height)
-
-        # Reward / penalty for each foot
         height_rewards = torch.where(swing_masks, normalized_heights, -normalized_heights)
         
-        # Normalize the SUM by expected number of feet in swing phase
+        # Normalize sum by expected number of feet in swing phase
         return torch.sum(height_rewards, dim=1) / 2.0 
 
 

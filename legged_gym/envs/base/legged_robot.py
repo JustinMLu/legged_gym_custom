@@ -85,20 +85,14 @@ class LeggedRobot(BaseTask):
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
 
-        # Post_physics_step: updates a lot of quantities, recomputes observations, invokes physics callback
+        # Updates a lot of quantities, recomputes obs, invokes physics callback
         self.post_physics_step()
 
         # Clip observations
         clip_obs = self.cfg.normalization.clip_observations
         self.obs_buf = torch.clip(self.obs_buf, -clip_obs, clip_obs)
-
-        # Clip privileged observations
         self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
-
-        # Clip critic observations
         self.critic_obs_buf = torch.clip(self.critic_obs_buf, -clip_obs, clip_obs)
-
-        # Clip estimated obs
         self.estimated_obs_buf = torch.clip(self.estimated_obs_buf, -clip_obs, clip_obs)
 
         # DO NOT CLIP SCAN OBS
@@ -147,14 +141,14 @@ class LeggedRobot(BaseTask):
         """ Check if environments need to be reset
         """
 
-        # add any robots that got TOUCHED where they shouldnt be TOUCHED to the reset buffer
+        # Terminate if certain links are contacted
         self.reset_buf = torch.any(torch.norm(self.contact_forces[:, self.termination_contact_indices, :], dim=-1) > 1., dim=1)
         
-        # also the robots that timed out
+        # Terminate timed out robots
         self.time_out_buf = self.episode_length_buf > self.max_episode_length # no terminal reward for time-outs
         self.reset_buf |= self.time_out_buf
 
-        # also the robot that FLIPPY FLOPPYED
+        # Terminate robots that flipped over
         self.upside_down_buf = self.projected_gravity[:, 2] > 0. # past 90 degrees
         self.reset_buf |= self.upside_down_buf
 
@@ -188,7 +182,6 @@ class LeggedRobot(BaseTask):
         self.last_base_lin_vel[env_ids] = 0.
         self.last_torques[env_ids] = 0. 
         self.obs_history_buf[env_ids, :, :] = 0.
-        # self.feet_air_time[env_ids] = 0. MOVED TO GO2.PY
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
         
@@ -449,12 +442,12 @@ class LeggedRobot(BaseTask):
 
         # Position control
         if control_type=="P":
-            if not self.cfg.domain_rand.randomize_motor_strength:
+            if not self.cfg.domain_rand.randomize_kp_kd:
                 torques = self.p_gains * (actions_scaled + self.default_dof_pos - self.dof_pos)  \
                         - self.d_gains * self.dof_vel
             else:
-                torques = self.motor_strength[0] * self.p_gains * (actions_scaled + self.default_dof_pos - self.dof_pos) \
-                        - self.motor_strength[1] * self.d_gains * self.dof_vel
+                torques = self.kp_kd_multipliers[0] * self.p_gains * (actions_scaled + self.default_dof_pos - self.dof_pos) \
+                        - self.kp_kd_multipliers[1] * self.d_gains * self.dof_vel
 
         # Velocity control
         elif control_type=="V":
@@ -474,15 +467,26 @@ class LeggedRobot(BaseTask):
 
     def _reset_dofs(self, env_ids):
         """ Resets DOF position and velocities of selected environmments
-        Positions are randomly selected within 0.5:1.5 x default positions.
-        Velocities are set to zero.
+            Positions are randomly selected within 0.5:1.5 x default positions.
+            Velocities are set to zero.
 
         Args:
             env_ids (List[int]): Environment ids
         """
-        self.dof_pos[env_ids] = self.default_dof_pos * torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof), device=self.device)
+
+        # Slightly randomize dof starting positions
+        self.dof_pos[env_ids] = self.default_dof_pos + torch_rand_float(0., 0.9, (len(env_ids), self.num_dof), device=self.device)
+
+        # Original code for this
+        # self.dof_pos[env_ids] = self.default_dof_pos * torch_rand_float(lower=0.5, 
+        #                                                                 upper=1.5, 
+        #                                                                 shape=(len(env_ids), self.num_dof), 
+        #                                                                 device=self.device)
+
+        # Set dof velocities to zero
         self.dof_vel[env_ids] = 0.
 
+        # Do whatever this function is supposed to do
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_dof_state_tensor_indexed(self.sim,
                                               gymtorch.unwrap_tensor(self.dof_state),
@@ -495,7 +499,7 @@ class LeggedRobot(BaseTask):
         Args:
             env_ids (List[int]): Environemnt ids
         """
-        # base position
+        # Reset base positions
         if self.custom_origins:
             self.root_states[env_ids] = self.base_init_state
             self.root_states[env_ids, :3] += self.env_origins[env_ids]
@@ -503,12 +507,16 @@ class LeggedRobot(BaseTask):
         else:
             self.root_states[env_ids] = self.base_init_state
             self.root_states[env_ids, :3] += self.env_origins[env_ids]
-        # base velocities
+
+        # Reset base velocities (randomize them...)
         self.root_states[env_ids, 7:13] = torch_rand_float(-0.5, 0.5, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
+
+        # Again, do whatever this function is supposed to do
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self.root_states),
                                                      gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+
 
     def _push_robots(self):
         """ Random pushes the robots. Emulates an impulse by setting a randomized base velocity. 
@@ -516,6 +524,7 @@ class LeggedRobot(BaseTask):
         max_vel = self.cfg.domain_rand.max_push_vel_xy
         self.root_states[:, 7:9] = torch_rand_float(-max_vel, max_vel, (self.num_envs, 2), device=self.device) # lin vel x/y
         self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(self.root_states))
+
 
     def _update_terrain_curriculum(self, env_ids):
         """ Implements a game-inspired curriculum. This has been modified from the original
@@ -656,33 +665,37 @@ class LeggedRobot(BaseTask):
         )
         print("Obs history initialized with shape: ", self.obs_history_buf.shape)
 
-        # ================ Buffers used for the privileged observation encoder ================ 
+        # ================ Buffers used for the privileged observation encoder ================
+
         # This got pre-assigned in the ctor but I'm keeping it for consistency
         self.privileged_mass_params = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
         
+        # Prevents initialization error when friction randomization is False in play.py
         if self.cfg.domain_rand.randomize_friction:
             self.privileged_friction_coeffs = self.friction_coeffs.to(self.device).to(torch.float).squeeze(-1)
         else:
-            # Prevents initialization error when friction randomization is False in play.py
             self.privileged_friction_coeffs = torch.ones(self.num_envs, 1, dtype=torch.float, device=self.device) * self.cfg.terrain.dynamic_friction
 
-        # Tensor of shape [2, num_envs, num_actions] -> [0] is added to P, [1] is added to D
-        self.motor_strength = (self.cfg.domain_rand.motor_strength_range[1] \
-                               - self.cfg.domain_rand.motor_strength_range[0]) \
+        # [0] is multiplier for Kp, [1] is multiplier for Kd
+        self.kp_kd_multipliers = (self.cfg.domain_rand.kp_kd_range[1] \
+                               - self.cfg.domain_rand.kp_kd_range[0]) \
                                * torch.rand(2, self.num_envs, self.num_actions, dtype=torch.float, 
                                                                                 device=self.device, 
                                                                                 requires_grad=False) \
-                               + self.cfg.domain_rand.motor_strength_range[0]
-        # =====================================================================================        
-    
+                               + self.cfg.domain_rand.kp_kd_range[0]
 
-        # Init joint positions offsets and PD gains
+        
         self.default_dof_pos = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
+        
         for i in range(self.num_dofs):
             name = self.dof_names[i]
             angle = self.cfg.init_state.default_joint_angles[name]
+
+            # Set default joint angles
             self.default_dof_pos[i] = angle
             found = False
+
+            # Set PD gains
             for dof_name in self.cfg.control.stiffness.keys():
                 if dof_name in name:
                     self.p_gains[i] = self.cfg.control.stiffness[dof_name]
@@ -693,6 +706,8 @@ class LeggedRobot(BaseTask):
                 self.d_gains[i] = 0.
                 if self.cfg.control.control_type in ["P", "V"]:
                     print(f"PD gain of joint {name} were not defined, setting them to zero")
+        
+        # Becomes (, num_dofs), ready to broadcast across envs
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
 
     def _prepare_reward_function(self):

@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Model folder name
-model_name: &model "cheetah_v9"
+model_name: &model "cheetah_v8"
 
 # Paths
 policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/*model/policy.pt"
@@ -25,7 +25,7 @@ buffer_length: 10
 # ===========================================================================================
 
 # Phase Features (max 0.40, min. 0.30)
-period: 0.34
+period: 0.35
 fr_offset: 0.0 
 bl_offset: 0.5
 fl_offset: 0.0
@@ -65,10 +65,10 @@ kds: [1.0, 1.0, 1.0,
 
 # CHEETAH
                 # hip, thigh, calf
-default_angles: [0.1, 0.9, -1.65,    # Front left
-                -0.1, 0.9, -1.65,    # Front right
-                 0.1, 1.1, -1.65,    # Rear left
-                -0.1, 1.1, -1.65]    # Rear right
+default_angles: [0.1, 0.9, -1.7,    # Front left
+                -0.1, 0.9, -1.7,    # Front right
+                 0.1, 1.1, -1.7,    # Rear left
+                -0.1, 1.1, -1.7]    # Rear right
 
 # Offsets (degrees)
 pitch_offset: 0.0  # positive offset = robot pitches upwards
@@ -79,11 +79,11 @@ lin_vel_scale: 2.0
 ang_vel_scale: 0.25
 dof_pos_scale: 1.0
 dof_vel_scale: 0.05
-action_scale: 0.0
+action_scale: 0.25
 
 # Clip values
 clip_observations: 100.0
-clip_actions: 3.8
+clip_actions: 4.0
 
 # Remote controller scale
 rc_scale: [1.8, 0.0, 1.0]
