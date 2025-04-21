@@ -224,12 +224,12 @@ def stepping_stones_terrain(terrain, stone_size, stone_distance, max_height, pla
 def parkour_hurdle_terrain(terrain,
                            platform_len=2.5,
                            platform_height=0.5,
+                           x_range=(14.0, 14.1),
+                           y_range=(-6.0, -5.9), # as centered as I could make it
                            num_hurdles=1,
                            hurdle_thickness=0.3,
-                           x_range=(14.0, 14.1),
-                           y_range=(-6.2, 6.0),
-                           half_valid_width=(2.4, 2.5),
                            hurdle_height_range=(0.2, 0.3),
+                           half_valid_width=(2.4, 2.5),
                            border_width=0.1,
                            border_height=0.5,
                            flat=False):
@@ -262,7 +262,7 @@ def parkour_hurdle_terrain(terrain,
     hurdle_h_min = round(hurdle_height_range[0] / v_scale)
     hurdle_h_max = round(hurdle_height_range[1] / v_scale)
 
-    # Build the initial flat platform
+    # Build the initial starting platform
     platform_cells = round(platform_len / h_scale)
     platform_h = round(platform_height / v_scale)
     terrain.height_field_raw[:platform_cells, :] = platform_h
@@ -274,9 +274,10 @@ def parkour_hurdle_terrain(terrain,
     current_x = platform_cells
     goals[0] = [platform_cells - 1, mid_y]
 
-    # Place each “stone” (hurdle)
+    # Place each hurdle
     for i in range(num_hurdles):
-        # Random forward and lateral offsets
+
+        # Randomly select (x,y) in range
         dx = np.random.randint(x_min, x_max)
         dy = np.random.randint(y_min, y_max)
         current_x += dx
@@ -306,7 +307,7 @@ def parkour_hurdle_terrain(terrain,
     final_x = min(final_x, max_x)
     goals[-1] = [final_x, mid_y]
 
-    # Scale goals back to world coordinates
+    # Add goals to terrain object after scaling
     terrain.goals = goals * h_scale
 
     # Add padding walls around the perimeter

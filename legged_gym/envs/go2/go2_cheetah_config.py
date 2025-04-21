@@ -36,6 +36,20 @@ class Go2CheetahCfg( LeggedRobotCfg ):
         # ========================================================
         selected = False
 
+        random_uniform_kwargs = {
+            "type": "terrain_utils.random_uniform_terrain",
+            "min_height": -0.06,
+            "max_height": 0.06,
+            "step": 0.005,
+            "downsampled_scale": 0.2
+        }
+
+        pyramid_sloped_kwargs = {
+            "type": "terrain_utils.pyramid_sloped_terrain",
+            "slope": 0.5,
+            "platform_size": 3.,
+        }
+
         discrete_obstacles_kwargs = {
             "type": "terrain_utils.discrete_obstacles_terrain",
             "max_height": 0.4,
@@ -45,36 +59,43 @@ class Go2CheetahCfg( LeggedRobotCfg ):
             "platform_size": 3.
         }
 
-        pyramid_stairs_kwargs = {
-            "type": "terrain_utils.pyramid_stairs_terrain",
-            "step_width":0.25,
-            "step_height":-0.165,
-            "platform_size":2.
+        wave_kwargs = {
+            "type": "terrain_utils.wave_terrain",
+            "num_waves": 1.,
+            "amplitude": 0.7,
         }
 
-        random_uniform_kwargs = {
-            "type": "terrain_utils.random_uniform_terrain",
-            "min_height": -0.06,
-            "max_height": 0.06,
-            "step": 0.005,
-            "downsampled_scale": 0.2
+        pyramid_stairs_kwargs = {
+            "type": "terrain_utils.pyramid_stairs_terrain",
+            "step_width": 0.25,
+            "step_height": -0.165,
+            "platform_size": 2.
         }
+
+        stepping_stones_kwargs = {
+            "type": "terrain_utils.stepping_stones_terrain",
+            "stone_size": 0.6,
+            "stone_distance": 0.4,
+            "max_height": 0.4,
+            "platform_size": 3.,
+            "depth": -5.0,
+            }
 
         parkour_hurdle_kwargs = {
             "type": "terrain_utils.parkour_hurdle_terrain",
-            "platform_len": 2.5,                # starting platform length
-            "platform_height": 0.5,             # starting platform height
+            "platform_len": 3.,
+            "platform_height": 0.,
 
-            "x_range": [4.0, 14.0],             # (-) backward, (+) forward
-            "y_range": [-6.2, -6.0],            # (-) right, (+) left 
+            "x_range": [3.0, 6.0],             # (-) backward, (+) forward
+            "y_range": [-6.0, -5.9],            # (-) rightwards, (+) leftwards
 
-            "num_stones": 1,                    # num. hurdles
-            "stone_len": 0.4,                   # hurdle thickness
-            "half_valid_width": [1.4, 1.5],     # hurdle width range
-            "hurdle_height_range": [0.2, 0.3],  # hurdle height range
+            "num_hurdles": 3,                   
+            "hurdle_thickness": 0.4,             
+            "hurdle_height_range": [0.2, 0.3],  
+            "half_valid_width": [3.9, 4.0],     # hurdle width range
 
-            "pad_width": 0.1,                   # border thickness
-            "pad_height": 0.5,                  # border height
+            "border_width": 0.25,
+            "border_height": 1.0,
             "flat": False,
         }
         

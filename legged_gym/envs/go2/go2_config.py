@@ -83,19 +83,19 @@ class Go2Cfg( LeggedRobotCfg ):
 
         parkour_hurdle_kwargs = {
             "type": "terrain_utils.parkour_hurdle_terrain",
-            "platform_len": 2.5,
-            "platform_height": 0.5,
+            "platform_len": 3.,
+            "platform_height": 0.,
 
-            "x_range": [4.0, 14.0],             # (-) backward, (+) forward
-            "y_range": [-6.2, -6.0],            # (-) right, (+) left 
+            "x_range": [3.0, 6.0],             # (-) backward, (+) forward
+            "y_range": [-6.0, -5.9],            # (-) rightwards, (+) leftwards
 
-            "num_hurdles": 1,                   
+            "num_hurdles": 3,                   
             "hurdle_thickness": 0.4,             
             "hurdle_height_range": [0.2, 0.3],  
-            "half_valid_width": [1.4, 1.5],     # hurdle width range
+            "half_valid_width": [3.9, 4.0],     # hurdle width range
 
-            "border_width": 0.1,
-            "border_height": 0.5,
+            "border_width": 0.25,
+            "border_height": 1.0,
             "flat": False,
         }
         
@@ -103,10 +103,10 @@ class Go2Cfg( LeggedRobotCfg ):
         add_roughness_to_selected_terrain = True
         # ========================================================
 
-        # Terrain curriculum TODO: NEEDS TO BE REWORKED
+        # Terrain curriculum TODO: Rework
         # ========================================================
         curriculum = False
-        max_init_terrain_level = 1      # starting curriculum state
+        max_init_terrain_level = 1      # max. start level
         promote_threshold = 0.5         # [%] of terrain 
         demote_threshold = 0.4          # [%] of terrain
 
@@ -147,7 +147,7 @@ class Go2Cfg( LeggedRobotCfg ):
         max_push_vel_xy = 1.0
 
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.42]      # [x, y, z] (metres)
+        pos = [-8.0, 0.0, 0.42]      # [x, y, z] (metres)
         
         default_joint_angles = {
             'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.9, 'FL_calf_joint': -1.7, 

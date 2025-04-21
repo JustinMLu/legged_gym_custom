@@ -74,7 +74,7 @@ class Terrain:
                 self.add_terrain_to_map(terrain, i, j)
 
     def selected_terrain(self):
-        """ Incredibly stupid way of selecting singular terrain from config.
+        """ Select singular terrain from a dictionary in the config file.
         """
         terrain_type = self.cfg.terrain_kwargs.pop('type')
         for k in range(self.cfg.num_sub_terrains):
@@ -88,11 +88,10 @@ class Terrain:
 
             eval(terrain_type)(terrain, **self.cfg.terrain_kwargs)
             
-            # add some rough and tumble terrainness
             if self.cfg.add_roughness_to_selected_terrain:
                 terrain_utils.random_uniform_terrain(terrain, 
-                                                     min_height=-0.06, 
-                                                     max_height=0.06, 
+                                                     min_height=-0.04, 
+                                                     max_height=0.04, 
                                                      step=0.005, 
                                                      downsampled_scale=0.2)
 
@@ -157,7 +156,7 @@ class Terrain:
             
         return terrain
 
-    # New
+    
     def add_terrain_to_map(self, terrain, row, col):
         i = row
         j = col
@@ -180,26 +179,6 @@ class Terrain:
         env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * terrain.vertical_scale
         self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
 
-    # Old
-    # def add_terrain_to_map(self, terrain, row, col):
-    #     i = row
-    #     j = col
-    #     # map coordinate system
-    #     start_x = self.border + i * self.length_per_env_pixels
-    #     end_x = self.border + (i + 1) * self.length_per_env_pixels
-    #     start_y = self.border + j * self.width_per_env_pixels
-    #     end_y = self.border + (j + 1) * self.width_per_env_pixels
-    #     self.height_field_raw[start_x:end_x, start_y:end_y] = terrain.height_field_raw
-
-    #     env_origin_x = (i + 0.5) * self.env_length
-    #     env_origin_y = (j + 0.5) * self.env_width
-    #     x1 = int((self.env_length/2. - 1) / terrain.horizontal_scale)
-    #     x2 = int((self.env_length/2. + 1) / terrain.horizontal_scale)
-    #     y1 = int((self.env_width/2. - 1) / terrain.horizontal_scale)
-    #     y2 = int((self.env_width/2. + 1) / terrain.horizontal_scale)
-    #     env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*terrain.vertical_scale
-    #     self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
-
 
 def gap_terrain(terrain, gap_size, platform_size=1.):
     gap_size = int(gap_size / terrain.horizontal_scale)
@@ -214,7 +193,6 @@ def gap_terrain(terrain, gap_size, platform_size=1.):
    
     terrain.height_field_raw[center_x-x2 : center_x + x2, center_y-y2 : center_y + y2] = -1000
     terrain.height_field_raw[center_x-x1 : center_x + x1, center_y-y1 : center_y + y1] = 0
-
 
 def pit_terrain(terrain, depth, platform_size=1.):
     depth = int(depth / terrain.vertical_scale)
