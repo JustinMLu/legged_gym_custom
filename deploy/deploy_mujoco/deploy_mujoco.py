@@ -74,7 +74,7 @@ if __name__ == "__main__":
     viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
     viewer.cam.trackbodyid = 0
     viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = False
-    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = True
+    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = False
 
 
     while viewer.is_running():
