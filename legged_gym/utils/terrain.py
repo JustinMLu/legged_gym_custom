@@ -37,6 +37,8 @@ class Terrain:
             self.curiculum()
         elif cfg.selected:
             self.selected_terrain()
+        elif cfg.parkour:
+            self.parkour_terrain()
         else:    
             self.randomized_terrain()   
         
@@ -93,20 +95,46 @@ class Terrain:
                                                      min_height=-0.04, 
                                                      max_height=0.04, 
                                                      step=0.005, 
-                                                     downsampled_scale=0.2)
-
+                                                     downsampled_scale=0.2)    
             self.add_terrain_to_map(terrain, i, j)
     
 
+    def parkour_terrain(self):
+        """ Select the parkour terrain. This is custom functionality
+        """
+    
+        for k in range(self.cfg.num_sub_terrains):
+            (i, j) = np.unravel_index(k, (self.cfg.num_rows, self.cfg.num_cols))
+            terrain = terrain_utils.SubTerrain("terrain",
+                                                width=self.width_per_env_pixels,
+                                                length=self.length_per_env_pixels,
+                                                vertical_scale=self.cfg.vertical_scale,
+                                                horizontal_scale=self.cfg.horizontal_scale)
+
+            terrain_utils.parkour_hurdle_terrain(terrain, **self.cfg.parkour_hurdle_kwargs)
+
+            
+
+            if self.cfg.add_roughness_to_selected_terrain:
+                terrain_utils.random_uniform_terrain(terrain, 
+                                                     min_height=-0.04, 
+                                                     max_height=0.04, 
+                                                     step=0.005, 
+                                                     downsampled_scale=0.2)    
+            
+            self.add_terrain_to_map(terrain, i, j)
+        
+
+            
     def make_terrain(self, choice, difficulty):
         """ Generate a terrain based on the choice and difficulty.
             NOT used when selected terrain is used (i.e selected = True in the config).
         """
-        terrain = terrain_utils.SubTerrain(   "terrain",
-                                width=self.width_per_env_pixels,
-                                length=self.length_per_env_pixels,
-                                vertical_scale=self.cfg.vertical_scale,
-                                horizontal_scale=self.cfg.horizontal_scale)
+        terrain = terrain_utils.SubTerrain("terrain", 
+                                           width=self.width_per_env_pixels, 
+                                           length=self.length_per_env_pixels,
+                                           vertical_scale=self.cfg.vertical_scale,
+                                           horizontal_scale=self.cfg.horizontal_scale)
 
         
         slope = difficulty * 0.5                             # For slope

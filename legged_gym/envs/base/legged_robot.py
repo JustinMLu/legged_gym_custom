@@ -240,11 +240,10 @@ class LeggedRobot(BaseTask):
                                  self.actions                                                        # (12,) last actions
                                 ),dim=-1)                                                            # total: (48,)
         
-        # Add perceptive inputs (height map) if not blind
+        # Add heightmap if not blind
         if self.cfg.terrain.measure_heights:
             heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
             cur_obs_buf = torch.cat((cur_obs_buf, heights), dim=-1)
-
         
         # Add noise
         if self.add_noise:
@@ -610,7 +609,7 @@ class LeggedRobot(BaseTask):
         """ Initializes the buffers used to store the simulation state and observational data.
         """
         # Debug print
-        print("===== _init_buffers() called: Initializing buffers... =====")
+        print("======== _init_buffers(): Initializing buffers.... ========")
 
         # get gym GPU state tensors
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
@@ -790,7 +789,7 @@ class LeggedRobot(BaseTask):
                 2.3 create actor with these properties and add them to the env
              3. Store indices of different bodies of the robot
         """
-        print("===== _create_envs() called: Creating environments... =====") 
+        print("============ _create_envs(): Creating envs.... ============") 
         asset_path = self.cfg.asset.file.format(LEGGED_GYM_ROOT_DIR=LEGGED_GYM_ROOT_DIR)
         asset_root = os.path.dirname(asset_path)
         asset_file = os.path.basename(asset_path)

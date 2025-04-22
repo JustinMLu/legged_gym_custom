@@ -4,7 +4,7 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
-        num_proprio = 52    
+        num_proprio = 53
         num_scan_obs =  0   # 132 but not used yet
         num_estimated_obs = 3
         num_privileged_obs = 4+1+12+12
@@ -22,19 +22,56 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class terrain( LeggedRobotCfg.terrain ):
         mesh_type = 'trimesh'
-        num_rows = 10               # num. difficulties
-        num_cols = 20               # max. terrain choices
-        terrain_length = 20.
+        num_rows = 1                 # num. difficulties
+        num_cols = 200               # max. terrain choices
+        terrain_length = 24.
         terrain_width = 8.
         measure_heights = False     # reworked to do different stuff
-        
+        add_roughness_to_selected_terrain = False
+
         # Extreme parkour (132 SCANDOTS)
         # measured_points_x = [-0.45, -0.3, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2]
         # measured_points_y = [-0.75, -0.6, -0.45, -0.3, -0.15, 0., 0.15, 0.3, 0.45, 0.6, 0.75]
+
+        # =================== Parkour Terrains ===================
+        parkour = True
         
-        # Manual terrain selection
-        # ========================================================
-        selected = True
+        hurdle_x_positions = [5.0, 8.0, 11.0, 14.0, 17.0, 20.0]
+        hurdle_y_positions = [-8.0, -8.0, -8.0, -8.0, -8.0, -8.0]
+        hurdle_heights = [0.1, 0.125, 0.15, 0.175, 0.20, 0.225]
+
+        parkour_hurdle_kwargs = {
+            "platform_len": 3.,
+            "platform_height": 0.,
+    
+            "x_positions": hurdle_x_positions,
+            "y_positions": hurdle_y_positions,  # (-) right, (+) left
+            
+            "half_valid_width": 4.0, # hurdle width / 2
+            "hurdle_heights": hurdle_heights,  
+            "hurdle_thickness": 0.3,             
+
+            "border_width": 0.25,
+            "border_height": 1.0,
+        }
+
+        parkour_hurdle_randomized_kwargs = {
+            "platform_len": 3.,
+            "platform_height": 0.,
+
+            "x_range": [3.0, 6.0],          # (-) backward, (+) forward
+            "y_range": [-6.0, -5.9],        # (-) right, (+) left
+
+            "num_hurdles": 3,                   
+            "hurdle_thickness": 0.4,             
+            "hurdle_height_range": [0.3, 0.35],  
+            "half_valid_width": [3.9, 4.0], # hurdle width / 2
+
+            "border_width": 0.25,
+            "border_height": 1.0,
+        }
+        # =============== Manual Terrain Selection ===============
+        selected = False
 
         random_uniform_kwargs = {
             "type": "terrain_utils.random_uniform_terrain",
@@ -81,35 +118,14 @@ class Go2Cfg( LeggedRobotCfg ):
             "depth": -5.0,
             }
 
-        parkour_hurdle_kwargs = {
-            "type": "terrain_utils.parkour_hurdle_terrain",
-            "platform_len": 3.,
-            "platform_height": 0.,
-
-            "x_range": [3.0, 6.0],             # (-) backward, (+) forward
-            "y_range": [-6.0, -5.9],            # (-) rightwards, (+) leftwards
-
-            "num_hurdles": 3,                   
-            "hurdle_thickness": 0.4,             
-            "hurdle_height_range": [0.2, 0.3],  
-            "half_valid_width": [3.9, 4.0],     # hurdle width range
-
-            "border_width": 0.25,
-            "border_height": 1.0,
-            "flat": False,
-        }
-        
-        terrain_kwargs = parkour_hurdle_kwargs
-        add_roughness_to_selected_terrain = True
+        terrain_kwargs = random_uniform_kwargs        
         # ========================================================
-
-        # Terrain curriculum TODO: Rework
-        # ========================================================
+      
+        # ======== Terrain Curriculum (TODO: Rework this) ========
         curriculum = False
         max_init_terrain_level = 1      # max. start level
         promote_threshold = 0.5         # [%] of terrain 
         demote_threshold = 0.4          # [%] of terrain
-
         terrain_default     = [0.30,    # smooth slope
                                0.30,    # rough slope
                                0.00,    # stairs up
@@ -117,7 +133,6 @@ class Go2Cfg( LeggedRobotCfg ):
                                0.20,    # discrete terrain
                                0.00,    # stepping stones
                                0.20]    # random uniform NOTE: Turning this on artificially boosts terrain_level
-        
         terrain_stairs      = [0.00,    # smooth slope
                                0.00,    # rough slope
                                0.75,    # stairs up
@@ -125,7 +140,6 @@ class Go2Cfg( LeggedRobotCfg ):
                                0.00,    # discrete terrain
                                0.00,    # stepping stones
                                0.00]    # random uniform
-        
         terrain_proportions = terrain_stairs
         # ========================================================
     
@@ -147,7 +161,7 @@ class Go2Cfg( LeggedRobotCfg ):
         max_push_vel_xy = 1.0
 
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [-8.0, 0.0, 0.42]      # [x, y, z] (metres)
+        pos = [-10.0, 0.0, 0.42]      # [x, y, z] (metres)
         
         default_joint_angles = {
             'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.9, 'FL_calf_joint': -1.7, 
@@ -176,22 +190,21 @@ class Go2Cfg( LeggedRobotCfg ):
 
 
     class commands ( LeggedRobotCfg.commands ):
-        # TODO: NEED TO REWORK THE COMMAND CURRICULUM (MIT)
-        heading_command = False
         resampling_time = 10.
         zero_command_prob = 0.10 # Probability of resampling a zero cmd
         
         # Command curriculum
-        curriculum = True
+        curriculum = False
         max_forward_vel = 1.5    # [m/s]
-        max_reverse_vel = 1.0    # [m/s]
+        max_reverse_vel = 0.0    # [m/s]
         vel_increment = 0.10     # [m/s]
 
+        heading_command = False
         class ranges:
-            lin_vel_x = [-0.1, 0.5]     # [m/s]
+            lin_vel_x = [0.5, 1.5]     # [m/s]
             lin_vel_y = [-0.0, 0.0]     # [m/s]
-            ang_vel_yaw = [-0.8, 0.8]   # [rad/s]
-            # heading = [-3.14, 3.14]
+            ang_vel_yaw = [-0.0, 0.0]   # [rad/s]
+            heading = [-3.14, 3.14]
 
 
     class normalization( LeggedRobotCfg.normalization ):
@@ -215,14 +228,15 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_pos = 0.01
             dof_vel = 0.05
             ang_vel = 0.05
-            gravity = 0.02 # also used for roll,pitch imu noise
+            gravity = 0.02
+            imu = 0.02
             height_measurements = 0.02
         
 
     class rewards( LeggedRobotCfg.rewards ):
         only_positive_rewards = True
         soft_dof_pos_limit = 0.9        # [%]
-        base_height_target = 0.24       # [m]
+        base_height_target = 0.28       # [m]
 
         pitch_deg_target = 0.0          # [deg]   (+) down, (-) up
         roll_deg_target = 0.0           # [deg]   (+) right, (-) left
@@ -234,11 +248,12 @@ class Go2Cfg( LeggedRobotCfg ):
         class scales( LeggedRobotCfg.rewards.scales ):
             # =========================
             tracking_lin_vel = 1.5
-            tracking_ang_vel = 1.0
+            tracking_ang_vel = 1.5
             # ========================= 
             contact_phase_match = 1.0
             swing_phase_lifting = 1.0
             # =========================
+            orientation = -1.0
             action_rate = -0.1         
             lin_vel_z = -1.0
             ang_vel_xy = -0.01
@@ -247,16 +262,17 @@ class Go2Cfg( LeggedRobotCfg ):
             delta_torques = -1.0e-7
             # ========================= 
             dof_error = -0.04
-            hip_pos = -0.5
-            calf_pos = -0.5
-            # ========================= 
-            minimum_base_height = -20.0
-            orientation = -1.0
+            hip_pos = -0.75
             # ========================= 
             collision = -10.0
-            calf_collision = -20.0
-            feet_contact_forces = -0.01
+            calf_collision = -10.0
+            stumble_feet = -1.0
             # =========================
+            heading_alignment = -2.0
+            back_feet_alignment = -0.05
+            front_feet_alignment = -0.05
+            jump_velocity = 1.5
+            # =========================   
             
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -273,7 +289,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         schedule = 'fixed' # fixed or adaptive
 
     class runner( LeggedRobotCfgPPO.runner ):
-        run_name = 'cheetah_v8_rough'
+        run_name = 'jumper_v1'
         experiment_name = 'go2'
         load_run = -1
         num_steps_per_env = 24

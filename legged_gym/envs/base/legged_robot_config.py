@@ -58,18 +58,26 @@ class LeggedRobotCfg(BaseConfig):
         static_friction = 1.0
         dynamic_friction = 1.0
         restitution = 0.
+
         # rough terrain only:
-        measure_heights = True
-        measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
-        measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
-        selected = False # select a unique terrain type and pass all arguments
-        terrain_kwargs = None # Dict of arguments for selected terrain
-        max_init_terrain_level = 5 # starting curriculum state
         terrain_length = 8.
         terrain_width = 8.
         num_rows = 10 # number of terrain rows (levels of difficulty)
         num_cols = 20 # number of terrain cols (max. number of terrain types)
+
+        measure_heights = True
+        measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
+        measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
+        
+        selected = False # select a unique terrain type and pass all arguments
+        terrain_kwargs = None # Dict of arguments for selected terrain
+
+        max_init_terrain_level = 5 # starting curriculum state
         terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2, 0.0, 0.0] # see terrain.py for details
+        
+        # disable custom functions
+        add_roughness_to_selected_terrain = False
+        parkour = False
         
         # trimesh only:
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
@@ -192,7 +200,8 @@ class LeggedRobotCfg(BaseConfig):
             ang_vel = 0.2
             dof_pos = 0.01
             dof_vel = 1.5
-            gravity = 0.05
+            gravity = 0.05  # imu & gravity mutually exclusive
+            imu = 0.05      # imu & gravity mutually exclusive
             height_measurements = 0.1
 
     # viewer camera:

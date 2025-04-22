@@ -221,7 +221,7 @@ def stepping_stones_terrain(terrain, stone_size, stone_distance, max_height, pla
     return terrain
 
 # ================================= EXTREME PARKOUR =================================
-def parkour_hurdle_terrain(terrain,
+def parkour_hurdle_terrain_randomized(terrain,
                            platform_len=2.5,
                            platform_height=0.5,
                            x_range=(14.0, 14.1),
@@ -231,23 +231,25 @@ def parkour_hurdle_terrain(terrain,
                            hurdle_height_range=(0.2, 0.3),
                            half_valid_width=(2.4, 2.5),
                            border_width=0.1,
-                           border_height=0.5,
-                           flat=False):
-    """
-    Carves a series of hurdles (“stones”) into terrain.height_field_raw
-    and sets up corresponding goal waypoints in terrain.goals.
-    All distances are scaled by terrain.horizontal_scale / vertical_scale.
-    """
+                           border_height=0.5):
+    """ Parkour hurdle course with vertical hurdles.
 
-    # Pre-allocate goal array: start + stones + end
-    goals = np.zeros((num_hurdles + 2, 2), dtype=float)
+        The robot starts on a raised *platform*, then confronts `num_hurdles`
+        evenly spaced hurdle blocks.  A lateral corridor (gap) of constant
+        width is cut through each hurdle so the robot has a path.
+
+        Args are in **meters**; converted to grid cells using the
+        SubTerrain class's scales.
+    """
+    # Buffer to store hurdle XY positions
+    terrain.hurdles = []
 
     # Midline of the y-axis (terrain.length is actually y-size)
     mid_y = terrain.length // 2
 
-    # Convert world-space ranges into grid-cell offsets
-    h_scale = terrain.horizontal_scale
-    v_scale = terrain.vertical_scale
+    # World units → grid cell conversions
+    h_scale = terrain.horizontal_scale # [m] → cols/rows
+    v_scale = terrain.vertical_scale   # [m] → height
 
     x_min = round(x_range[0] / h_scale)
     x_max = round(x_range[1] / h_scale)
@@ -270,9 +272,8 @@ def parkour_hurdle_terrain(terrain,
     # Stone width in cells
     stone_cells = round(hurdle_thickness / h_scale)
 
-    # First goal: at the end of the platform, centered in y
+    # Start at the end of platform
     current_x = platform_cells
-    goals[0] = [platform_cells - 1, mid_y]
 
     # Place each hurdle
     for i in range(num_hurdles):
@@ -282,33 +283,37 @@ def parkour_hurdle_terrain(terrain,
         dy = np.random.randint(y_min, y_max)
         current_x += dx
 
-        if not flat:
-            # Raise the hurdle
-            h_choice = np.random.randint(hurdle_h_min, hurdle_h_max)
-            x_start = current_x - stone_cells // 2
-            x_end = current_x + stone_cells // 2
+        
+        # Raise the hurdle
+        h_choice = np.random.randint(hurdle_h_min, hurdle_h_max)
+        x_start = current_x - stone_cells // 2
+        x_end = current_x + stone_cells // 2
 
-            # Carve out the gap around mid_y + dy
-            terrain.height_field_raw[x_start:x_end, :] = h_choice
-            terrain.height_field_raw[
-                x_start:x_end, :mid_y + dy - half_gap
-            ] = 0
-            terrain.height_field_raw[
-                x_start:x_end, mid_y + dy + half_gap:
-            ] = 0
+        # Carve out the gap around mid_y + dy
+        terrain.height_field_raw[x_start:x_end, :] = h_choice
+        terrain.height_field_raw[
+            x_start:x_end, :mid_y + dy - half_gap
+        ] = 0
+        terrain.height_field_raw[
+            x_start:x_end, mid_y + dy + half_gap:
+        ] = 0
 
-        # Mark goal roughly at the center of this hurdle
-        goals[i + 1] = [current_x - dx // 2, mid_y + dy]
+        # Convert grid coordinates to world coordinates
+        x_local = current_x * terrain.horizontal_scale
+        y_local = (mid_y + dy) * terrain.horizontal_scale
 
-    # Final platform/goal at end
+        # Add hurdle positions to terrain object
+        terrain.hurdles.append((x_local, y_local))
+
+        # Print
+        print(f"Hurdle {i+1} placed at env coordinates: ({x_local:.2f}, {y_local:.2f})")
+
+
+    # Final platform at end
     final_dx = np.random.randint(x_min, x_max)
     final_x = current_x + final_dx
     max_x = terrain.width - round(0.5 / h_scale)
     final_x = min(final_x, max_x)
-    goals[-1] = [final_x, mid_y]
-
-    # Add goals to terrain object after scaling
-    terrain.goals = goals * h_scale
 
     # Add padding walls around the perimeter
     pad_cells = int(border_width / h_scale)
@@ -320,6 +325,86 @@ def parkour_hurdle_terrain(terrain,
     hf[:pad_cells, :] = pad_h        # bottom
     hf[-pad_cells:, :] = pad_h       # top
 
+def parkour_hurdle_terrain(terrain,
+                           platform_len=2.5,
+                           platform_height=0.5,
+                           x_positions=[7.0, 11.0, 14.5],  # EXACT X positions for each hurdle
+                           y_positions=[0.0, 0.0, 0.0],     # EXACT Y positions for each hurdle
+                           hurdle_thickness=0.5,
+                           hurdle_heights=None,  # NEW: list of hurdle heights in meters for each hurdle
+                           half_valid_width=2.5,
+                           border_width=0.1,
+                           border_height=0.5):
+    """Parkour terrain with hurdles at exact specified positions.
+    
+    Args:
+        x_positions: List of exact X coordinates for each hurdle [meters]
+        y_positions: List of exact Y coordinates for each hurdle [meters]
+        hurdle_heights: Optional list of exact hurdle heights (in meters) for each hurdle.
+                        If not provided, a default hurdle_height is used for all hurdles.
+        (Other args in meters, converted to grid cells)
+    """
+    # Validate inputs
+    num_hurdles = len(x_positions)
+    assert len(y_positions) == num_hurdles, "x_positions and y_positions must have the same length"
+    if hurdle_heights is not None:
+        assert len(hurdle_heights) == num_hurdles, "hurdle_heights must have same length as x_positions"
+
+    # Buffer to store hurdle positions
+    terrain.hurdle_positions = []
+
+    # Midline of the y-axis (terrain.length is actually y-size)
+    mid_y = terrain.length // 2
+
+    # World units → grid cell conversions
+    h_scale = terrain.horizontal_scale
+    v_scale = terrain.vertical_scale
+
+    # Build the initial starting platform
+    platform_cells = round(platform_len / h_scale)
+    platform_h = round(platform_height / v_scale)
+    terrain.height_field_raw[:platform_cells, :] = platform_h
+
+    # Stone width in cells (for the hurdle thickness)
+    stone_cells = round(hurdle_thickness / h_scale)
+
+    # Fixed half-width for the gap in hurdles
+    half_gap = round(half_valid_width / h_scale)
+
+    # Place each hurdle at the EXACT specified positions
+    for i in range(num_hurdles):
+        # Convert world X,Y to grid cells
+        x_local = x_positions[i]
+        y_local = y_positions[i]
+        
+        current_x = round(x_local / h_scale)
+        current_y = mid_y + round(y_local / h_scale)
+        
+        # Determine hurdle height in grid units:
+        hurdle_h_i = round(hurdle_heights[i] / v_scale)
+        
+        # Define x-interval for the hurdle
+        x_start = current_x - stone_cells // 2
+        x_end = current_x + stone_cells // 2
+
+        # "Raise" the hurdle: set the hurdle area to the hurdle height
+        terrain.height_field_raw[x_start:x_end, :] = hurdle_h_i
+
+        # Carve out the gap so the robot has a corridor: clear the area around current_y
+        terrain.height_field_raw[x_start:x_end, :current_y - half_gap] = 0
+        terrain.height_field_raw[x_start:x_end, current_y + half_gap:] = 0
+
+        # Store the exact world coordinates for this hurdle
+        terrain.hurdle_positions.append((x_local, y_local))
+
+    # Add padding walls around the perimeter
+    pad_cells = int(border_width / h_scale)
+    pad_h = int(border_height / v_scale)
+    hf = terrain.height_field_raw
+    hf[:, :pad_cells] = pad_h        # left
+    hf[:, -pad_cells:] = pad_h       # right
+    hf[:pad_cells, :] = pad_h        # bottom
+    hf[-pad_cells:, :] = pad_h       # top
 
 def convert_heightfield_to_trimesh(height_field_raw, horizontal_scale, vertical_scale, slope_threshold=None):
     """
