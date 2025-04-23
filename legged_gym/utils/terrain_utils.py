@@ -14,8 +14,6 @@ from isaacgym import gymutil, gymapi
 from math import sqrt
 
 
-
-
 def random_uniform_terrain(terrain, min_height, max_height, step=1, downsampled_scale=None):
     """
     Generate a uniform noise terrain.
@@ -244,8 +242,8 @@ def parkour_hurdle_terrain_randomized(terrain,
     # Buffer to store hurdle XY positions
     terrain.hurdles = []
 
-    # Midline of the y-axis (terrain.length is actually y-size)
-    mid_y = terrain.length // 2
+    # Midline of the y-axis
+    mid_y = terrain.width // 2
 
     # World units → grid cell conversions
     h_scale = terrain.horizontal_scale # [m] → cols/rows
@@ -353,8 +351,8 @@ def parkour_hurdle_terrain(terrain,
     # Buffer to store hurdle positions
     terrain.hurdle_positions = []
 
-    # Midline of the y-axis (terrain.length is actually y-size)
-    mid_y = terrain.length // 2
+    # Midline of the y-axis (terrain.width)
+    mid_y = terrain.width // 2
 
     # World units → grid cell conversions
     h_scale = terrain.horizontal_scale

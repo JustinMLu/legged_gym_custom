@@ -1,4 +1,5 @@
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
+import numpy as np
 
 class Go2Cfg( LeggedRobotCfg ):
 
@@ -21,32 +22,36 @@ class Go2Cfg( LeggedRobotCfg ):
         br_offset = 0.5
 
     class terrain( LeggedRobotCfg.terrain ):
+        # Scandots (132)
+        measured_points_x = [-0.45, -0.3, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2]
+        measured_points_y = [-0.75, -0.6, -0.45, -0.3, -0.15, 0., 0.15, 0.3, 0.45, 0.6, 0.75]
+        
+        # General
         mesh_type = 'trimesh'
         measure_heights = True      # for go2 this just enables draw_debug_vis
+        add_roughness_to_selected_terrain = False
+        
+        # Dimensions
         num_rows = 1                 # num. difficulties
         num_cols = 200               # max. terrain choices
         terrain_length = 24.
         terrain_width = 8.
 
-        # Extreme parkour (132 SCANDOTS)
-        measured_points_x = [-0.45, -0.3, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2]
-        measured_points_y = [-0.75, -0.6, -0.45, -0.3, -0.15, 0., 0.15, 0.3, 0.45, 0.6, 0.75]
-        add_roughness_to_selected_terrain = True
 
         # ======================== Parkour Terrains ========================
         parkour = True
-        hurdle_x_positions = [5.0, 8.0, 11.0, 14.0, 17.0, 20.0]
-        hurdle_y_positions = [-8.0, -8.0, -8.0, -8.0, -8.0, -8.0]
-        hurdle_heights = [0.15, 0.15, 0.25, 0.25, 0.30, 0.30]
+        hurdle_x_positions = [4, 7, 10, 12.5, 15, 17, 19, 21]
+        hurdle_y_positions = [0.0] * len(hurdle_x_positions)
+        hurdle_heights = [0.10, 0.10, 0.15, 0.20, 0.20, 0.25, 0.30, 0.30]
 
         parkour_hurdle_kwargs = {
-            "platform_len": 3.,
+            "platform_len": 2.,
             "platform_height": 0.,
     
             "x_positions": hurdle_x_positions,
             "y_positions": hurdle_y_positions,  # (-) right, (+) left
             
-            "half_valid_width": 4.0, # hurdle width / 2
+            "half_valid_width": 4.0,
             "hurdle_heights": hurdle_heights,  
             "hurdle_thickness": 0.35,             
 
@@ -54,6 +59,7 @@ class Go2Cfg( LeggedRobotCfg ):
             "border_height": 1.0,
         }
 
+        # Not used until I can figure out waypoint implementation
         parkour_hurdle_randomized_kwargs = {
             "platform_len": 3.,
             "platform_height": 0.,
@@ -192,11 +198,11 @@ class Go2Cfg( LeggedRobotCfg ):
         # General
         resampling_time = 10.     # [seconds]
         heading_command = False
-        zero_command = True
+        zero_command = False
         zero_command_prob = 0.05
 
         # Command curriculum
-        curriculum = True
+        curriculum = False
         max_forward_vel = 2.0     # [m/s]
         max_reverse_vel = 0.0     # [m/s]
         vel_increment = 0.10      # [m/s]
@@ -210,7 +216,7 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class normalization( LeggedRobotCfg.normalization ):
         clip_observations = 100.
-        clip_actions = 1.2 # PRAY TO HANG PRAY TO HANG
+        clip_actions = 3.14
         
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
             lin_vel = 2.0
@@ -265,14 +271,14 @@ class Go2Cfg( LeggedRobotCfg ):
             orientation = -1.0
             stumble_feet = -1.0
             collision = -10.0
-            calf_collision = -15.0
             # ========================= 
             dof_error = -0.04
             hip_pos = -0.75
             # =========================
-            heading_alignment = -5.0 # Parkour only
-            jump_velocity = 1.5      # Parkour only
-
+            heading_alignment = -4.0    # Parkour only
+            jump_velocity = 2.5         # Parkour only
+            thigh_dof_align = -0.25     # Parkour only(?)
+            calf_dof_align = -0.25      # Parkour only(?)
             
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -308,7 +314,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 30000
         save_interval = 50
 
-        run_name = 'jumper_scandots_12'
+        run_name = 'jumper_scandots'
         experiment_name = 'go2'
 
         # load and resume

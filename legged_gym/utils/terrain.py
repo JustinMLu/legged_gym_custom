@@ -21,7 +21,7 @@ class Terrain:
         self.proportions = [np.sum(cfg.terrain_proportions[:i+1]) for i in range(len(cfg.terrain_proportions))]
 
         self.cfg.num_sub_terrains = cfg.num_rows * cfg.num_cols
-        self.env_origins = np.zeros((cfg.num_rows, cfg.num_cols, 3))
+        self.env_origins = np.zeros((cfg.num_rows, cfg.num_cols, 3)) # (rows, cols, (xyz))
 
         self.width_per_env_pixels = int(self.env_width / cfg.horizontal_scale)
         self.length_per_env_pixels = int(self.env_length / cfg.horizontal_scale)

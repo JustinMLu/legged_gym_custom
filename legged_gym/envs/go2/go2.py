@@ -60,17 +60,17 @@ class Go2Robot(LeggedRobot):
 
 
         # Get indices of hip, thigh and calf joints
-        hip_joint_names = ["FR_hip_joint", "FL_hip_joint", "RR_hip_joint", "RL_hip_joint"]
+        hip_joint_names = ["FL_hip_joint", "FR_hip_joint", "RL_hip_joint", "RR_hip_joint"]
         self.hip_joint_indices = torch.zeros(len(hip_joint_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i, name in enumerate(hip_joint_names):
             self.hip_joint_indices[i] = self.dof_names.index(name)
 
-        thigh_joint_names = ["FR_thigh_joint", "FL_thigh_joint", "RR_thigh_joint", "RL_thigh_joint"]
+        thigh_joint_names = ["FL_thigh_joint", "FR_thigh_joint", "RL_thigh_joint", "RR_thigh_joint"]
         self.thigh_joint_indices = torch.zeros(len(thigh_joint_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i, name in enumerate(thigh_joint_names):
             self.thigh_joint_indices[i] = self.dof_names.index(name)
 
-        calf_joint_names = ["FR_calf_joint", "FL_calf_joint", "RR_calf_joint", "RL_calf_joint"]
+        calf_joint_names = ["FL_calf_joint", "FR_calf_joint", "RL_calf_joint", "RR_calf_joint"]
         self.calf_joint_indices = torch.zeros(len(calf_joint_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i, name in enumerate(calf_joint_names):
             self.calf_joint_indices[i] = self.dof_names.index(name)
@@ -389,8 +389,10 @@ class Go2Robot(LeggedRobot):
         if self.cfg.terrain.parkour:
             robot_x = self.root_states[:, 0].unsqueeze(1)
             hurdle_x = torch.tensor(self.cfg.terrain.hurdle_x_positions, device=self.device)
+        
 
-            in_jump_zone = (robot_x >= (hurdle_x - 1.0)) & (robot_x < hurdle_x)
+            # Jump zone is [1.0m before hurdle_x, 0.5m after hurdle_x]
+            in_jump_zone = (robot_x >= (hurdle_x - 1.0)) & (robot_x < hurdle_x + 0.5)
             self.jump_flags = in_jump_zone.any(dim=1, keepdim=True).float()
 
 
@@ -445,12 +447,18 @@ class Go2Robot(LeggedRobot):
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
 
-    # Extreme parkour
+    # ==================================== EXTREME  PARKOUR ====================================
     def _reward_delta_torques(self):
         """ Penalize changes in torques
         """
         return torch.sum(torch.square(self.torques - self.last_torques), dim=1)
     
+    def _reward_dof_error(self):
+        """ Penalize DOF positions away from default
+        """
+        dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
+        return dof_error
+
     def _reward_hip_pos(self):
         """ Penalize DOF hip positions away from default"""
         default_hip_pos = self.default_dof_pos[:, self.hip_joint_indices]
@@ -469,13 +477,7 @@ class Go2Robot(LeggedRobot):
         cur_calf_pos = self.dof_pos[:, self.calf_joint_indices]
         return torch.sum(torch.square(cur_calf_pos - default_calf_pos), dim=1)
     
-    def _reward_dof_error(self):
-        """ Penalize DOF positions away from default
-        """
-        dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
-        return dof_error
-    
-    # Phase gait bootstrapping
+    # ================================== PHASE GAIT BOOTSTRAP ==================================
     def _reward_phase_contact_match(self):
         """ Reward proper foot contact based on gait phase.
             For a trot gait:
@@ -494,10 +496,10 @@ class Go2Robot(LeggedRobot):
 
         # Reward / penalty for each foot
         reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
-        reward += torch.where(~(self.fl_contact ^ fl_stance), 0.25, -0.25)
-        reward += torch.where(~(self.fr_contact ^ fr_stance), 0.25, -0.25)
-        reward += torch.where(~(self.bl_contact ^ bl_stance), 0.25, -0.25)
-        reward += torch.where(~(self.br_contact ^ br_stance), 0.25, -0.25)
+        reward += torch.where(~(self.fl_contact ^ fl_stance), 0.25, -0.0)
+        reward += torch.where(~(self.fr_contact ^ fr_stance), 0.25, -0.0)
+        reward += torch.where(~(self.bl_contact ^ bl_stance), 0.25, -0.0)
+        reward += torch.where(~(self.br_contact ^ br_stance), 0.25, -0.0)
 
         return reward
 
@@ -535,7 +537,7 @@ class Go2Robot(LeggedRobot):
         return torch.any(torch.norm(self.contact_forces[:, self.calf_indices, :2], dim=2) >\
              5 *torch.abs(self.contact_forces[:, self.calf_indices, 2]), dim=1)
     
-    # Stuff added for cheetah gait 
+    # ==================================== CHEETAH  REWARDS ====================================
     def _reward_calf_collision(self):
         """ Penalize calves making ANY contact with surfaces (not just vertical ones)
             This is used to prevent foot-calf strikes. Does it work? You decide!
@@ -600,8 +602,23 @@ class Go2Robot(LeggedRobot):
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
         return reward * jump_mask
 
-    # ======================================= JUMPY TIME =======================================
+    def _reward_thigh_dof_align(self):
+        """ Penalize DOF left-right thigh differences. Ordering of 
+            joint_indices buffer is [0] = FL, [1] = FR, [2] = RL, [3] = RR
+        """
+        left_thigh_dof_pos = self.dof_pos[:, self.hip_joint_indices[[0, 2]]]  # FL and RL
+        right_thigh_dof_pos = self.dof_pos[:, self.hip_joint_indices[[1, 3]]]  # FR and RR
+        return torch.sum(torch.square(left_thigh_dof_pos - right_thigh_dof_pos), dim=1)
 
+    def _reward_calf_dof_align(self):
+        """ Penalize DOF left-right calf differences. Ordering of
+            joint_indices buffer is [0] = FL, [1] = FR, [2] = RL, [3] = RR
+        """
+        left_calf_dof_pos = self.dof_pos[:, self.calf_joint_indices[[0, 2]]]
+        right_calf_dof_pos = self.dof_pos[:, self.calf_joint_indices[[1, 3]]]
+        return torch.sum(torch.square(left_calf_dof_pos - right_calf_dof_pos), dim=1)
+
+    # ======================================== AIR TIME ========================================
     # Function that I moved into Go2.py, planning to move it back 
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 
