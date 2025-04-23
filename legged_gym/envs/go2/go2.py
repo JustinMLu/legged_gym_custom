@@ -120,7 +120,6 @@ class Go2Robot(LeggedRobot):
         if self.cfg.commands.zero_command:
             zero_cmd_mask = torch.rand(len(env_ids), device=self.device) < self.cfg.commands.zero_command_prob
             self.commands[env_ids[zero_cmd_mask], :] *= 0.0
-            self.jump_button[env_ids[zero_cmd_mask], 0] = 0.0 # Also zero out jump button
     
     
     def update_command_curriculum(self, env_ids):
@@ -207,8 +206,9 @@ class Go2Robot(LeggedRobot):
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, 
                                                                                     device=self.device, 
                                                                                     requires_grad=False)
-        # Jump button
-        self.jump_button = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
+        # Jump flags - not used in obs anymore
+        self.jump_flags = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
+
 
     def _init_buffers(self):
         """ Initializes the buffers used to store the simulation state and observational data.
@@ -386,24 +386,18 @@ class Go2Robot(LeggedRobot):
         # Construct IMU obs
         imu_obs = torch.stack((self.roll, self.pitch), dim=1)
 
-         # PARKOUR JUMP COMMAND
         if self.cfg.terrain.parkour:
             robot_x = self.root_states[:, 0].unsqueeze(1)
             hurdle_x = torch.tensor(self.cfg.terrain.hurdle_x_positions, device=self.device)
 
-            # in_jump_zone = (robot_x >= (hurdle_x - 1.0)) & (robot_x < hurdle_x)
-            # self.jump_button = in_jump_zone.any(dim=1, keepdim=True).float()
-
-            # Jump button = 1.0 when within 1.0 m of any hurdle
-            distances = torch.abs(robot_x - hurdle_x)
-            self.jump_button = (distances < 1.0).any(dim=1, keepdim=True).float()
+            in_jump_zone = (robot_x >= (hurdle_x - 1.0)) & (robot_x < hurdle_x)
+            self.jump_flags = in_jump_zone.any(dim=1, keepdim=True).float()
 
 
         # Construct observations       
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                     # (3,)
                                 imu_obs,                                                           # (2,)      
                                 self.commands[:, :3] * self.commands_scale,                        # (3,)
-                                self.jump_button,                                                  # (1,)
                                 (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,   # (12,) for quadruped
                                 self.dof_vel * self.obs_scales.dof_vel,                            # (12,)
                                 self.actions,                                                      # (12,) last actions
@@ -411,7 +405,6 @@ class Go2Robot(LeggedRobot):
         
         # Add phase features
         cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # add 8
-         
  
         # Add noise vector
         if self.add_noise:
@@ -435,15 +428,14 @@ class Go2Robot(LeggedRobot):
         self.estimated_obs_buf = self.base_lin_vel * self.obs_scales.lin_vel
         
         # Scan obs. buffer EXTREME PARKOUR
-        # if self.cfg.terrain.measure_heights:
-        #     heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.3 - self.measured_heights, -1, 1.)
-        #     self.obs_buf = torch.cat([obs_buf, heights, priv_explicit, priv_latent, self.obs_history_buf.view(self.num_envs, -1)], dim=-1)
+        self.scan_obs_buf = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.3 - self.measured_heights, -1, 1.)
         
         # Update critic obs buffer
         self.critic_obs_buf = torch.cat((
             self.obs_buf.clone().detach(),
             self.privileged_obs_buf.clone().detach(),
-            self.estimated_obs_buf.clone().detach()
+            self.estimated_obs_buf.clone().detach(),
+            self.scan_obs_buf.clone().detach()
         ), dim=-1)
         
         # Update the history buffer   
@@ -587,11 +579,26 @@ class Go2Robot(LeggedRobot):
         # Wrap the heading to [-pi, pi]
         angle_error = wrap_to_pi(heading)
         return torch.square(angle_error)
-         
-    def _reward_z_vel_when_jumping(self):
-        jump_mask = (self.jump_button[:, 0] > 0.0).float()
-        up_reward = torch.clamp(self.base_lin_vel[:, 2], min=0.0) * 1.0
-        return up_reward * jump_mask
+    
+    def _reward_jump_velocity(self):
+        """ Reward the robot for a jump by encouraging positive forward and upward linear velocity.
+        
+            This function assumes that the robot's base linear velocity is stored in self.root_states[:, 7:10]
+            where:
+            - index 0 is the x-direction (forward),
+            - index 2 is the z-direction (upward).
+            
+            Only positive values are rewarded.
+        """
+        base_lin_vel = self.root_states[:, 7:10]  # [vx, vy, vz]
+        
+        # Assume positive x is forward and positive z is upward.
+        forward_reward = torch.clamp(base_lin_vel[:, 0], min=0.0)
+        upward_reward  = torch.clamp(base_lin_vel[:, 2], min=0.0)
+        
+        reward = forward_reward + 1.5 * upward_reward
+        jump_mask = (self.jump_flags[:, 0] > 0.0).float()
+        return reward * jump_mask
 
     # ======================================= JUMPY TIME =======================================
 

@@ -50,7 +50,7 @@ def play(args):
     env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.randomize_base_mass = False
     env_cfg.domain_rand.randomize_center_of_mass = False
-    env_cfg.domain_rand.randomize_kp_kd = False
+    env_cfg.domain_rand.randomize_motor_strength = False
     env_cfg.domain_rand.push_robots = False
 
     # prepare environment

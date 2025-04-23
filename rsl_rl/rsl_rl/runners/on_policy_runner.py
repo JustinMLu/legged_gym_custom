@@ -9,7 +9,7 @@ import torch
 
 from rsl_rl.algorithms import PPO
 from rsl_rl.modules import ActorCritic, ActorCriticRecurrent
-from rsl_rl.modules.support_networks import LinearVelocityEstimator
+from rsl_rl.modules.support_networks import LinearVelocityEstimator, ScanEncoder
 from rsl_rl.env import VecEnv
 
 
@@ -39,6 +39,7 @@ class OnPolicyRunner:
                                    actor_hidden_dims=self.policy_cfg["actor_hidden_dims"],
                                    critic_hidden_dims=self.policy_cfg["critic_hidden_dims"],
                                    latent_encoder_output_dim=self.policy_cfg["latent_encoder_output_dim"],
+                                   scan_encoder_output_dim=self.policy_cfg["scan_encoder_output_dim"],
                                    activation=self.policy_cfg["activation"],
                                    init_noise_std=self.policy_cfg["init_noise_std"]
                                    )

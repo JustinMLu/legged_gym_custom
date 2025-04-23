@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.distributions import Normal
 from torch.nn.modules import rnn
-from rsl_rl.modules.support_networks import PrivilegedEncoder, AdaptationEncoder
+from rsl_rl.modules.support_networks import PrivilegedEncoder, AdaptationEncoder, ScanEncoder
 
 class ActorCritic(nn.Module):
     """ Actor-Critic architecture for continuous control reinforcement learning.
@@ -23,6 +23,7 @@ class ActorCritic(nn.Module):
                         actor_hidden_dims=[256, 256, 256],
                         critic_hidden_dims=[256, 256, 256],
                         latent_encoder_output_dim=20,       # NEW
+                        scan_encoder_output_dim=32,         # NEW
                         activation='elu',
                         init_noise_std=1.0,
                         **kwargs):
@@ -67,7 +68,7 @@ class ActorCritic(nn.Module):
         activation = get_activation(activation)
 
         # [cur. obs | obs. history | latent | estimated_obs ]
-        mlp_input_dim_a = num_proprio + (num_proprio*history_buffer_length) + latent_encoder_output_dim + num_estimated_obs + num_scan_obs
+        mlp_input_dim_a = num_proprio + (num_proprio*history_buffer_length) + latent_encoder_output_dim + scan_encoder_output_dim + num_estimated_obs
         mlp_input_dim_c = num_critic_obs
 
         # Build the actor network
@@ -100,10 +101,15 @@ class ActorCritic(nn.Module):
                                                      output_dim=latent_encoder_output_dim, 
                                                      activation='elu')
         
-        self.privileged_encoder_ = PrivilegedEncoder(num_privileged_obs=self.num_privileged_obs, # Linear velocity removed
-                                                     encoder_hidden_dims=[64, 20], 
+        self.privileged_encoder_ = PrivilegedEncoder(num_privileged_obs=self.num_privileged_obs,
+                                                     encoder_hidden_dims=[64, 20], # Hardcoded dims here
                                                      output_dim=latent_encoder_output_dim, 
                                                      activation='elu') 
+        
+        self.scan_encoder = ScanEncoder(num_scan_obs = num_scan_obs,
+                                        output_dim=scan_encoder_output_dim,
+                                        hidden_dims=[128, 64], # Hardcoded dims here
+                                        activation='elu')
 
         # Print the network architecture
         print(f"Actor MLP: {self.actor}")
@@ -173,8 +179,9 @@ class ActorCritic(nn.Module):
     def update_distribution(self, obs_buf, privileged_obs_buf, estimated_obs_buf, scan_obs_buf, adaptation_mode=False):
         """ Forward pass through actor network, updating action distribution.
         """
-        latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode) 
-        actor_input = torch.cat((obs_buf, latent, estimated_obs_buf), dim=-1)
+        priv_latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode)
+        scan_latent = self.scan_encoder(scan_obs_buf)
+        actor_input = torch.cat((obs_buf, priv_latent, scan_latent, estimated_obs_buf), dim=-1)
         mean = self.actor(actor_input)
         self.distribution = Normal(mean, mean*0. + self.std)
 
@@ -190,8 +197,9 @@ class ActorCritic(nn.Module):
             Does not call update_distribution().
         """
         
-        latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode)
-        actor_input = torch.cat((obs_buf, latent, estimated_obs_buf), dim=-1)
+        priv_latent = self.get_latent(obs_buf, privileged_obs_buf, adaptation_mode)
+        scan_latent = self.scan_encoder(scan_obs_buf)
+        actor_input = torch.cat((obs_buf, priv_latent, scan_latent, estimated_obs_buf), dim=-1)
         return self.actor(actor_input)
     # ==================================================================================================
 

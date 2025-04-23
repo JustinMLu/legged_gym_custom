@@ -237,6 +237,7 @@ class LeggedRobotCfgPPO(BaseConfig):
         actor_hidden_dims = [512, 256, 128]
         critic_hidden_dims = [512, 256, 128]
         latent_encoder_output_dim = 20
+        scan_encoder_output_dim = 32
         activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
         
     class algorithm:

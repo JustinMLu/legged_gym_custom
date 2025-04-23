@@ -47,7 +47,8 @@ class PPO:
             {'params': self.actor_critic.actor.parameters()},
             {'params': self.actor_critic.critic.parameters()},
             {'params': self.actor_critic.privileged_encoder_.parameters()},
-            {'params': self.actor_critic.std}
+            {'params': self.actor_critic.std},
+            {'params': self.actor_critic.scan_encoder.parameters()}, # Scan encoder goes here
         ], lr=learning_rate)
 
         # Optimizer (Adaptation Encoder)

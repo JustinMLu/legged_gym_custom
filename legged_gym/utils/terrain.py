@@ -92,8 +92,8 @@ class Terrain:
             
             if self.cfg.add_roughness_to_selected_terrain:
                 terrain_utils.random_uniform_terrain(terrain, 
-                                                     min_height=-0.025, 
-                                                     max_height=0.025, 
+                                                     min_height=-0.015, 
+                                                     max_height=0.015, 
                                                      step=0.005, 
                                                      downsampled_scale=0.2)    
             self.add_terrain_to_map(terrain, i, j)
@@ -112,7 +112,7 @@ class Terrain:
                                                 horizontal_scale=self.cfg.horizontal_scale)
 
             terrain_utils.parkour_hurdle_terrain(terrain, **self.cfg.parkour_hurdle_kwargs)
-
+            # terrain_utils.parkour_hurdle_terrain_randomized(terrain, **self.cfg.parkour_hurdle_randomized_kwargs)
             
 
             if self.cfg.add_roughness_to_selected_terrain:

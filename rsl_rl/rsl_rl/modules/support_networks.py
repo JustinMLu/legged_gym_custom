@@ -7,7 +7,7 @@ from torch.nn.modules import rnn
 
 
 class ScanEncoder(nn.Module):
-    def __init__(self, num_scan_obs, output_dim, hidden_dims=[128, 64, 32], activation='elu'):
+    def __init__(self, num_scan_obs, output_dim, hidden_dims=[128, 64], activation='elu'):
         """ Initialize a ScanEncoder instance.
         
             Args:
@@ -34,6 +34,11 @@ class ScanEncoder(nn.Module):
                 fc_layers.append(activation)
         
         self.scan_encoder = nn.Sequential(*fc_layers)
+    
+    def forward(self, scan_obs):
+        """ Forward pass through the scan encoder.
+        """
+        return self.scan_encoder(scan_obs)
 
 
 class LinearVelocityEstimator(nn.Module):

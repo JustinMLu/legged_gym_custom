@@ -1,10 +1,41 @@
+# SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+# list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+# Copyright (c) 2021 ETH Zurich, Nikita Rudin
 
 from legged_gym import LEGGED_GYM_ROOT_DIR
 import os
+
 import isaacgym
 from legged_gym.envs import *
 from legged_gym.utils import  get_args, export_policy_as_jit, task_registry, Logger
 from deploy.deploy_mujoco.gamepad_reader import Gamepad
+
 import numpy as np
 import torch
 
@@ -13,16 +44,15 @@ def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # Override some parameters for testing
     env_cfg.env.num_envs = min(env_cfg.env.num_envs, 1)
-    env_cfg.env.episode_length_s = float('inf')  # Prevent timeout resets
-    env_cfg.terrain.num_rows = 3
-    env_cfg.terrain.num_cols = 3
+    env_cfg.terrain.num_rows = 1
+    env_cfg.terrain.num_cols = 4
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = True
     env_cfg.commands.user_command = [0.0, 0.0, 0.0, 0.0] # this SHOULD stop the resampling?
     env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.randomize_base_mass = False
     env_cfg.domain_rand.randomize_center_of_mass = False
-    env_cfg.domain_rand.randomize_kp_kd = False
+    env_cfg.domain_rand.randomize_motor_strength = False
     env_cfg.domain_rand.push_robots = False
 
     # Initialize gamepad
@@ -64,7 +94,7 @@ def play(args):
 
         # gamepad control
         env.commands[:, 0] = gamepad.vx * env.cfg.normalization.obs_scales.lin_vel
-        env.commands[:, 1] = gamepad.vy * env.cfg.normalization.obs_scales.lin_vel
+        env.commands[:, 1] = gamepad.vy * env.cfg.normalization.obs_scales.lin_vel * 0.0 # Disabled for cheetah
         env.commands[:, 2] = gamepad.wz * env.cfg.normalization.obs_scales.ang_vel
     
         actions = inference_policy(obs.detach(), privileged_obs.detach(), estimated_obs.detach(), scan_obs.detach(), adaptation_mode=True) # use adaption module
@@ -76,10 +106,10 @@ def play(args):
                 env.gym.write_viewer_image_to_file(env.viewer, filename)
                 img_idx += 1 
 
-        # robot_pos = env.root_states[0, :3].cpu().numpy()
-        # camera_offset = np.array([-2.0, 0.0, 0.75])  # 2m behind, same y, 1.5m above
-        # camera_position = robot_pos + camera_offset
-        # env.set_camera(camera_position, robot_pos)  # Camera position, look-at position
+        robot_pos = env.root_states[0, :3].cpu().numpy()
+        camera_offset = np.array([-2.0, 0.0, 0.75])  # 2m behind, same y, 1.5m above
+        camera_position = robot_pos + camera_offset
+        env.set_camera(camera_position, robot_pos)  # Camera position, look-at position
 
         # if MOVE_CAMERA:
         #     camera_position += camera_vel * env.dt
