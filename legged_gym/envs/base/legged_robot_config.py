@@ -88,9 +88,9 @@ class LeggedRobotCfg(BaseConfig):
         num_commands = 4                # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         resampling_time = 10.           # time before command are changed[s]
         heading_command = True          # if true: compute ang vel command from heading error
-                                        # if not empty: will override resampling logic
+        zero_command = False
         zero_command_prob = 0.10        # probability of randomly resampling a zero command
-        user_command = []               # [lin_vel_x, lin_vel_y, ang_vel_yaw, heading]             
+        user_command = []               # if not empty: will override resampling logic         
         
         class ranges:
             lin_vel_x = [-1.0, 1.0]     # min max [m/s]

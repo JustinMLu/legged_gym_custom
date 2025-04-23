@@ -419,9 +419,10 @@ class LeggedRobot(BaseTask):
         self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
 
         # Randomly zero out
-        zero_mask = torch.rand(len(env_ids), device=self.device) < self.cfg.commands.zero_command_prob
-        selected_env_ids = env_ids[zero_mask]
-        self.commands[selected_env_ids, :] *= 0.0
+        if self.cfg.commands.zero_command:
+            zero_mask = torch.rand(len(env_ids), device=self.device) < self.cfg.commands.zero_command_prob
+            selected_env_ids = env_ids[zero_mask]
+            self.commands[selected_env_ids, :] *= 0.0
 
 
     def _compute_torques(self, actions):

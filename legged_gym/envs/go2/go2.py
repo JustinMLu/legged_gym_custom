@@ -111,15 +111,17 @@ class Go2Robot(LeggedRobot):
                                                          self.command_ranges["ang_vel_yaw"][1], 
                                                          (len(env_ids), 1), 
                                                          device=self.device).squeeze(1)
-
+            
         # Set small commands to zero
         self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
+   
 
-        # Randomly zero out
-        zero_mask = torch.rand(len(env_ids), device=self.device) < self.cfg.commands.zero_command_prob
-        selected_env_ids = env_ids[zero_mask]
-        self.commands[selected_env_ids, :] *= 0.0
-
+        # Randomly zero out commands
+        if self.cfg.commands.zero_command:
+            zero_cmd_mask = torch.rand(len(env_ids), device=self.device) < self.cfg.commands.zero_command_prob
+            self.commands[env_ids[zero_cmd_mask], :] *= 0.0
+            self.jump_button[env_ids[zero_cmd_mask], 0] = 0.0 # Also zero out jump button
+    
     
     def update_command_curriculum(self, env_ids):
         """ Implements a curriculum of increasing commands
@@ -136,7 +138,7 @@ class Go2Robot(LeggedRobot):
 
             # Increase lower range
             self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - delta, 
-                                                          -self.cfg.commands.max_reverse_vel, 
+                                                          self.cfg.commands.max_reverse_vel, # This is a negative number
                                                           0.)
             # Increase upper range
             self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + delta, 
@@ -158,13 +160,11 @@ class Go2Robot(LeggedRobot):
         noise_vec[:3] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel    # angular vel (3)
         noise_vec[3:5] = noise_scales.imu * noise_level                                 # roll, pitch (2)
         noise_vec[5:8] = 0.                                                             # commanded vel (3)
-        noise_vec[8:20] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos  # dof pos (12)
-        noise_vec[20:32] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel # dof vel (12)
-        noise_vec[32:44] = 0.                                                           # prev. actions (12)
-        noise_vec[44:52] = 0.                                                           # phase obs (8)
-
-        # if self.cfg.terrain.parkour:
-        #     noise_vec[52:53] = 0.                                                       # JUMP COMMAND (1)
+        noise_vec[8:9] = 0.                                                             # jump vel. commands (1)
+        noise_vec[9:21] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos  # dof pos (12)
+        noise_vec[21:33] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel # dof vel (12)
+        noise_vec[33:45] = 0.                                                           # prev. actions (12)
+        noise_vec[45:53] = 0.                                                           # phase obs (8)
         # ==========================================================================
         return noise_vec
 
@@ -207,8 +207,8 @@ class Go2Robot(LeggedRobot):
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, 
                                                                                     device=self.device, 
                                                                                     requires_grad=False)
-        # Jump indicators
-        self.jump_commands = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
+        # Jump button
+        self.jump_button = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
 
     def _init_buffers(self):
         """ Initializes the buffers used to store the simulation state and observational data.
@@ -266,6 +266,7 @@ class Go2Robot(LeggedRobot):
 
         if self.cfg.commands.curriculum:
             self.extras["episode"]["max_command_x"] = self.command_ranges["lin_vel_x"][1]
+            self.extras["episode"]["min_command_x"] = self.command_ranges["lin_vel_x"][0]
             self.extras["episode"]["max_command_y"] = self.command_ranges["lin_vel_y"][1]
             self.extras["episode"]["max_command_yaw"] = self.command_ranges["ang_vel_yaw"][1]
             
@@ -342,16 +343,19 @@ class Go2Robot(LeggedRobot):
     def print_debug_info(self):
         """ Prints some debug information to the console.
         """
-
         # Print base xy
         base_xyz = self.root_states[:, 0:3]
         print(f"x: {base_xyz[:, 0].item():.3f} m | y: , {base_xyz[:, 1].item():.3f}, m | z: {base_xyz[:, 2].item():.3f} m")
+
+        # Print base height
+        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
+        print(f"Base height: {base_height.item():.3f} m")
 
     def _post_physics_step_callback(self):
         """ Override of post physics step callback that will update my custom feet 
             state buffers and update my roll pitch yaw IMU observations.
         """
-        # DEBUG PRINTS
+        # DEBUG
         # self.print_debug_info()
 
         # Update feet states, pos, vel
@@ -379,14 +383,27 @@ class Go2Robot(LeggedRobot):
             sin_phase_br, cos_phase_br
         ], dim=1)
 
-        # Use IMU obs instead of proj. gravity
+        # Construct IMU obs
         imu_obs = torch.stack((self.roll, self.pitch), dim=1)
+
+         # PARKOUR JUMP COMMAND
+        if self.cfg.terrain.parkour:
+            robot_x = self.root_states[:, 0].unsqueeze(1)
+            hurdle_x = torch.tensor(self.cfg.terrain.hurdle_x_positions, device=self.device)
+
+            # in_jump_zone = (robot_x >= (hurdle_x - 1.0)) & (robot_x < hurdle_x)
+            # self.jump_button = in_jump_zone.any(dim=1, keepdim=True).float()
+
+            # Jump button = 1.0 when within 1.0 m of any hurdle
+            distances = torch.abs(robot_x - hurdle_x)
+            self.jump_button = (distances < 1.0).any(dim=1, keepdim=True).float()
 
 
         # Construct observations       
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                     # (3,)
                                 imu_obs,                                                           # (2,)      
-                                self.commands[:, :3] * self.commands_scale,                        # (3,)  
+                                self.commands[:, :3] * self.commands_scale,                        # (3,)
+                                self.jump_button,                                                  # (1,)
                                 (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,   # (12,) for quadruped
                                 self.dof_vel * self.obs_scales.dof_vel,                            # (12,)
                                 self.actions,                                                      # (12,) last actions
@@ -394,22 +411,7 @@ class Go2Robot(LeggedRobot):
         
         # Add phase features
         cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # add 8
-        
-        # Add jump command
-        if self.cfg.terrain.parkour:
-            robot_x = self.root_states[:, 0].unsqueeze(1)
-            hurdle_x = torch.tensor(self.cfg.terrain.hurdle_x_positions, device=self.device)
-
-            in_jump_zone = (robot_x >= (hurdle_x - 1.0)) & (robot_x < hurdle_x)
-            self.jump_commands = in_jump_zone.any(dim=1, keepdim=True).float()
-
-            # for i in range(self.num_envs):
-            #     if self.jump_commands[i].item() == 1.0:
-            #         print(f"DEBUG: Robot {i} is in the jump zone! (x = {robot_x[i].item():.3f})")
-
-            # distances = torch.abs(robot_x - hurdle_x)
-            # self.jump_commands = (distances < 1.0).any(dim=1, keepdim=True).float()
-            cur_obs_buf = torch.cat([cur_obs_buf, self.jump_commands], dim=1)
+         
  
         # Add noise vector
         if self.add_noise:
@@ -451,13 +453,12 @@ class Go2Robot(LeggedRobot):
             torch.cat([self.obs_history_buf[:, 1:], cur_obs_buf.unsqueeze(1)], dim=1)
         )
 
-
+    # Extreme parkour
     def _reward_delta_torques(self):
         """ Penalize changes in torques
         """
         return torch.sum(torch.square(self.torques - self.last_torques), dim=1)
     
-
     def _reward_hip_pos(self):
         """ Penalize DOF hip positions away from default"""
         default_hip_pos = self.default_dof_pos[:, self.hip_joint_indices]
@@ -482,8 +483,8 @@ class Go2Robot(LeggedRobot):
         dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
         return dof_error
     
-
-    def _reward_contact_phase_match(self):
+    # Phase gait bootstrapping
+    def _reward_phase_contact_match(self):
         """ Reward proper foot contact based on gait phase.
             For a trot gait:
             - FR and BL feet should contact when phase < 0.5
@@ -501,15 +502,14 @@ class Go2Robot(LeggedRobot):
 
         # Reward / penalty for each foot
         reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
-        reward += torch.where(~(self.fl_contact ^ fl_stance), 0.25, -0.0)
-        reward += torch.where(~(self.fr_contact ^ fr_stance), 0.25, -0.0)
-        reward += torch.where(~(self.bl_contact ^ bl_stance), 0.25, -0.0)
-        reward += torch.where(~(self.br_contact ^ br_stance), 0.25, -0.0)
+        reward += torch.where(~(self.fl_contact ^ fl_stance), 0.25, -0.25)
+        reward += torch.where(~(self.fr_contact ^ fr_stance), 0.25, -0.25)
+        reward += torch.where(~(self.bl_contact ^ bl_stance), 0.25, -0.25)
+        reward += torch.where(~(self.br_contact ^ br_stance), 0.25, -0.25)
 
         return reward
-    
 
-    def _reward_swing_phase_lifting(self):
+    def _reward_phase_foot_lifting(self):
         # 1 is 100% on ground, 0 is 50% on ground, -1 is 0% on ground
         stance_threshold = 2.0 * self.cfg.rewards.percent_time_on_ground - 1.0
 
@@ -519,30 +519,23 @@ class Go2Robot(LeggedRobot):
         bl_stance = torch.sin(2*np.pi*self.phase_bl) <= stance_threshold
         br_stance = torch.sin(2*np.pi*self.phase_br) <= stance_threshold
 
+        # Get foot heights
         foot_heights = torch.stack([
             self.feet_pos[:, 0, 2] - self.last_contact_heights[:, 0],  # FL
             self.feet_pos[:, 1, 2] - self.last_contact_heights[:, 1],  # FR
             self.feet_pos[:, 2, 2] - self.last_contact_heights[:, 2],  # BL
             self.feet_pos[:, 3, 2] - self.last_contact_heights[:, 3]   # BR
         ], dim=1)
-
         foot_heights = torch.clamp(foot_heights, min=0.0, max=self.cfg.rewards.max_foot_height)
-        swing_masks = torch.stack([~fl_stance, ~fr_stance, ~bl_stance, ~br_stance], dim=1)
         
-        # Normalize each foot & apply swing mask
+        # Normalize & apply swing mask
+        swing_masks = torch.stack([~fl_stance, ~fr_stance, ~bl_stance, ~br_stance], dim=1)
         normalized_heights = (foot_heights / self.cfg.rewards.max_foot_height)
         height_rewards = torch.where(swing_masks, normalized_heights, -normalized_heights)
-        
-        # Normalize sum by expected number of feet in swing phase
-        return torch.sum(height_rewards, dim=1) / 2.0 
-
-
-    def _reward_stumble_feet(self):
-        """ Penalize feet hitting vertical surfaces. Uses norm of the X and Y contact forces
-        """
-        return torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
-             5 *torch.abs(self.contact_forces[:, self.feet_indices, 2]), dim=1)
     
+        # Compute reward, normalize by # of feet on ground
+        reward = torch.sum(height_rewards, dim=1) / 2.0 
+        return reward
 
     def _reward_stumble_calves(self):
         """ Penalize calves hitting vertical surfaces. Uses norm of the X and Y contact forces
@@ -550,14 +543,13 @@ class Go2Robot(LeggedRobot):
         return torch.any(torch.norm(self.contact_forces[:, self.calf_indices, :2], dim=2) >\
              5 *torch.abs(self.contact_forces[:, self.calf_indices, 2]), dim=1)
     
-
+    # Stuff added for cheetah gait 
     def _reward_calf_collision(self):
         """ Penalize calves making ANY contact with surfaces (not just vertical ones)
             This is used to prevent foot-calf strikes. Does it work? You decide!
         """
         threshold = 0.1  # Contact force threshold
         return torch.sum(1.0*(torch.norm(self.contact_forces[:, self.calf_indices, :], dim=-1) > threshold), dim=1)
-    
 
     def _reward_minimum_base_height(self):
         """ Penalizes base hight BELOW target threshold only.
@@ -566,92 +558,43 @@ class Go2Robot(LeggedRobot):
         height_deficit = (self.cfg.rewards.base_height_target - base_height).clamp(min=0.0)
         return torch.square(height_deficit)
     
-
-    def _reward_pitch_deg(self):
-        """ Penalize the pitch, in degrees, of the robot base.
+    def _reward_tracking_pitch(self):
+        """ Rewards close-to-target pitch angles of the robot base.
+            Returns values from 0 to 1, where 1 means perfect pitch tracking.
         """
         pitch_deg = self.pitch * (180.0 / np.pi)
-        return torch.square(pitch_deg - self.cfg.rewards.pitch_deg_target)
-    
-
-    def _reward_roll_deg(self):
-        """ Penalize the roll, in degrees, of the robot base.
+        pitch_error = torch.square(pitch_deg - self.cfg.rewards.pitch_deg_target)
+        return torch.exp(-pitch_error / self.cfg.rewards.tracking_sigma)
+        
+    def _reward_tracking_roll(self):
+        """ Rewards close-to-target roll angles of the robot base.
+            Returns values from 0 to 1, where 1 means perfect roll tracking.
         """
         roll_deg = self.roll * (180.0 / np.pi)
-        return torch.square(roll_deg - self.cfg.rewards.roll_deg_target)
+        roll_error = torch.square(roll_deg - self.cfg.rewards.roll_deg_target)
+        return torch.exp(-roll_error / self.cfg.rewards.tracking_sigma)
     
-
-    # TODO Maybe mask this?
+    # ======================================= JUMPY TIME =======================================
     def _reward_heading_alignment(self):
         """ Penalize the robot for deviating from a forward (0 rad) heading,
             computed from its base quaternion using the forward vector.
             This function works regardless of whether heading_command is enabled.
         """
-        # Compute the forward vector in the global frame from the base quaternion.
-        forward = quat_apply(self.base_quat, self.forward_vec)
-        
-        # Compute heading from the forward vector.
-        heading = torch.atan2(forward[:, 1], forward[:, 0])
+        # Compute heading from the forward vec
+        fwd = quat_apply(self.base_quat, self.forward_vec)
+        heading = torch.atan2(fwd[:, 1], fwd[:, 0])
         
         # Wrap the heading to [-pi, pi]
         angle_error = wrap_to_pi(heading)
-        
-        # Return squared error as the penalty.
-        return angle_error**2
-    
-    
-    def _reward_upward_base_height(self):
-        """Reward the robot for a high base height when the jump indicator is active.
-        The reward is the robot's base height (z-coordinate) multiplied by the jump mask.
-        """
-        # Create jump mask (assumed shape [num_envs, 1])
-        jump_mask = self.jump_commands.squeeze()  # now a tensor of 0s and 1s
+        return torch.square(angle_error)
+         
+    def _reward_z_vel_when_jumping(self):
+        jump_mask = (self.jump_button[:, 0] > 0.0).float()
+        up_reward = torch.clamp(self.base_lin_vel[:, 2], min=0.0) * 1.0
+        return up_reward * jump_mask
 
-        # Get base height (z-coordinate) from root_states
-        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
+    # ======================================= JUMPY TIME =======================================
 
-        # Reward is active only when jump_mask is 1.
-        reward = jump_mask * base_height
-        return reward
-    
-    def _reward_jump_velocity(self):
-        """ Reward the robot for a jump by encouraging positive forward and upward linear velocity.
-        
-            This function assumes that the robot's base linear velocity is stored in self.root_states[:, 7:10]
-            where:
-            - index 0 is the x-direction (forward),
-            - index 2 is the z-direction (upward).
-            
-            Only positive values are rewarded.
-        """
-        base_lin_vel = self.root_states[:, 7:10]  # [vx, vy, vz]
-        
-        # Assume positive x is forward and positive z is upward.
-        forward_reward = torch.clamp(base_lin_vel[:, 0], min=0.0)
-        upward_reward  = torch.clamp(base_lin_vel[:, 2], min=0.0)
-        
-        reward = forward_reward + 1.5 * upward_reward
-        jump_mask = self.jump_commands.squeeze()  # assume shape [num_envs]
-        return reward * jump_mask
-
-    def _reward_back_feet_alignment(self):
-        """ Punish the robot for misaligning the x and z coordinates
-            of the back left and back right feet.
-        """
-        back_left = self.feet_pos[:, 2, [0, 2]]   # back left foot: [x, z]
-        back_right = self.feet_pos[:, 3, [0, 2]]    # back right foot: [x, z]
-        return torch.sum((back_left - back_right) ** 2, dim=1)
-    
-
-    def _reward_front_feet_alignment(self):
-        """ Punish the robot for misaligning the x and z coordinates
-            of the front left and front right feet.
-        """
-        front_left = self.feet_pos[:, 0, [0, 2]]   # front left foot: [x, z]
-        front_right = self.feet_pos[:, 1, [0, 2]]  # front right foot: [x, z]
-        return torch.sum((front_left - front_right) ** 2, dim=1)
-
-    # ==============================================================================
     # Function that I moved into Go2.py, planning to move it back 
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 
