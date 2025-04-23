@@ -210,7 +210,7 @@ class Go2Cfg( LeggedRobotCfg ):
 
     class normalization( LeggedRobotCfg.normalization ):
         clip_observations = 100.
-        clip_actions = 3.14
+        clip_actions = 1.2 # PRAY TO HANG PRAY TO HANG
         
         class obs_scales( LeggedRobotCfg.normalization.obs_scales ):
             lin_vel = 2.0
@@ -247,7 +247,7 @@ class Go2Cfg( LeggedRobotCfg ):
         max_contact_force = 100        # [N]
 
         class scales( LeggedRobotCfg.rewards.scales ):
-            
+            # TODO: ADD A REWARD FOR CLEARING SUCCESSIVE HURDLES!
             # =========================
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.5
@@ -265,6 +265,7 @@ class Go2Cfg( LeggedRobotCfg ):
             orientation = -1.0
             stumble_feet = -1.0
             collision = -10.0
+            calf_collision = -15.0
             # ========================= 
             dof_error = -0.04
             hip_pos = -0.75
@@ -307,7 +308,7 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 30000
         save_interval = 50
 
-        run_name = 'jumper_base_flat'
+        run_name = 'jumper_scandots_12'
         experiment_name = 'go2'
 
         # load and resume
