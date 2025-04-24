@@ -394,7 +394,7 @@ def parkour_hurdle_terrain(terrain,
     hf[:, :pad_cells]   = pad_h     # left  wall (min Y)
     hf[:, -pad_cells:]  = pad_h     # right wall (max Y)
     hf[:pad_cells, :]   = pad_h     # front wall (min X) - where the robot starts
-    hf[-pad_cells:, :]  = pad_h     # back  wall (max X) - where the robot ends
+    # hf[-pad_cells:, :]  = pad_h     # back  wall (max X) - where the robot ends
 
 def convert_heightfield_to_trimesh(height_field_raw, horizontal_scale, vertical_scale, slope_threshold=None):
     """

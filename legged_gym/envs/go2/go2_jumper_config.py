@@ -58,7 +58,33 @@ class Go2JumperCfg( LeggedRobotCfg ):
             "border_height": 1.0,
         }
 
-        # Not used until I can figure out waypoint implementation
+        # Cool platforming terrain config
+        # x_start = 5.0
+        # dx = 2.0
+        # num_hurdles = 11
+        # hurdle_x_positions = list(np.arange(x_start,
+        #                                     x_start + num_hurdles * dx,
+        #                                     dx))
+
+        # hurdle_y_positions = [0.0] * len(hurdle_x_positions)
+        # hurdle_heights = [0.2, 0.5, 0.9, 1.4, 1.9, 2.4, 1.9, 2.4, 1.7, 2.1, 1.5]
+        
+        # parkour_hurdle_kwargs = {
+        #     "platform_len": 3.,
+        #     "platform_height": 0.,
+    
+        #     "x_positions": hurdle_x_positions,
+        #     "y_positions": hurdle_y_positions,  # (-) right, (+) left
+            
+        #     "half_valid_width": 4.0,
+        #     "hurdle_heights": hurdle_heights,  
+        #     "hurdle_thickness": 1.75,             
+
+        #     "border_width": 0.25,
+        #     "border_height": 3.0,
+        # }
+
+        # Not used for now
         parkour_hurdle_randomized_kwargs = {
             "platform_len": 3.,
             "platform_height": 0.,
@@ -76,6 +102,7 @@ class Go2JumperCfg( LeggedRobotCfg ):
         }
         
         # ==================== Manual Terrain Selection ====================
+        curriculum = False
         selected = False
 
         random_uniform_kwargs = {
@@ -125,10 +152,7 @@ class Go2JumperCfg( LeggedRobotCfg ):
 
         terrain_kwargs = random_uniform_kwargs        
       
-        # ============= Terrain Curriculum (TODO: Rework this) =============
-        curriculum = False
         
-    
     class domain_rand:      
         randomize_friction = True
         friction_range = [0.3, 1.2]
@@ -174,7 +198,6 @@ class Go2JumperCfg( LeggedRobotCfg ):
 
     class commands ( LeggedRobotCfg.commands ):
         
-
         # General
         resampling_time = 10.     # [seconds]
         zero_command = True      

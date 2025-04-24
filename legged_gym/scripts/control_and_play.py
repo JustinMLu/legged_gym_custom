@@ -91,10 +91,10 @@ def play(args):
                 env.gym.write_viewer_image_to_file(env.viewer, filename)
                 img_idx += 1 
 
-        # # Set custom camera
-        # robot_pos = env.root_states[0, :3].cpu().numpy()
-        # camera_pos = robot_pos + ISO_DIST * cam_dir_vec
-        # env.set_camera(camera_pos, robot_pos)
+        # Set custom camera
+        robot_pos = env.root_states[0, :3].cpu().numpy()
+        camera_pos = robot_pos + ISO_DIST * cam_dir_vec
+        env.set_camera(camera_pos, robot_pos)
 
 
         if i < stop_state_log:
