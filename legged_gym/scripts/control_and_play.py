@@ -13,9 +13,9 @@ import torch
 def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # Override some parameters for testing
-    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 1)
-    env_cfg.terrain.num_rows = 1
-    env_cfg.terrain.num_cols = 1
+    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 25)
+    env_cfg.terrain.num_rows = 2
+    env_cfg.terrain.num_cols = 2
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = True
     env_cfg.commands.user_command = [0.0, 0.0, 0.0, 0.0] # this SHOULD stop the resampling?
@@ -91,10 +91,10 @@ def play(args):
                 env.gym.write_viewer_image_to_file(env.viewer, filename)
                 img_idx += 1 
 
-        # Set custom camera
-        robot_pos = env.root_states[0, :3].cpu().numpy()
-        camera_pos = robot_pos + ISO_DIST * cam_dir_vec
-        env.set_camera(camera_pos, robot_pos)
+        # # Set custom camera
+        # robot_pos = env.root_states[0, :3].cpu().numpy()
+        # camera_pos = robot_pos + ISO_DIST * cam_dir_vec
+        # env.set_camera(camera_pos, robot_pos)
 
 
         if i < stop_state_log:

@@ -401,10 +401,25 @@ class Go2Robot(LeggedRobot):
 
         # Deal with parkour jump zone
         if self.cfg.terrain.parkour:
-            robot_x = self.root_states[:, 0].unsqueeze(1)
+
+            # Get robot and hurdle x positions (in the env frame)
+            robot_x = (self.root_states[:, 0] - self.env_origins[:, 0]).unsqueeze(1)
             hurdle_x = torch.tensor(self.cfg.terrain.hurdle_x_positions, device=self.device)
+
+            # Trigger jump flag
             in_jump_zone = (robot_x >= (hurdle_x - 1.0)) & (robot_x <= hurdle_x)
             self.jump_flags = in_jump_zone.any(dim=1, keepdim=True).float()
+
+            # =================================== DEBUG PRINT ===================================
+            # if torch.any(self.jump_flags):                       # at least one robot in-zone
+            #     in_zone_env_ids = torch.nonzero(self.jump_flags[:, 0], as_tuple=False).flatten()
+
+            #     # NOTE: .item() requires moving the tensor to CPU first
+            #     for env_id in in_zone_env_ids.cpu().tolist():
+            #         local_x = robot_x[env_id].item()             # already env-local
+            #         print(f"[JUMP-DBG]  robot env {env_id:4d} inside jump zone "
+            #             f"(local x = {local_x:6.2f} m)")
+            # ===================================================================================
 
         # CUR OBS    
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                     # (3,)

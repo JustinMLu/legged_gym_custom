@@ -125,8 +125,34 @@ class Terrain:
                                                      step=0.005, 
                                                      downsampled_scale=0.2)    
             
-            self.add_terrain_to_map(terrain, i, j)
+            self.add_parkour_terrain_to_map(terrain, i, j)
         
+
+    def add_parkour_terrain_to_map(self, terrain, row, col):
+        i = row
+        j = col
+        # Compute global slice indices
+        start_x = self.border + i * self.length_per_env_pixels
+        end_x   = self.border + (i + 1) * self.length_per_env_pixels
+        start_y = self.border + j * self.width_per_env_pixels
+        end_y   = self.border + (j + 1) * self.width_per_env_pixels
+
+        # Patch in subterrain
+        self.height_field_raw[start_x:end_x, start_y:end_y] = terrain.height_field_raw
+
+        # Set origin differently
+        env_origin_x = i * self.env_length # Not centered
+        env_origin_y = (j + 0.5) * self.env_width
+
+        # Work out a safe Z origin
+        x1 = int((self.env_length/2. - 1) / terrain.horizontal_scale)
+        x2 = int((self.env_length/2. + 1) / terrain.horizontal_scale)
+        y1 = int((self.env_width/2. - 1) / terrain.horizontal_scale)
+        y2 = int((self.env_width/2. + 1) / terrain.horizontal_scale)
+        env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * terrain.vertical_scale
+
+        # Set env_origins
+        self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
 
             
     def make_terrain(self, choice, difficulty):
@@ -197,20 +223,18 @@ class Terrain:
         start_y = self.border + j * self.width_per_env_pixels
         end_y   = self.border + (j + 1) * self.width_per_env_pixels
 
-        # Directly assign the generated patch (no transpose needed)
+        # Patch in subterrain
         self.height_field_raw[start_x:end_x, start_y:end_y] = terrain.height_field_raw
 
-        # Sets origin of every sub-terrain patch to its geometric center
+        # Set origin of patch to its GEOMETRIC CENTER
         env_origin_x = (i + 0.5) * self.env_length
         env_origin_y = (j + 0.5) * self.env_width
 
-        # Determine the endpoints for the subterrain we are about to add
+        # Work out a safe Z origin
         x1 = int((self.env_length/2. - 1) / terrain.horizontal_scale)
         x2 = int((self.env_length/2. + 1) / terrain.horizontal_scale)
         y1 = int((self.env_width/2. - 1) / terrain.horizontal_scale)
         y2 = int((self.env_width/2. + 1) / terrain.horizontal_scale)
-
-        # No clue
         env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * terrain.vertical_scale
 
         # Set env_origins

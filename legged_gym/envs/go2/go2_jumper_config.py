@@ -127,25 +127,7 @@ class Go2JumperCfg( LeggedRobotCfg ):
       
         # ============= Terrain Curriculum (TODO: Rework this) =============
         curriculum = False
-        max_init_terrain_level = 1      # max. start level
-        promote_threshold = 0.5         # [%] of terrain 
-        demote_threshold = 0.4          # [%] of terrain
-        terrain_default     = [0.20,    # smooth slope
-                               0.20,    # rough slope
-                               0.20,    # stairs up
-                               0.20,    # stairs down
-                               0.20,    # discrete terrain
-                               0.00,    # stepping stones
-                               0.00]    # random uniform
-        terrain_stairs      = [0.00,    # smooth slope
-                               0.00,    # rough slope
-                               0.75,    # stairs up
-                               0.25,    # stairs down
-                               0.00,    # discrete terrain
-                               0.00,    # stepping stones
-                               0.00]    # random uniform
-        terrain_proportions = terrain_default
-        # ============= Terrain Curriculum (TODO: Rework this) =============
+        
     
     class domain_rand:      
         randomize_friction = True
@@ -165,7 +147,7 @@ class Go2JumperCfg( LeggedRobotCfg ):
         max_push_vel_xy = 0.5
 
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [-12.25, 0.0, 0.42]    # Parkour [m]
+        pos = [2.0, 0.0, 0.42]    # Parkour [m]
         
         default_joint_angles = {
             'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.8, 'FL_calf_joint': -1.5, 
