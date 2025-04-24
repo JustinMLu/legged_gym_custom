@@ -32,8 +32,8 @@ class Go2JumperCfg( LeggedRobotCfg ):
         add_roughness_to_selected_terrain = True
     
         # Parkour
-        num_rows = 1                # num. difficulties
-        num_cols = 200              # max. terrain choices
+        num_rows = 10               # num. difficulties
+        num_cols = 20               # max. terrain choices
         terrain_length = 28.
         terrain_width = 8.
 
@@ -41,7 +41,7 @@ class Go2JumperCfg( LeggedRobotCfg ):
         parkour = True
         hurdle_x_positions = [4, 7, 10, 13, 16, 19, 22, 25]
         hurdle_y_positions = [0.0] * len(hurdle_x_positions)
-        hurdle_heights = [0.10, 0.15, 0.20, 0.20, 0.25, 0.25, 0.25, 0.25]
+        hurdle_heights = [0.10, 0.15, 0.20, 0.20, 0.25, 0.25, 0.275, 0.275]
 
         parkour_hurdle_kwargs = {
             "platform_len": 3.,
@@ -250,7 +250,7 @@ class Go2JumperCfg( LeggedRobotCfg ):
             orientation = -1.0
             stumble_feet = -1.0
             collision = -10.0
-            calf_collision = -20.0
+            calf_collision = -10.0
             # ========================= 
             dof_error = -0.05
             hip_pos = -0.5
@@ -261,7 +261,7 @@ class Go2JumperCfg( LeggedRobotCfg ):
             # =========================
             minimum_base_height = -20.
             heading_alignment = -2.0    # Parkour only
-            jump_velocity = 2.5         # Parkour only
+            jump_velocity = 3.75        # Uses jump mask
             
 
 class Go2JumperCfgPPO( LeggedRobotCfgPPO ):
@@ -296,7 +296,7 @@ class Go2JumperCfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 10000
         save_interval = 50
 
-        run_name = 'jumper_scandots_v2'
+        run_name = 'jumper_scandots_v3'
         experiment_name = 'go2_jumper'
 
         # load and resume

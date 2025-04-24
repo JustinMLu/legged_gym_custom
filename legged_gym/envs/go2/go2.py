@@ -628,7 +628,7 @@ class Go2Robot(LeggedRobot):
         fwd = quat_apply(self.base_quat, self.forward_vec)
         heading = torch.atan2(fwd[:, 1], fwd[:, 0])
         
-        # IF HEADING DISABLED IT WILL JUST POINT FORWARDS
+        # Compute desired heading
         if self.cfg.commands.heading_command:
             desired_heading = self.commands[:, 3]
         else:
@@ -639,23 +639,24 @@ class Go2Robot(LeggedRobot):
         return torch.square(angle_error)
     
 
+    def _reward_orientation_with_mask(self):
+        """ Penalize non flat base orientation (so x and y), ONLY when not jumping
+        """
+        jump_mask = (self.jump_flags[:, 0] > 0.0).float()
+        return (1.0 - jump_mask) * torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1)
+    
+
     def _reward_jump_velocity(self):
         """ Reward the robot for a jump by encouraging positive forward and upward linear velocity.
-        
-            This function assumes that the robot's base linear velocity is stored in self.root_states[:, 7:10]
-            where:
-            - index 0 is the x-direction (forward),
-            - index 2 is the z-direction (upward).
-            
             Only positive values are rewarded.
         """
         base_lin_vel = self.root_states[:, 7:10]  # [vx, vy, vz]
         
-        # Assume positive x is forward and positive z is upward.
+        # Assume positive x is forward and positive z is upward
         forward_reward = torch.clamp(base_lin_vel[:, 0], min=0.0)
         upward_reward  = torch.clamp(base_lin_vel[:, 2], min=0.0)
         
-        reward = 0.0*forward_reward + 1.5*upward_reward
+        reward = 0.25*forward_reward + 1.0*upward_reward
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
         return reward * jump_mask
 
