@@ -7,7 +7,6 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg
 
 class Terrain:
     def __init__(self, cfg: LeggedRobotCfg.terrain, num_robots) -> None:
-
         self.cfg = cfg
         self.num_robots = num_robots
         self.type = cfg.mesh_type
@@ -29,16 +28,18 @@ class Terrain:
         self.border = int(cfg.border_size/self.cfg.horizontal_scale)
         self.tot_cols = int(cfg.num_cols * self.width_per_env_pixels) + 2 * self.border
         self.tot_rows = int(cfg.num_rows * self.length_per_env_pixels) + 2 * self.border
-
         self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.int16)
 
         # NOTE: Actual terrain choice logic is here
         if cfg.curriculum:
             self.curiculum()
+
         elif cfg.selected:
             self.selected_terrain()
+
         elif cfg.parkour:
             self.parkour_terrain()
+            
         else:    
             self.randomized_terrain()   
         
@@ -50,7 +51,8 @@ class Terrain:
                 self.cfg.vertical_scale,
                 self.cfg.slope_treshold
             )
-    
+
+
     def randomized_terrain(self):
         for k in range(self.cfg.num_sub_terrains):
             # Env coordinates in the world
@@ -60,7 +62,8 @@ class Terrain:
             difficulty = np.random.choice([0.5, 0.75, 0.9])
             terrain = self.make_terrain(choice, difficulty)
             self.add_terrain_to_map(terrain, i, j)
-        
+    
+
     def curiculum(self):
         """ Generate a curriculum of terrains with varying difficulty and choice.
             Proportions can be set in the config file to control the amount of each terrain.
@@ -74,6 +77,7 @@ class Terrain:
 
                 terrain = self.make_terrain(choice, difficulty) # Can make it easier if you'd like
                 self.add_terrain_to_map(terrain, i, j)
+
 
     def selected_terrain(self):
         """ Select singular terrain from a dictionary in the config file.
@@ -102,7 +106,6 @@ class Terrain:
     def parkour_terrain(self):
         """ Select the parkour terrain. This is custom functionality
         """
-    
         for k in range(self.cfg.num_sub_terrains):
             (i, j) = np.unravel_index(k, (self.cfg.num_rows, self.cfg.num_cols))
             terrain = terrain_utils.SubTerrain("terrain",
@@ -197,14 +200,20 @@ class Terrain:
         # Directly assign the generated patch (no transpose needed)
         self.height_field_raw[start_x:end_x, start_y:end_y] = terrain.height_field_raw
 
-        # Update environment origin based on local max height
+        # Sets origin of every sub-terrain patch to its geometric center
         env_origin_x = (i + 0.5) * self.env_length
         env_origin_y = (j + 0.5) * self.env_width
+
+        # Determine the endpoints for the subterrain we are about to add
         x1 = int((self.env_length/2. - 1) / terrain.horizontal_scale)
         x2 = int((self.env_length/2. + 1) / terrain.horizontal_scale)
         y1 = int((self.env_width/2. - 1) / terrain.horizontal_scale)
         y2 = int((self.env_width/2. + 1) / terrain.horizontal_scale)
+
+        # No clue
         env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * terrain.vertical_scale
+
+        # Set env_origins
         self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
 
 
@@ -221,6 +230,7 @@ def gap_terrain(terrain, gap_size, platform_size=1.):
    
     terrain.height_field_raw[center_x-x2 : center_x + x2, center_y-y2 : center_y + y2] = -1000
     terrain.height_field_raw[center_x-x1 : center_x + x1, center_y-y1 : center_y + y1] = 0
+
 
 def pit_terrain(terrain, depth, platform_size=1.):
     depth = int(depth / terrain.vertical_scale)

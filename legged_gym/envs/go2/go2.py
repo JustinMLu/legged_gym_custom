@@ -30,6 +30,7 @@ def quaternion_to_euler(quat_angle):
      
         return roll_x, pitch_y, yaw_z # in radians
 
+
 class Go2Robot(LeggedRobot):
     def __init__(self, cfg, sim_params, physics_engine, sim_device, headless):
         super().__init__(cfg, sim_params, physics_engine, sim_device, headless)
@@ -405,7 +406,7 @@ class Go2Robot(LeggedRobot):
             in_jump_zone = (robot_x >= (hurdle_x - 1.0)) & (robot_x <= hurdle_x)
             self.jump_flags = in_jump_zone.any(dim=1, keepdim=True).float()
 
-        # Construct observations       
+        # CUR OBS    
         cur_obs_buf = torch.cat((self.base_ang_vel  * self.obs_scales.ang_vel,                     # (3,)
                                 imu_obs,                                                           # (2,)      
                                 self.commands[:, :3] * self.commands_scale,                        # (3,)
@@ -414,33 +415,33 @@ class Go2Robot(LeggedRobot):
                                 self.actions,                                                      # (12,) last actions
                                 ),dim=-1)                                                          
         
-        # Add phase features
+        # PHASE FEATURES
         cur_obs_buf = torch.cat([cur_obs_buf, phase_features], dim=1) # add 8
  
-        # Add noise vector
+        # NOISE
         if self.add_noise:
             cur_obs_buf += (2 * torch.rand_like(cur_obs_buf) - 1) * self.noise_scale_vec
         
-        # Update obs buffer (concat. history)
+        # HISTORY OBS (concatenate)
         self.obs_buf = torch.cat([
             self.obs_history_buf.view(self.num_envs, -1),  # Flattened history
             cur_obs_buf                                    # Current observation
         ], dim=-1)
 
-        # Update privileged obs buffer
+        # PRIVILEGED OBS
         self.privileged_obs_buf = torch.cat((self.privileged_mass_params,     # 4
                                              self.privileged_friction_coeffs, # 1
                                              self.kp_kd_multipliers[0] - 1,      # 12
                                              self.kp_kd_multipliers[1] - 1,      # 12
                                              ), dim=-1)
         
-        # Update estimated obs buffer
+        # ESTIMATED OBS
         self.estimated_obs_buf = self.base_lin_vel * self.obs_scales.lin_vel
         
-        # Scan obs. buffer EXTREME PARKOUR
+        # SCAN OBS
         self.scan_obs_buf = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.3 - self.measured_heights, -1, 1.)
         
-        # Update critic obs buffer
+        # CRITIC OBS
         self.critic_obs_buf = torch.cat((
             self.obs_buf.clone().detach(),
             self.privileged_obs_buf.clone().detach(),
@@ -469,6 +470,7 @@ class Go2Robot(LeggedRobot):
         dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
         return dof_error
     
+
     def _reward_zero_cmd_dof_error(self):
         """ Penalize DOF positions away from default 
         """
@@ -526,6 +528,9 @@ class Go2Robot(LeggedRobot):
 
 
     def _reward_phase_foot_lifting(self):
+        """ Reward proper foot lifting based on gait phase.
+            Uses same general logic as _reward_phase_contact_match()
+        """
         # 1 is 100% on ground, 0 is 50% on ground, -1 is 0% on ground
         stance_threshold = 2.0 * self.cfg.rewards.percent_time_on_ground - 1.0
 
@@ -542,6 +547,8 @@ class Go2Robot(LeggedRobot):
             self.feet_pos[:, 2, 2] - self.last_contact_heights[:, 2],  # BL
             self.feet_pos[:, 3, 2] - self.last_contact_heights[:, 3]   # BR
         ], dim=1)
+
+        # Clamp foot heights
         foot_heights = torch.clamp(foot_heights, min=0.0, max=self.cfg.rewards.max_foot_height)
         
         # Normalize & apply swing mask
@@ -564,14 +571,15 @@ class Go2Robot(LeggedRobot):
     # ==================================== CHEETAH  REWARDS ====================================
     def _reward_calf_collision(self):
         """ Penalize calves making ANY contact with surfaces (not just vertical ones)
-            This is used to prevent foot-calf strikes. Does it work? You decide!
+            Hopefully will prevent calf strikes. Does it work? You decide!
         """
         threshold = 0.1  # Contact force threshold
         return torch.sum(1.0*(torch.norm(self.contact_forces[:, self.calf_indices, :], dim=-1) > threshold), dim=1)
 
 
     def _reward_minimum_base_height(self):
-        """ Penalizes base hight BELOW target threshold only.
+        """ Penalizes base hight BELOW target threshold only. 
+            Uses "base_height_target" from the config file.
         """
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
         height_deficit = (self.cfg.rewards.base_height_target - base_height).clamp(min=0.0)

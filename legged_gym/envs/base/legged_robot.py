@@ -22,6 +22,7 @@ from legged_gym.utils.helpers import class_to_dict
 from .legged_robot_config import LeggedRobotCfg
     
 class LeggedRobot(BaseTask):
+
     def __init__(self, cfg: LeggedRobotCfg, sim_params, physics_engine, sim_device, headless):
         """ Parses the provided config file,
             calls create_sim() (which creates, simulation, terrain and environments),
@@ -65,6 +66,7 @@ class LeggedRobot(BaseTask):
         self._prepare_reward_function()
         self.init_done = True
 
+
     def step(self, actions):
         """ Apply actions, simulate, call self.post_physics_step()
 
@@ -99,6 +101,7 @@ class LeggedRobot(BaseTask):
 
         # Return observations, privileged obs, rewards, reset flags, extras
         return self.obs_buf, self.privileged_obs_buf, self.critic_obs_buf, self.estimated_obs_buf, self.scan_obs_buf, self.rew_buf, self.reset_buf, self.extras
+
 
     def post_physics_step(self):
         """ check terminations, compute observations and rewards
@@ -137,6 +140,7 @@ class LeggedRobot(BaseTask):
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
             self._draw_debug_vis()
 
+
     def check_termination(self):
         """ Check if environments need to be reset
         """
@@ -151,6 +155,7 @@ class LeggedRobot(BaseTask):
         # Terminate robots that flipped over
         self.upside_down_buf = self.projected_gravity[:, 2] > 0. # past 90 degrees
         self.reset_buf |= self.upside_down_buf
+
 
     def reset_idx(self, env_ids):
         """ Reset some environments.
@@ -204,6 +209,7 @@ class LeggedRobot(BaseTask):
         if self.cfg.env.send_timeouts:
             self.extras["time_outs"] = self.time_out_buf
     
+
     def compute_reward(self):
         """ Compute rewards
             Calls each reward function which had a non-zero scale (processed in self._prepare_reward_function())
@@ -227,6 +233,7 @@ class LeggedRobot(BaseTask):
             self.rew_buf += rew
             self.episode_sums["termination"] += rew
     
+
     def compute_observations(self):
         """ Computes (i.e constructs) the observation tensor that is fed into the policy network.
         """
@@ -283,6 +290,7 @@ class LeggedRobot(BaseTask):
             raise ValueError("Terrain mesh type not recognised. Allowed types are [None, plane, heightfield, trimesh]")
         self._create_envs()
 
+
     def set_camera(self, position, lookat):
         """ Set camera position and direction
         """
@@ -291,7 +299,7 @@ class LeggedRobot(BaseTask):
         self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
 
 
-    #------------- Callbacks --------------
+    # ============ CALLBACKS ============
     def _process_rigid_shape_props(self, props, env_id):
         """ Callback allowing to store/change/randomize the rigid shape properties of each environment.
             Called During environment creation.
@@ -470,6 +478,7 @@ class LeggedRobot(BaseTask):
         # Return clipped torques
         return torch.clip(torques, -self.torque_limits, self.torque_limits)
 
+
     def _reset_dofs(self, env_ids):
         """ Resets DOF position and velocities of selected environmments
             Positions are randomly selected within 0.5:1.5 x default positions.
@@ -497,6 +506,7 @@ class LeggedRobot(BaseTask):
                                               gymtorch.unwrap_tensor(self.dof_state),
                                               gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
 
+
     def _reset_root_states(self, env_ids):
         """ Resets ROOT states position and velocities of selected environmments
             Sets base position based on the curriculum
@@ -504,10 +514,10 @@ class LeggedRobot(BaseTask):
         Args:
             env_ids (List[int]): Environemnt ids
         """
-        # Reset base positions
+        # Reset robot to base positions
         if self.custom_origins:
-            self.root_states[env_ids] = self.base_init_state
-            self.root_states[env_ids, :3] += self.env_origins[env_ids]
+            self.root_states[env_ids] = self.base_init_state           # value from cfg.init_state.pos
+            self.root_states[env_ids, :3] += self.env_origins[env_ids] # center of that env
             self.root_states[env_ids, :2] += torch_rand_float(-1., 1., (len(env_ids), 2), device=self.device) # xy position within 1m of the center
         else:
             self.root_states[env_ids] = self.base_init_state
@@ -516,7 +526,7 @@ class LeggedRobot(BaseTask):
         # Reset base velocities (randomize them...)
         self.root_states[env_ids, 7:13] = torch_rand_float(-0.5, 0.5, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
 
-        # Again, do whatever this function is supposed to do
+        # Do stuff
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self.root_states),
@@ -564,6 +574,7 @@ class LeggedRobot(BaseTask):
                                                    torch.clip(self.terrain_levels[env_ids], 0)) # (the minumum level is zero)
         self.env_origins[env_ids] = self.terrain_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
     
+
     def update_command_curriculum(self, env_ids):
         # TODO: Split tracking lin velocity into tracking_x_vel and tracking_y_vel!!!
         """ Implements a curriculum of increasing commands
@@ -579,6 +590,7 @@ class LeggedRobot(BaseTask):
         if mean_lin_vel_reward > 0.8 * self.reward_scales["tracking_lin_vel"]:
             self.command_ranges["lin_vel_x"][0] = np.clip(self.command_ranges["lin_vel_x"][0] - 0.05, -self.cfg.commands.max_curriculum, 0.)
             self.command_ranges["lin_vel_x"][1] = np.clip(self.command_ranges["lin_vel_x"][1] + 0.05, 0., self.cfg.commands.max_curriculum)
+
 
     def _get_noise_scale_vec(self, cfg):
     # TODO Need to ENSURE compatibility with the history obs. buffer implementation in the future
@@ -610,7 +622,7 @@ class LeggedRobot(BaseTask):
             noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
         return noise_vec
 
-    #----------------------------------------
+
     def _init_buffers(self):
         """ Initializes the buffers used to store the simulation state and observational data.
         """
@@ -715,6 +727,7 @@ class LeggedRobot(BaseTask):
         # Becomes (, num_dofs), ready to broadcast across envs
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
 
+
     def _prepare_reward_function(self):
         """ Prepares a list of reward functions, whcih will be called to compute the total reward.
             Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.
@@ -741,6 +754,7 @@ class LeggedRobot(BaseTask):
         self.episode_sums = {name: torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False)
                              for name in self.reward_scales.keys()}
 
+
     def _create_ground_plane(self):
         """ Adds a ground plane to the simulation, sets friction and restitution based on the cfg.
         """
@@ -751,6 +765,7 @@ class LeggedRobot(BaseTask):
         plane_params.restitution = self.cfg.terrain.restitution
         self.gym.add_ground(self.sim, plane_params)
     
+
     def _create_heightfield(self):
         """ Adds a heightfield terrain to the simulation, sets parameters based on the cfg.
         """
@@ -770,6 +785,7 @@ class LeggedRobot(BaseTask):
         self.gym.add_heightfield(self.sim, self.terrain.heightsamples, hf_params)
         self.height_samples = torch.tensor(self.terrain.heightsamples).view(self.terrain.tot_rows, self.terrain.tot_cols).to(self.device)
 
+
     def _create_trimesh(self):
         """ Adds a triangle mesh terrain to the simulation, sets parameters based on the cfg.
         # """
@@ -785,6 +801,7 @@ class LeggedRobot(BaseTask):
         tm_params.restitution = self.cfg.terrain.restitution
         self.gym.add_triangle_mesh(self.sim, self.terrain.vertices.flatten(order='C'), self.terrain.triangles.flatten(order='C'), tm_params)   
         self.height_samples = torch.tensor(self.terrain.heightsamples).view(self.terrain.tot_rows, self.terrain.tot_cols).to(self.device)
+
 
     def _create_envs(self):
         """ Creates environments:
@@ -877,6 +894,7 @@ class LeggedRobot(BaseTask):
         for i in range(len(termination_contact_names)):
             self.termination_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], termination_contact_names[i])
 
+
     def _get_env_origins(self):
         """ Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
             Otherwise create a grid.
@@ -904,6 +922,7 @@ class LeggedRobot(BaseTask):
             self.env_origins[:, 1] = spacing * yy.flatten()[:self.num_envs]
             self.env_origins[:, 2] = 0.
 
+
     def _parse_cfg(self, cfg):
         """ Parses robot configuration file and sets up the environment parameters.
             Also will disable curriculum if an incompatible terrain type is selected.
@@ -928,6 +947,7 @@ class LeggedRobot(BaseTask):
 
         self.cfg.domain_rand.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)
 
+
     def _draw_debug_vis(self):
         """ Draws visualizations for dubugging (slows down simulation a lot).
             Default behaviour: draws height measurement points
@@ -949,6 +969,7 @@ class LeggedRobot(BaseTask):
                 sphere_pose = gymapi.Transform(gymapi.Vec3(x, y, z), r=None)
                 gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], sphere_pose) 
 
+
     def _init_height_points(self):
         """ Returns points at which the height measurments are sampled (in base frame)
 
@@ -964,6 +985,7 @@ class LeggedRobot(BaseTask):
         points[:, :, 0] = grid_x.flatten()
         points[:, :, 1] = grid_y.flatten()
         return points
+
 
     def _get_heights(self, env_ids=None):
         """ Samples heights of the terrain at required points around each robot.
@@ -1002,21 +1024,25 @@ class LeggedRobot(BaseTask):
         heights = torch.min(heights, heights3)
         return heights.view(self.num_envs, -1) * self.terrain.cfg.vertical_scale
 
-    #------------ reward functions----------------
-    def _reward_lin_vel_z(self): # Extreme Parkour -1.0
+
+    # ============ REWARD FUNCTIONS ============
+    def _reward_lin_vel_z(self):
         """ Penalize z axis base linear velocity
         """
         return torch.square(self.base_lin_vel[:, 2])
     
-    def _reward_ang_vel_xy(self): # Extreme Parkour -0.05
+
+    def _reward_ang_vel_xy(self):
         """ Penalize xy axes base angular velocity
         """
         return torch.sum(torch.square(self.base_ang_vel[:, :2]), dim=1)
-    
-    def _reward_orientation(self): # Extreme Parkour -1.0
+
+
+    def _reward_orientation(self):
         """ Penalize non flat base orientation (so x and y)
         """
         return torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1)
+
 
     def _reward_base_height(self):
         """ Penalize base height away from target
@@ -1024,36 +1050,43 @@ class LeggedRobot(BaseTask):
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
         return torch.square(base_height - self.cfg.rewards.base_height_target)
     
-    def _reward_torques(self): # Extreme Parkour -0.00001
+
+    def _reward_torques(self):
         """ Penalize torques
         """
         return torch.sum(torch.square(self.torques), dim=1)
+
 
     def _reward_dof_vel(self):
         """ Penalize dof velocities
         """
         return torch.sum(torch.square(self.dof_vel), dim=1)
     
-    def _reward_dof_acc(self): # Extreme Parkour -2.5e-7
+
+    def _reward_dof_acc(self):
         """ Penalize dof accelerations
         """
         return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt), dim=1)
     
-    def _reward_action_rate(self): # Extreme Parkour -0.1
+
+    def _reward_action_rate(self):
         """ Penalize changes in actions
         """
         return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
     
-    def _reward_collision(self): # Extreme Parkour -10.0
+
+    def _reward_collision(self):
         """ Penalize collisions on selected bodies
         """
         return torch.sum(1.*(torch.norm(self.contact_forces[:, self.penalised_contact_indices, :], dim=-1) > 0.1), dim=1)
     
+
     def _reward_termination(self):
         """ Terminal reward / penalty
         """
         return self.reset_buf * ~self.time_out_buf
     
+
     def _reward_dof_pos_limits(self):
         """ Penalize dof positions too close to the limit
         """
@@ -1061,16 +1094,19 @@ class LeggedRobot(BaseTask):
         out_of_limits += (self.dof_pos - self.dof_pos_limits[:, 1]).clip(min=0.) # (dof_pos - soft upper limit) - pos. or max 0
         return torch.sum(out_of_limits, dim=1)
 
+
     def _reward_dof_vel_limits(self):
         """ Penalize dof velocities too close to the limit.
             Clip to max error = 1 rad/s per joint to avoid huge penalties
         """
         return torch.sum((torch.abs(self.dof_vel) - self.dof_vel_limits*self.cfg.rewards.soft_dof_vel_limit).clip(min=0., max=1.), dim=1)
 
+
     def _reward_torque_limits(self):
         """ Penalize torques too close to the limit
         """
         return torch.sum((torch.abs(self.torques) - self.torque_limits*self.cfg.rewards.soft_torque_limit).clip(min=0.), dim=1)
+
 
     def _reward_tracking_lin_vel(self):
         """ Tracking of linear velocity commands (xy axes) 
@@ -1078,22 +1114,26 @@ class LeggedRobot(BaseTask):
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
         return torch.exp(-lin_vel_error/self.cfg.rewards.tracking_sigma)
     
+
     def _reward_tracking_ang_vel(self):
         """ Tracking of angular velocity commands (yaw) 
         """
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma)
     
-    def _reward_stumble_feet(self): # Extreme Parkour -1.0
+
+    def _reward_stumble_feet(self):
         """ Penalize feet hitting vertical surfaces
         """
         return torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
              5 *torch.abs(self.contact_forces[:, self.feet_indices, 2]), dim=1)
-        
+
+
     def _reward_stand_still(self):
         """ Penalize motion at zero commands
         """
         return torch.sum(torch.abs(self.dof_pos - self.default_dof_pos), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1)
+
 
     def _reward_feet_contact_forces(self):
         """ Penalize feet contact forces exceeding the maximum

@@ -27,7 +27,7 @@ def play(args):
     env_cfg.commands.heading_command = False             # ESSENTIAL OTHERWISE JOYSTICK WILL FIGHT YOU
 
     # Initialize gamepad
-    gamepad = Gamepad(1.0, 1.0, 1.57)           # Manually have to calibrate with rc_scale :(
+    gamepad = Gamepad(1.4, 0.0, 1.57)           # Manually have to calibrate with rc_scale :(
 
     # Prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
@@ -61,9 +61,9 @@ def play(args):
     scan_obs = env.get_scan_observations()
 
     # Specify custom camera
-    ISO_YAW   = np.deg2rad(45)        # 45° around +Z
-    ISO_PITCH = np.deg2rad(35.264)    # atan(1/√2)  ≈ 35.264°
-    ISO_DIST  = 4.0                   # metres from the robot
+    ISO_PITCH = np.deg2rad(25)        # Pitch (up/down) angle
+    ISO_YAW   = np.deg2rad(45)        # Yaw (rotation) angle
+    ISO_DIST  = 3.0                   # metres from the robot
     ISO_FOV   = 25.0                  # deg – optional, see below
 
     # Build camera direction vector
@@ -78,7 +78,7 @@ def play(args):
 
         # Xbox gamepad control
         env.commands[:, 0] = gamepad.vx * env.cfg.normalization.obs_scales.lin_vel
-        env.commands[:, 1] = gamepad.vy * env.cfg.normalization.obs_scales.lin_vel * 0.0 # Disabled for cheetah
+        env.commands[:, 1] = gamepad.vy * env.cfg.normalization.obs_scales.lin_vel
         env.commands[:, 2] = gamepad.wz * env.cfg.normalization.obs_scales.ang_vel
 
         # Compute actions & step
