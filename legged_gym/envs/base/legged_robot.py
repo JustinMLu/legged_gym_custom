@@ -290,6 +290,7 @@ class LeggedRobot(BaseTask):
         cam_target = gymapi.Vec3(lookat[0], lookat[1], lookat[2])
         self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
 
+
     #------------- Callbacks --------------
     def _process_rigid_shape_props(self, props, env_id):
         """ Callback allowing to store/change/randomize the rigid shape properties of each environment.
@@ -315,6 +316,7 @@ class LeggedRobot(BaseTask):
             for s in range(len(props)):
                 props[s].friction = self.friction_coeffs[env_id]
         return props
+
 
     def _process_dof_props(self, props, env_id):
         """ Callback allowing to store/change/randomize the DOF properties of each environment.
@@ -344,6 +346,7 @@ class LeggedRobot(BaseTask):
                 self.dof_pos_limits[i, 1] = m + (0.5 * r * self.cfg.rewards.soft_dof_pos_limit)
         return props
 
+
     def _process_rigid_body_props(self, props, env_id):
         """ Callback allowing to store/change/randomize the rigid body properties of each environment.
         """
@@ -364,7 +367,8 @@ class LeggedRobot(BaseTask):
         # return props and mass parameters
         mass_params = np.concatenate([rand_mass, rand_com])
         return props, mass_params
-    
+
+
     def _post_physics_step_callback(self):
         """ Callback called before computing terminations, rewards, and observations
             Default behaviour: Compute ang vel command based on target and heading, compute measured terrain heights and randomly push robots
@@ -388,8 +392,9 @@ class LeggedRobot(BaseTask):
         self.measured_heights = self._get_heights()
 
         # bully robots
-        if self.cfg.domain_rand.push_robots and  (self.common_step_counter % self.cfg.domain_rand.push_interval == 0):
+        if self.cfg.domain_rand.push_robots and (self.common_step_counter % self.cfg.domain_rand.push_interval == 0):
             self._push_robots()
+
 
     def _resample_commands(self, env_ids):
         """ Randomly select commands of some environments

@@ -206,6 +206,13 @@ def export_policy_as_jit(actor_critic, estimator, path):
         traced_script_module.save(estimator_path)
         print(f"Exported estimator saved to: {estimator_path}")
 
+        # Save scan encoder
+        scan_encoder_path = os.path.join(path, 'scan_encoder.pt')
+        module = copy.deepcopy(actor_critic.scan_encoder).to('cpu')
+        traced_script_module = torch.jit.script(module)
+        traced_script_module.save(scan_encoder_path)
+        print(f"Exported scan encoder saved to: {scan_encoder_path}")
+
 
 class PolicyExporterLSTM(torch.nn.Module):
     """ Don't use this it's mega broken 

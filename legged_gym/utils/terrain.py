@@ -92,10 +92,10 @@ class Terrain:
             
             if self.cfg.add_roughness_to_selected_terrain:
                 terrain_utils.random_uniform_terrain(terrain, 
-                                                     min_height=-0.015, 
-                                                     max_height=0.015, 
+                                                     min_height=-0.02, 
+                                                     max_height=0.02, 
                                                      step=0.005, 
-                                                     downsampled_scale=0.2)    
+                                                     downsampled_scale=0.075)    
             self.add_terrain_to_map(terrain, i, j)
     
 

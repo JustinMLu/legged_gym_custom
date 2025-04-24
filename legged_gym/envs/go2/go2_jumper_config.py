@@ -1,7 +1,7 @@
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 import numpy as np
 
-class Go2Cfg( LeggedRobotCfg ):
+class Go2JumperCfg( LeggedRobotCfg ):
 
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
@@ -30,15 +30,15 @@ class Go2Cfg( LeggedRobotCfg ):
         mesh_type = 'trimesh'
         measure_heights = True      # for go2 this just enables draw_debug_vis
         add_roughness_to_selected_terrain = True
-        
-        # Normal
-        num_rows = 10             # num. difficulties
-        num_cols = 20             # max. terrain choices
-        terrain_length = 8.
+    
+        # Parkour
+        num_rows = 1                # num. difficulties
+        num_cols = 200              # max. terrain choices
+        terrain_length = 28.
         terrain_width = 8.
 
         # ======================== Parkour Terrains ========================
-        parkour = False
+        parkour = True
         hurdle_x_positions = [4, 7, 10, 13, 16, 19, 22, 25]
         hurdle_y_positions = [0.0] * len(hurdle_x_positions)
         hurdle_heights = [0.10, 0.15, 0.20, 0.20, 0.25, 0.25, 0.25, 0.25]
@@ -58,8 +58,25 @@ class Go2Cfg( LeggedRobotCfg ):
             "border_height": 1.0,
         }
 
+        # Not used until I can figure out waypoint implementation
+        parkour_hurdle_randomized_kwargs = {
+            "platform_len": 3.,
+            "platform_height": 0.,
+
+            "x_range": [2.0, 5.0],          # These are the DELTAS BETWEEN HURDLES
+            "y_range": [-8.1, -7.9],        # (-) right, (+) left
+
+            "num_hurdles": 5,                   
+            "hurdle_thickness": 0.35,             
+            "hurdle_height_range": [0.15, 0.35],  
+            "half_valid_width": [3.8, 3.9],
+
+            "border_width": 0.25,
+            "border_height": 1.0,
+        }
+        
         # ==================== Manual Terrain Selection ====================
-        selected = True
+        selected = False
 
         random_uniform_kwargs = {
             "type": "terrain_utils.random_uniform_terrain",
@@ -128,7 +145,7 @@ class Go2Cfg( LeggedRobotCfg ):
                                0.00,    # stepping stones
                                0.00]    # random uniform
         terrain_proportions = terrain_default
-        # ==================================================================
+        # ============= Terrain Curriculum (TODO: Rework this) =============
     
     class domain_rand:      
         randomize_friction = True
@@ -148,7 +165,7 @@ class Go2Cfg( LeggedRobotCfg ):
         max_push_vel_xy = 0.5
 
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.42]     # Normal  [m]
+        pos = [-12.25, 0.0, 0.42]    # Parkour [m]
         
         default_joint_angles = {
             'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.8, 'FL_calf_joint': -1.5, 
@@ -184,15 +201,15 @@ class Go2Cfg( LeggedRobotCfg ):
         # Command curriculum
         curriculum = False
         max_forward_vel = 1.75    # [m/s], (+) is forward
-        max_reverse_vel = -1.0    # [m/s], (+) is forward
+        max_reverse_vel = 0.5     # [m/s], (+) is forward
         vel_increment = 0.10      # [m/s]
 
         # Ranges
         heading_command = True
         class ranges:
-            lin_vel_x = [-1.0, 1.0]     # [m/s]
+            lin_vel_x = [0.75, 1.5]     # [m/s]
             lin_vel_y = [0.0, 0.0]     # [m/s]
-            ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
+            ang_vel_yaw = [-0.0, 0.0]   # [rad/s]
             heading = [-0.2, 0.2]
 
     class normalization( LeggedRobotCfg.normalization ):
@@ -248,7 +265,7 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_acc = -2.5e-7
             delta_torques = -1.0e-7
             # ========================= 
-            orientation = -2.5          # Changed
+            orientation = -1.0
             stumble_feet = -1.0
             collision = -10.0
             calf_collision = -20.0
@@ -256,16 +273,16 @@ class Go2Cfg( LeggedRobotCfg ):
             dof_error = -0.05
             hip_pos = -0.5
             # =========================
-            # zero_cmd_dof_error = -0.4   # Not needed for base
-            thigh_symmetry = -0.2         # Cheetah only
-            calf_symmetry = -0.2          # Cheetah only
-            # # =========================
-            # minimum_base_height = -20.  # Parkour only
-            # heading_alignment = -2.0    # Parkour only
-            # jump_velocity = 2.5         # Parkour only
+            zero_cmd_dof_error = -0.4
+            thigh_symmetry = -0.2
+            calf_symmetry = -0.2
+            # =========================
+            minimum_base_height = -20.
+            heading_alignment = -2.0    # Parkour only
+            jump_velocity = 2.5         # Parkour only
             
 
-class Go2CfgPPO( LeggedRobotCfgPPO ):
+class Go2JumperCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
         init_noise_std = 1.0
         actor_hidden_dims = [512, 256, 128]
@@ -297,8 +314,8 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 10000
         save_interval = 50
 
-        run_name = 'go2_cheetah_base'
-        experiment_name = 'go2'
+        run_name = 'jumper_scandots_v2'
+        experiment_name = 'go2_jumper'
 
         # load and resume
         resume = False

@@ -38,6 +38,7 @@ from .cassie.cassie_config import CassieRoughCfg, CassieRoughCfgPPO
 
 from .go2.go2 import Go2Robot
 from .go2.go2_config import Go2Cfg, Go2CfgPPO
+from .go2.go2_jumper_config import Go2JumperCfg, Go2JumperCfgPPO
 
 
 import os
@@ -48,3 +49,4 @@ task_registry.register( "anymal_c_rough", Anymal, AnymalCRoughCfg(), AnymalCRoug
 task_registry.register( "anymal_c_flat", Anymal, AnymalCFlatCfg(), AnymalCFlatCfgPPO() )
 task_registry.register( "cassie", Cassie, CassieRoughCfg(), CassieRoughCfgPPO() )
 task_registry.register( "go2", Go2Robot, Go2Cfg(), Go2CfgPPO() )
+task_registry.register( "go2_jumper", Go2Robot, Go2JumperCfg(), Go2JumperCfgPPO() )

@@ -15,7 +15,7 @@ def play(args):
     # Override some parameters for testing
     env_cfg.env.num_envs = min(env_cfg.env.num_envs, 1)
     env_cfg.terrain.num_rows = 1
-    env_cfg.terrain.num_cols = 4
+    env_cfg.terrain.num_cols = 1
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = True
     env_cfg.commands.user_command = [0.0, 0.0, 0.0, 0.0] # this SHOULD stop the resampling?
@@ -24,6 +24,7 @@ def play(args):
     env_cfg.domain_rand.randomize_center_of_mass = False
     env_cfg.domain_rand.randomize_motor_strength = False
     env_cfg.domain_rand.push_robots = False
+    env_cfg.commands.heading_command = False             # ESSENTIAL OTHERWISE JOYSTICK WILL FIGHT YOU
 
     # Initialize gamepad
     gamepad = Gamepad(1.0, 1.0, 1.57)           # Manually have to calibrate with rc_scale :(
@@ -36,12 +37,12 @@ def play(args):
     ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args, train_cfg=train_cfg)
     inference_policy = ppo_runner.get_inference_policy(device=env.device)
     
-    # Export policy (and adaptation module) as jit module
+    # Export policy files as jit
     if EXPORT_POLICY:
         path = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'policies')
         export_policy_as_jit(ppo_runner.alg.actor_critic, ppo_runner.alg.estimator, path)
         
-
+    # Logger 
     logger = Logger(env.dt)
     robot_index = 0                             # which robot is used for logging
     joint_index = 1                             # which joint is used for logging
@@ -52,21 +53,35 @@ def play(args):
     camera_direction = np.array(env_cfg.viewer.lookat) - np.array(env_cfg.viewer.pos)
     img_idx = 0
 
+    # Initialize the obs variables
     obs = env.get_observations()
     privileged_obs = env.get_privileged_observations()
     critic_obs = env.get_critic_observations()
     estimated_obs = env.get_estimated_observations()
     scan_obs = env.get_scan_observations()
-    
+
+    # Specify custom camera
+    ISO_YAW   = np.deg2rad(45)        # 45° around +Z
+    ISO_PITCH = np.deg2rad(35.264)    # atan(1/√2)  ≈ 35.264°
+    ISO_DIST  = 4.0                   # metres from the robot
+    ISO_FOV   = 25.0                  # deg – optional, see below
+
+    # Build camera direction vector
+    cam_dir_vec   = np.array([
+        -np.cos(ISO_PITCH) * np.cos(ISO_YAW),
+        -np.cos(ISO_PITCH) * np.sin(ISO_YAW),
+        np.sin(ISO_PITCH)
+    ])
+
     i = 0
     while True:
-        # print(gamepad.vx * env.cfg.normalization.obs_scales.lin_vel)
 
-        # gamepad control
+        # Xbox gamepad control
         env.commands[:, 0] = gamepad.vx * env.cfg.normalization.obs_scales.lin_vel
         env.commands[:, 1] = gamepad.vy * env.cfg.normalization.obs_scales.lin_vel * 0.0 # Disabled for cheetah
         env.commands[:, 2] = gamepad.wz * env.cfg.normalization.obs_scales.ang_vel
-    
+
+        # Compute actions & step
         actions = inference_policy(obs.detach(), privileged_obs.detach(), estimated_obs.detach(), scan_obs.detach(), adaptation_mode=True) # use adaption module
         obs, privileged_obs, critic_obs, estimated_obs, scan_obs, rews, dones, infos = env.step(actions.detach())
 
@@ -76,14 +91,11 @@ def play(args):
                 env.gym.write_viewer_image_to_file(env.viewer, filename)
                 img_idx += 1 
 
+        # Set custom camera
         robot_pos = env.root_states[0, :3].cpu().numpy()
-        camera_offset = np.array([-2.0, 0.0, 0.75])  # 2m behind, same y, 1.5m above
-        camera_position = robot_pos + camera_offset
-        env.set_camera(camera_position, robot_pos)  # Camera position, look-at position
+        camera_pos = robot_pos + ISO_DIST * cam_dir_vec
+        env.set_camera(camera_pos, robot_pos)
 
-        # if MOVE_CAMERA:
-        #     camera_position += camera_vel * env.dt
-        #     env.set_camera(camera_position, camera_position + camera_direction)
 
         if i < stop_state_log:
             logger.log_states(
@@ -117,6 +129,5 @@ def play(args):
 if __name__ == '__main__':
     EXPORT_POLICY = True
     RECORD_FRAMES = False
-    MOVE_CAMERA = False
     args = get_args()
     play(args)
