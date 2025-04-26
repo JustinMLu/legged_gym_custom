@@ -75,59 +75,6 @@ class Go2Robot(LeggedRobot):
             self.calf_joint_indices[i] = self.dof_names.index(name)
 
 
-    def _resample_commands(self, env_ids):
-        """ Randomly select commands of some environments
-        Args:
-            env_ids (List[int]): Environments ids for which new commands are needed
-        """
-        # if empty env_ids provided, do nothing
-        if len(env_ids)==0:
-            return
-
-        # User override
-        if len(self.cfg.commands.user_command) > 0:
-            self.commands[env_ids, :] = torch.as_tensor(self.cfg.commands.user_command, device=self.device).unsqueeze(0)
-            return
-        
-        # Resample linear velocity commands
-        self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], 
-                                                     self.command_ranges["lin_vel_x"][1], 
-                                                     (len(env_ids), 1), 
-                                                     device=self.device).squeeze(1)
-        
-        self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], 
-                                                     self.command_ranges["lin_vel_y"][1], 
-                                                     (len(env_ids), 1), 
-                                                     device=self.device).squeeze(1)
-        
-        # Resample angular velocity commands
-        if self.cfg.commands.heading_command:
-            self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], 
-                                                         self.command_ranges["heading"][1], 
-                                                         (len(env_ids), 1), 
-                                                         device=self.device).squeeze(1)
-        else:
-            self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], 
-                                                         self.command_ranges["ang_vel_yaw"][1], 
-                                                         (len(env_ids), 1), 
-                                                         device=self.device).squeeze(1)
-            
-        # Set small linear vel. commands to zero
-        self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
-   
-
-        # Randomly zero out commands
-        if self.cfg.commands.zero_command:
-            zero_mask = torch.rand(len(env_ids), device=self.device) < self.cfg.commands.zero_command_prob
-            idx = env_ids[zero_mask]        # envs to zero out
-            self.commands[idx, 0:2] = 0.0   # zero linear vels
-            
-            if self.cfg.commands.heading_command:
-                pass                        # keep heading
-            else:
-                self.commands[idx, 2] = 0.0 # zero angular vels
-    
-
     def update_command_curriculum(self, env_ids):
         """ Implements a curriculum of increasing commands
 
@@ -254,10 +201,7 @@ class Go2Robot(LeggedRobot):
     def reset_idx(self, env_ids):
         """ Reset some environments.
             Calls self._reset_dofs(env_ids), self._reset_root_states(env_ids), and self._resample_commands(env_ids)
-            [Optional] calls self._update_terrain_curriculum(env_ids), self.update_command_curriculum(env_ids) and
-            Logs episode info
-            Resets some buffers
-
+            [Optional] calls self._update_terrain_curriculum(env_ids), self.update_command_curriculum(env_ids)
         Args:
             env_ids (list[int]): List of environment ids which must be reset
         """
@@ -385,20 +329,128 @@ class Go2Robot(LeggedRobot):
         print(f"Base height: {base_height.item():.3f} m")
 
 
-    def _post_physics_step_callback(self):
-        """ Override of post physics step callback that will update my custom feet 
-            state buffers and update my roll pitch yaw IMU observations.
+    
+    def post_physics_step(self):
+        """ check terminations, compute observations and rewards
+            calls self._post_physics_step_callback() for common computations 
+            calls self._draw_debug_vis() if needed
         """
-        # DEBUG
-        # self.print_debug_info()
+        self.gym.refresh_actor_root_state_tensor(self.sim)
+        self.gym.refresh_net_contact_force_tensor(self.sim)
 
+        self.episode_length_buf += 1
+        self.common_step_counter += 1
+
+        # prepare quantities
+        self.base_quat[:] = self.root_states[:, 3:7]
+        self.base_lin_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
+        self.base_ang_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
+        self.projected_gravity[:] = quat_rotate_inverse(self.base_quat, self.gravity_vec)
+        
         # Update feet states, pos, vel
         self.update_feet_states()
 
         # Constantly transform IMU quat to rpy
         self.roll, self.pitch, self.yaw = quaternion_to_euler(self.base_quat)
-        return super()._post_physics_step_callback()
+
+        # run post physics step callback
+        self._post_physics_step_callback()
+
+        # compute observations, rewards, resets, ...
+        self.check_termination()
+        self.compute_reward()
+        env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
+        self.reset_idx(env_ids)     # calls resample_commands ...
+        self.compute_observations()
+
+        # Update buffers that store 'previous' data
+        self.last_actions[:] = self.actions[:]              # Update prev. actions
+        self.last_dof_vel[:] = self.dof_vel[:]              # Update prev. dof velocity
+        self.last_root_vel[:] = self.root_states[:, 7:13]   # Update prev. root velocity
+        self.last_base_lin_vel[:] = self.base_lin_vel[:]    # Update prev. base linear velocity
+        self.last_torques[:] = self.torques[:]              # Update prev. torques
+
+        if self.viewer and self.enable_viewer_sync and self.debug_viz:
+            self._draw_debug_vis()
     
+
+    def _post_physics_step_callback(self):
+        """ Callback called before computing terminations, rewards, and observations
+        """
+        env_ids = (self.episode_length_buf % int(self.cfg.commands.resampling_time / self.dt)==0).nonzero(as_tuple=False).flatten()
+
+        # Resample commands
+        self._resample_commands(env_ids)
+
+        # Apply heading command if enabled
+        if self.cfg.commands.heading_command:
+            forward = quat_apply(self.base_quat, self.forward_vec)
+            heading = torch.atan2(forward[:, 1], forward[:, 0])
+            heading_error = wrap_to_pi(self.commands[:, 3] - heading) * self.cfg.commands.heading_error_gain
+            self.commands[:, 2] = torch.clip(heading_error, -1., 1.)
+
+        # Update measured heights buffer
+        self.measured_heights = self._get_heights()
+
+        # bully robots
+        if self.cfg.domain_rand.push_robots and (self.common_step_counter % self.cfg.domain_rand.push_interval == 0):
+            self._push_robots()
+    
+
+    def _resample_commands(self, env_ids):
+        """ Randomly select commands of some environments
+        Args:
+            env_ids (List[int]): Environments ids for which new commands are needed
+        """
+        # if empty env_ids provided, do nothing
+        if len(env_ids)==0:
+            return
+
+        # User override
+        if len(self.cfg.commands.user_command) > 0:
+            self.commands[env_ids, :] = torch.as_tensor(self.cfg.commands.user_command, device=self.device).unsqueeze(0)
+            return
+        
+        # Resample linear velocity commands
+        self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], 
+                                                     self.command_ranges["lin_vel_x"][1], 
+                                                     (len(env_ids), 1), 
+                                                     device=self.device).squeeze(1)
+        
+        self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], 
+                                                     self.command_ranges["lin_vel_y"][1], 
+                                                     (len(env_ids), 1), 
+                                                     device=self.device).squeeze(1)
+        
+        # Resample angular commands
+        if self.cfg.commands.heading_command:
+            self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], 
+                                                         self.command_ranges["heading"][1], 
+                                                         (len(env_ids), 1), 
+                                                         device=self.device).squeeze(1)
+        else:
+            self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], 
+                                                         self.command_ranges["ang_vel_yaw"][1], 
+                                                         (len(env_ids), 1), 
+                                                         device=self.device).squeeze(1)
+            
+        # Set small XY linear velocity commands to zero
+        self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
+   
+
+        # Randomly zero out commands
+        if self.cfg.commands.zero_command:
+            zero_mask = torch.rand(len(env_ids), device=self.device) < self.cfg.commands.zero_command_prob
+            idx = env_ids[zero_mask]        # envs to zero out
+            self.commands[idx, 0:3] *= 0.0   # zero out vx, vy, w
+            
+            # "Zero out" heading by setting tgt heading to cur heading
+            if self.cfg.commands.heading_command:
+                forward = quat_apply(self.base_quat[idx], self.forward_vec[idx])
+                cur_heading = torch.atan2(forward[:, 1], forward[:, 0])
+                self.commands[idx, 3] = torch.clip(wrap_to_pi(cur_heading), 
+                                                   self.command_ranges["heading"][0], 
+                                                   self.command_ranges["heading"][1])
 
     def compute_observations(self):
         """ Computes observations for the robot. Overloaded to include unique observations for Go2.
@@ -422,13 +474,17 @@ class Go2Robot(LeggedRobot):
         # Deal with parkour jump zone
         if self.cfg.terrain.parkour:
 
-            # Get robot and hurdle x positions (in the env frame)
+            # Get local robot and obstacle x coordinates
             robot_x = (self.root_states[:, 0] - self.env_origins[:, 0]).unsqueeze(1)
-            hurdle_x = torch.tensor(self.cfg.terrain.hurdle_x_positions, device=self.device)
+            obstacle_x = torch.tensor(self.cfg.terrain.obstacle_x_positions, device=self.device)
 
             # Trigger jump flag
-            in_jump_zone = (robot_x >= (hurdle_x - 1.2)) & (robot_x <= hurdle_x + 0.2)
-            self.jump_flags = in_jump_zone.any(dim=1, keepdim=True).float()
+            in_jump_zone = (robot_x >= (obstacle_x - 1.2)) & (robot_x <= obstacle_x + 0.2)
+            jump_zone_mask = in_jump_zone.any(dim=1)
+            jump_idx = torch.nonzero(jump_zone_mask, as_tuple=False).squeeze(1)
+            self.jump_flags = jump_zone_mask.unsqueeze(1).float()
+
+            
 
             # =================================== DEBUG PRINT ===================================
             # if torch.any(self.jump_flags):                       # at least one robot in-zone
@@ -509,9 +565,9 @@ class Go2Robot(LeggedRobot):
     def _reward_zero_cmd_dof_error(self):
         """ Penalize DOF positions away from default 
         """
-        zero_mask = torch.norm(self.commands[:, :3], dim=1) < 0.2 # considers all 3 commands
+        zero_mask = (torch.norm(self.commands[:, :3], dim=1) < 0.2).float()
         dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
-        return dof_error * zero_mask.float()
+        return dof_error * zero_mask
     
 
     def _reward_hip_pos(self):
@@ -640,6 +696,24 @@ class Go2Robot(LeggedRobot):
     
     
     # ========================================= JUMPER =========================================
+    def _reward_thigh_symmetry(self):
+        """ Penalize DOF left-right thigh differences. Ordering of 
+            joint_indices buffer is [0] = FL, [1] = FR, [2] = RL, [3] = RR
+        """
+        left_thigh_dof_pos = self.dof_pos[:, self.thigh_joint_indices[[0, 2]]]  # FL and RL
+        right_thigh_dof_pos = self.dof_pos[:, self.thigh_joint_indices[[1, 3]]]  # FR and RR
+        return torch.sum(torch.abs(left_thigh_dof_pos - right_thigh_dof_pos), dim=1)
+
+
+    def _reward_calf_symmetry(self):
+        """ Penalize DOF left-right calf differences. Ordering of
+            joint_indices buffer is [0] = FL, [1] = FR, [2] = RL, [3] = RR
+        """
+        left_calf_dof_pos = self.dof_pos[:, self.calf_joint_indices[[0, 2]]]
+        right_calf_dof_pos = self.dof_pos[:, self.calf_joint_indices[[1, 3]]]
+        return torch.sum(torch.abs(left_calf_dof_pos - right_calf_dof_pos), dim=1)
+
+
     def _reward_heading_alignment(self):
         """ Penalize the robot for deviating from a forward (0 rad) heading,
             computed from its base quaternion using the forward vector.
@@ -649,36 +723,33 @@ class Go2Robot(LeggedRobot):
         heading = torch.atan2(fwd[:, 1], fwd[:, 0])
         
         # Compute desired heading
-        if self.cfg.commands.heading_command:
-            desired_heading = self.commands[:, 3]
-        else:
-            desired_heading = torch.zeros_like(heading)
+        desired_heading = wrap_to_pi(self.commands[:, 3]) if self.cfg.commands.heading_command \
+                  else torch.zeros_like(heading)
+
 
         # Wrap the heading to [-pi, pi]
         angle_error = wrap_to_pi(desired_heading - heading)
         return torch.square(angle_error)
     
-
-    def _reward_orientation_with_mask(self):
-        """ Penalize non flat base orientation (so x and y), ONLY when not jumping
+    def _reward_fwd_jump_vel(self):
+        """ LITERALLY JUST REWARDS FORWARD VELOCITY
         """
+
+        world_lin_vel = self.root_states[:, 7:10]  # [vx, vy, vz]
+        fwd_rew = torch.clamp(world_lin_vel[:, 0], min=0.0)
+
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
-        return (1.0 - jump_mask) * torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1)
+        return fwd_rew * jump_mask
     
-
-    def _reward_jump_velocity(self):
-        """ Reward the robot for a jump by encouraging positive forward and upward linear velocity.
-            Only positive values are rewarded.
+    def _reward_up_jump_vel(self):
+        """ LITERALLY JUST REWARDS UPWARD VELOCITY
         """
-        base_lin_vel = self.root_states[:, 7:10]  # [vx, vy, vz]
-        
-        # Assume positive x is forward and positive z is upward
-        forward_reward = torch.clamp(base_lin_vel[:, 0], min=0.0)
-        upward_reward  = torch.clamp(base_lin_vel[:, 2], min=0.0)
-        
-        reward = 0.5*forward_reward + 1.0*upward_reward
+        world_lin_vel = self.root_states[:, 7:10]  # [vx, vy, vz]
+        up_rew = torch.clamp(world_lin_vel[:, 2], min=0.0)
+
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
-        return reward * jump_mask
+        return up_rew * jump_mask
+
 
     def _reward_jump_height(self):
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
@@ -687,25 +758,13 @@ class Go2Robot(LeggedRobot):
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
         return torch.square(extra) * jump_mask
 
-    def _reward_thigh_symmetry(self):
-        """ Penalize DOF left-right thigh differences. Ordering of 
-            joint_indices buffer is [0] = FL, [1] = FR, [2] = RL, [3] = RR
-        """
-        left_thigh_dof_pos = self.dof_pos[:, self.thigh_joint_indices[[0, 2]]]  # FL and RL
-        right_thigh_dof_pos = self.dof_pos[:, self.thigh_joint_indices[[1, 3]]]  # FR and RR
-        return torch.sum(torch.abs(left_thigh_dof_pos - right_thigh_dof_pos), dim=1) # Squaring actually will decrease the error
+
+    def _reward_forward_progress(self):
+        robot_x = (self.root_states[:, 0] - self.env_origins[:, 0])
+        log_x = torch.log1p(torch.clamp(robot_x, min=0.0))
+        return log_x
 
 
-    def _reward_calf_symmetry(self):
-        """ Penalize DOF left-right calf differences. Ordering of
-            joint_indices buffer is [0] = FL, [1] = FR, [2] = RL, [3] = RR
-        """
-        left_calf_dof_pos = self.dof_pos[:, self.calf_joint_indices[[0, 2]]]
-        right_calf_dof_pos = self.dof_pos[:, self.calf_joint_indices[[1, 3]]]
-        return torch.sum(torch.abs(left_calf_dof_pos - right_calf_dof_pos), dim=1) # Squaring actually will decrease the error
-
-
-    # ======================================== AIR TIME ========================================
     # Function that I moved into Go2.py, planning to move it back 
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 

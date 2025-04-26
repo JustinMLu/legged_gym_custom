@@ -395,10 +395,6 @@ class LeggedRobot(BaseTask):
             heading = torch.atan2(forward[:, 1], forward[:, 0])
             self.commands[:, 2] = torch.clip(0.5*wrap_to_pi(self.commands[:, 3] - heading), -1., 1.)
 
-        """BUG: (RESOLVED) Before, self.measured_heights was only being updated if cfg.terrain.measure_heights=True.
-                This meant that if cfg.terrain.measure_heights=False, reward functions that used self.measured_heights
-                were using zeros instead of the actual height map measurements.
-        """
         # Update measured heights buffer
         self.measured_heights = self._get_heights()
 
@@ -953,6 +949,7 @@ class LeggedRobot(BaseTask):
         self.command_ranges = class_to_dict(self.cfg.commands.ranges)
         if self.cfg.terrain.mesh_type not in ['heightfield', 'trimesh']: # Handle curriculum
             self.cfg.terrain.curriculum = False
+
         self.max_episode_length_s = self.cfg.env.episode_length_s
         self.max_episode_length = np.ceil(self.max_episode_length_s / self.dt)
         self.cfg.domain_rand.push_interval = np.ceil(self.cfg.domain_rand.push_interval_s / self.dt)

@@ -35,92 +35,65 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         num_rows = 10               # num. difficulties
         num_cols = 20               # max. terrain choices
         terrain_length = 28.
-        terrain_width = 8.
+        terrain_width = 10.
 
         # ======================== Parkour Terrains ========================
         parkour = True
-
-        # # ============ REGULAR HURDLES ============
-        # x_start = 4.0
-        # dx = 1.99
-        # num_hurdles = 14
-        # hurdle_x_positions = list(np.arange(x_start, x_start+num_hurdles*dx, dx))
-        # hurdle_y_positions = [0.0] * num_hurdles
-        # hurdle_thickness = [0.35] * num_hurdles
-        # hurdle_heights = [0.10, 0.10, 
-        #                   0.15, 0.15, 
-        #                   0.20, 0.20, 
-        #                   0.25, 0.25, 
-        #                   0.30, 0.30, 
-        #                   0.35, 0.35, 
-        #                   0.40, 0.40]
-
-        # parkour_hurdle_kwargs = {
-        #     "start_platform_length": 3.,
-        #     "start_platform_height": 0.,
-    
-        #     "x_positions": hurdle_x_positions,
-        #     "y_positions": hurdle_y_positions,  # (-) right, (+) left
-            
-        #     "half_valid_width": 4.0,
-        #     "hurdle_heights": hurdle_heights,  
-        #     "hurdle_thickness": hurdle_thickness,             
-
-        #     "border_width": 0.25,
-        #     "border_height": 1.0,
-        # }
+        curriculum = True
+        promote_threshold = 0.60
+        demote_threshold = 0.40
+        terrain_proportions = [1.0, 0.0, 0.0] # Gap, Box/Platform, Hurdles
+        max_init_terrain_level = 2
         
-        # # ========== PLATFORMING HURDLES ==========
+        # ============== BOX HURDLES ==============
         # x_start = 5.0
         # dx = 1.25
-        # num_hurdles = 16
-        # hurdle_x_positions = list(np.arange(x_start, x_start+num_hurdles*dx, dx))
-        # hurdle_y_positions = [0.0] * num_hurdles
-        # hurdle_heights = [0.1, 0.25, 0.45, 0.70, 0.45, 0.70, 1.0, 1.4, 0.8, 0.8, 0.40, 0.40, 0.80, 0.45, 0.80, 1.2]
-        # hurdle_thickness = [1.25] * num_hurdles
+        # n = 16
+        # obstacle_x_positions = list(np.arange(x_start, x_start+n*dx, dx))
+        # obstacle_y_positions = [0.0] * n
+        # box_heights = [0.1, 0.25, 0.45, 0.70, 0.45, 0.70, 1.0, 1.4, 0.8, 0.8, 0.40, 0.40, 0.80, 0.45, 0.80, 1.2]
+        # box_lengths = [1.25] * n
 
-        # parkour_hurdle_kwargs = {
+        # parkour_kwargs = {
         #     "start_platform_length": 3.,
         #     "start_platform_height": 0.,
     
-        #     "x_positions": hurdle_x_positions,
-        #     "y_positions": hurdle_y_positions,  # (-) right, (+) left
+        #     "x_positions": obstacle_x_positions,
+        #     "y_positions": obstacle_y_positions,  # (-) right, (+) left
             
         #     "half_valid_width": 4.0,
-        #     "hurdle_heights": hurdle_heights,  
-        #     "hurdle_thickness": hurdle_thickness,             
+        #     "obstacle_heights": box_heights,  
+        #     "obstacle_lengths": box_lengths,             
 
         #     "border_width": 0.25,
         #     "border_height": 3.0,
         # }
-
+        
         # ============== GAP HURDLES ==============
         x_start = 5.0
         dx = 3.5
-        num_hurdles = 7
-        hurdle_x_positions = list(np.arange(x_start,x_start+num_hurdles*dx,dx))
-        hurdle_y_positions = [0.0] * num_hurdles
-        hurdle_heights = [-2.0] * num_hurdles
-        hurdle_thickness = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4]
+        n = 7
+        gap_heights = [-2.0] * n
+        gap_lengths = [0.2, 0.4, 0.6, 0.8, 1.0, 1.0, 1.0]
 
-        parkour_hurdle_kwargs = {
+        obstacle_x_positions = list(np.arange(x_start,x_start+n*dx,dx))
+        obstacle_y_positions = [0.0] * n
+
+        parkour_kwargs = {
             "start_platform_length": 3.,
             "start_platform_height": 0.,
     
-            "x_positions": hurdle_x_positions,
-            "y_positions": hurdle_y_positions,  # (-) right, (+) left
+            "x_positions": obstacle_x_positions,
+            "y_positions": obstacle_y_positions,  # (-) right, (+) left
             
-            "half_valid_width": 4.0,
-            "hurdle_heights": hurdle_heights,  
-            "hurdle_thickness": hurdle_thickness,             
+            "half_valid_width": 5.0,
+            "obstacle_heights": gap_heights,  
+            "obstacle_lengths": gap_lengths,             
 
             "border_width": 0.25,
-            "border_height": 3.0,
+            "border_height": -2.0,
         }
 
-
-        # # Disable curriculum and selected terrain
-        curriculum = False
         selected = False
 
         random_uniform_kwargs = {
@@ -189,7 +162,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         max_push_vel_xy = 0.5
 
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [2.0, 0.0, 0.42]    # Parkour [m]
+        pos = [2.0, 0.0, 0.50]    # Parkour [m]
         
         default_joint_angles = {
             'FL_hip_joint':  0.1, 'FL_thigh_joint': 0.8, 'FL_calf_joint': -1.5, 
@@ -229,10 +202,11 @@ class Go2ParkourCfg( LeggedRobotCfg ):
 
         # Ranges
         heading_command = True
+        heading_error_gain = 0.5
         class ranges:
             lin_vel_x = [0.75, 1.5]    # [m/s]
             lin_vel_y = [0.0, 0.0]     # [m/s]
-            ang_vel_yaw = [-0.0, 0.0]  # [rad/s]
+            ang_vel_yaw = [-0.25, 0.25]  # [rad/s]
             heading = [-0.2, 0.2]
 
     class normalization( LeggedRobotCfg.normalization ):
@@ -277,7 +251,6 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             # =========================
             tracking_lin_vel = 1.5
             tracking_ang_vel = 1.5
-            # ========================= 
             phase_contact_match = 1.0
             phase_foot_lifting = 1.0
             # =========================
@@ -288,7 +261,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             dof_acc = -2.5e-7
             delta_torques = -1.0e-7
             # ========================= 
-            collision = -20.0           # Doubled since v2
+            collision = -10.0
             orientation = -1.0
             stumble_feet = -1.0
             # ========================= 
@@ -300,9 +273,11 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             thigh_symmetry = -0.2
             calf_symmetry = -0.2
             # =========================
-            heading_alignment = -2.0    # Parkour only
-            jump_velocity = 3.75        # Uses jump mask
-            # jump_height = 2.0           # Uses jump mask
+            heading_alignment = -4.0    # Parkour only
+            fwd_jump_vel = 3.75/2       # Uses jump mask
+            up_jump_vel = 3.75          # Uses jump mask
+            # jump_height = 1.0           # Uses jump mask
+            # forward_progress = 0.01     # Parkour only
             
 
 class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
@@ -334,10 +309,10 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         algorithm_class_name = 'PPO'
        
         num_steps_per_env = 24
-        max_iterations = 20000
-        save_interval = 500
+        max_iterations = 5000
+        save_interval = 50
 
-        run_name = 'parkour_v4_without_height_reward'
+        run_name = 'parkour_v5_gap_BETA'
         experiment_name = 'go2_parkour'
 
         # load and resume

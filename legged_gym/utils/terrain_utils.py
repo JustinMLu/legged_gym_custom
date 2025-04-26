@@ -315,16 +315,16 @@ def parkour_hurdle_terrain_randomized(terrain,
     hf[:pad_cells, :] = pad_h        # bottom
     hf[-pad_cells:, :] = pad_h       # top
 
-def parkour_hurdle_terrain(terrain,
-                           start_platform_length=2.5,
-                           start_platform_height=0.5,
-                           x_positions=[7.0, 11.0, 14.5],     # EXACT X positions for each hurdle
-                           y_positions=[0.0, 0.0, 0.0],       # EXACT Y positions for each hurdle
-                           hurdle_thickness=[0.5, 0.5, 0.5],  # list of hurdle thicknesses in meters for each hurdle
-                           hurdle_heights=None,               # NEW: list of hurdle heights in meters for each hurdle
-                           half_valid_width=2.5,
-                           border_width=0.1,
-                           border_height=0.5):
+def parkour_terrain(terrain,
+                    start_platform_length=2.5,
+                    start_platform_height=0.5,
+                    x_positions=[7.0, 11.0, 14.5],     # EXACT X positions for each hurdle
+                    y_positions=[0.0, 0.0, 0.0],       # EXACT Y positions for each hurdle
+                    obstacle_lengths=[0.5, 0.5, 0.5],  # list of hurdle thicknesses in meters for each hurdle
+                    obstacle_heights=None,               # NEW: list of hurdle heights in meters for each hurdle
+                    half_valid_width=2.5,
+                    border_width=0.1,
+                    border_height=0.5):
     """Parkour terrain with hurdles at exact specified positions.
     
     Args:
@@ -337,10 +337,10 @@ def parkour_hurdle_terrain(terrain,
     # Validate inputs
     num_hurdles = len(x_positions)
     assert len(y_positions) == num_hurdles, "x_positions and y_positions must have the same length"
-    assert len(hurdle_thickness) == num_hurdles, "hurdle_thickness must have num_hurdles elements"
+    assert len(obstacle_lengths) == num_hurdles, "hurdle_thickness must have num_hurdles elements"
 
-    if hurdle_heights is not None:
-        assert len(hurdle_heights) == num_hurdles, "hurdle_heights must have same length as x_positions"
+    if obstacle_heights is not None:
+        assert len(obstacle_heights) == num_hurdles, "hurdle_heights must have same length as x_positions"
 
     # Buffer to store hurdle positions
     terrain.hurdle_positions = []
@@ -370,10 +370,10 @@ def parkour_hurdle_terrain(terrain,
         current_y = mid_y + round(y_local / h_scale)
         
         # Hurdle height in grid units:
-        hurdle_h_i = round(hurdle_heights[i] / v_scale)
+        hurdle_h_i = round(obstacle_heights[i] / v_scale)
 
         # Hurdle thickness
-        stone_cells = round(hurdle_thickness[i] / h_scale)
+        stone_cells = round(obstacle_lengths[i] / h_scale)
         
         # Define x-interval for the hurdle
         x_start = current_x - stone_cells // 2
@@ -395,7 +395,7 @@ def parkour_hurdle_terrain(terrain,
     hf = terrain.height_field_raw
     hf[:, :pad_cells]   = pad_h     # left  wall (min Y)
     hf[:, -pad_cells:]  = pad_h     # right wall (max Y)
-    hf[:pad_cells, :]   = pad_h     # front wall (min X) - where the robot starts
+    # hf[:pad_cells, :]   = pad_h     # front wall (min X) - where the robot starts
     # hf[-pad_cells:, :]  = pad_h     # back  wall (max X) - where the robot ends
 
 def convert_heightfield_to_trimesh(height_field_raw, horizontal_scale, vertical_scale, slope_threshold=None):

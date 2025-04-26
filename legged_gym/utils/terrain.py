@@ -31,14 +31,18 @@ class Terrain:
         self.height_field_raw = np.zeros((self.tot_rows , self.tot_cols), dtype=np.int16)
 
         # NOTE: Actual terrain choice logic is here
-        if cfg.curriculum:
-            self.default_curriculum()
+        if cfg.curriculum and not cfg.parkour: # Default curriculum
+            self.curriculum()
+        
+        elif cfg.parkour and not cfg.curriculum: # Parkour selected
+            self.parkour_selected_terrain()
 
+    
+        elif cfg.parkour and cfg.curriculum: # parkour curriculum
+            self.parkour_curriculum()
+        
         elif cfg.selected:
             self.selected_terrain()
-
-        elif cfg.parkour:
-            self.parkour_terrain()
             
         else:    
             self.randomized_terrain()   
@@ -81,7 +85,7 @@ class Terrain:
             self.add_terrain_to_map(terrain, i, j)
 
 
-    def default_curriculum(self):
+    def curriculum(self):
         """ Generate a curriculum of terrains with varying difficulty and choice.
             Proportions can be set in the config file to control the amount of each terrain.
             - Rows represent difficulty
@@ -96,14 +100,24 @@ class Terrain:
                 self.add_terrain_to_map(terrain, i, j)
     
 
-    # def parkour_curriculum(self):
-    #     for j in range(self.cfg.num_cols):
-    #         for i in range(self.cfg.num_rows):
-    #             difficulty = i / self.cfg.num_rows
+    def parkour_curriculum(self):
+        """ WORK IN PROGRESS!
+        """
+
+        for j in range(self.cfg.num_cols):
+            for i in range(self.cfg.num_rows):
+                difficulty = i / self.cfg.num_rows
+                choice = j / self.cfg.num_cols + 0.001
+            
+
+                # Add parkour terrain to map
+                terrain = self.make_parkour_terrain(choice, difficulty)
+                self.add_parkour_terrain_to_map(terrain, i, j)
 
 
-    def parkour_terrain(self):
-        """ Select the parkour terrain. This is custom functionality
+    def parkour_selected_terrain(self):
+        """ Select a hardcoded singular parkour terrain.
+            Mainly you should just use this to make/test new parkour terrains.
         """
         for k in range(self.cfg.num_sub_terrains):
             (i, j) = np.unravel_index(k, (self.cfg.num_rows, self.cfg.num_cols))
@@ -113,45 +127,10 @@ class Terrain:
                                                 vertical_scale=self.cfg.vertical_scale,
                                                 horizontal_scale=self.cfg.horizontal_scale)
 
-            # terrain_utils.parkour_hurdle_terrain_randomized(terrain, **self.cfg.parkour_hurdle_randomized_kwargs)
-            terrain_utils.parkour_hurdle_terrain(terrain, **self.cfg.parkour_hurdle_kwargs)
+            
+            terrain_utils.parkour_terrain(terrain, **self.cfg.parkour_kwargs)
             self.add_parkour_terrain_to_map(terrain, i, j)
         
-
-    def add_parkour_terrain_to_map(self, terrain, row, col):
-        if self.cfg.add_roughness_to_selected_terrain:
-            terrain_utils.random_uniform_terrain(terrain, 
-                                                 min_height=-0.04, 
-                                                 max_height=0.04, 
-                                                 step=0.005, 
-                                                 downsampled_scale=0.2)
-
-        i = row
-        j = col
-        # Compute global slice indices
-        start_x = self.border + i * self.length_per_env_pixels
-        end_x   = self.border + (i + 1) * self.length_per_env_pixels
-        start_y = self.border + j * self.width_per_env_pixels
-        end_y   = self.border + (j + 1) * self.width_per_env_pixels
-
-        # Patch in subterrain
-        self.height_field_raw[start_x:end_x, start_y:end_y] = terrain.height_field_raw
-
-        # Set origin differently
-        env_origin_x = i * self.env_length # Not centered
-        env_origin_y = (j + 0.5) * self.env_width
-
-        # Work out a safe Z origin
-        x1 = int((self.env_length/2. - 1) / terrain.horizontal_scale)
-        x2 = int((self.env_length/2. + 1) / terrain.horizontal_scale)
-        y1 = int((self.env_width/2. - 1) / terrain.horizontal_scale)
-        y2 = int((self.env_width/2. + 1) / terrain.horizontal_scale)
-        # env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * terrain.vertical_scale why bro
-        env_origin_z = 0.0
-
-        # Set env_origins
-        self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
-
             
     def make_terrain(self, choice, difficulty):
         """ Generate a terrain based on the choice and difficulty.
@@ -211,6 +190,85 @@ class Terrain:
             
         return terrain
 
+
+    def make_parkour_terrain(self, choice, difficulty):
+        # Gap parkour terrain
+        gap_x_start = 5.0
+        gap_dx = 3.5
+        num_gaps = 7
+        gap_lengths = [difficulty] * num_gaps 
+        gap_heights = [-2.0] * num_gaps
+
+        # Box parkour terrain
+        box_x_start = 5.0
+        box_dx = 1.25
+        num_boxes = 16
+        box_lengths = [1.25] * num_boxes
+        box_heights = [0.1, 0.25, 0.45, 0.70, 
+                       0.45, 0.70, 1.0, 1.4, 
+                       0.8, 0.8, 0.40, 0.40, 
+                       0.80, 0.45, 0.80, 1.2]
+
+        # Hurdle terrain
+        hurdle_x_start = 4.0
+        hurdle_dx = 1.99
+        num_hurdles= 14
+        hurdle_lengths = [0.35] * num_hurdles
+        hurdle_heights = [0.05 + 0.44 * difficulty] * num_hurdles
+        
+        terrain = terrain_utils.SubTerrain("terrain",
+                                           width=self.width_per_env_pixels,
+                                           length=self.length_per_env_pixels,
+                                           vertical_scale=self.cfg.vertical_scale,
+                                           horizontal_scale=self.cfg.horizontal_scale)
+
+        # Gap terrain
+        if choice < self.proportions[0]:
+            terrain_utils.parkour_terrain(terrain=terrain,
+                                          start_platform_length=3.,
+                                          start_platform_height=0.,
+                                          x_positions=list(np.arange(gap_x_start,
+                                                                     gap_x_start + num_gaps * gap_dx,
+                                                                     gap_dx)),
+                                          y_positions=[0.0] * num_gaps,
+                                          obstacle_heights=gap_heights,
+                                          obstacle_lengths=gap_lengths,
+                                          half_valid_width=4.0,
+                                          border_width=0.25,
+                                          border_height=3.0)
+
+        # Box terrain
+        elif choice < self.proportions[1]:
+            terrain_utils.parkour_terrain(terrain=terrain,
+                                          start_platform_length=3.,
+                                          start_platform_height=0.,
+                                          x_positions=list(np.arange(box_x_start,
+                                                                     box_x_start + num_boxes * box_dx,
+                                                                     box_dx)),
+                                          y_positions=[0.0] * num_boxes,
+                                          obstacle_heights=box_heights,
+                                          obstacle_lengths=box_lengths,
+                                          half_valid_width=4.0,
+                                          border_width=0.25,
+                                          border_height=3.0)
+
+        # Hurdle terrain
+        else:
+            terrain_utils.parkour_terrain(terrain=terrain,
+                                          start_platform_length=3.,
+                                          start_platform_height=0.,
+                                          x_positions=list(np.arange(hurdle_x_start,
+                                                                     hurdle_x_start + num_hurdles * hurdle_dx,
+                                                                     hurdle_dx)),
+                                          y_positions=[0.0] * num_hurdles,
+                                          obstacle_heights=hurdle_heights,
+                                          obstacle_lengths=hurdle_lengths,
+                                          half_valid_width=4.0,
+                                          border_width=0.25,
+                                          border_height=3.0)
+
+        return terrain
+
     
     def add_terrain_to_map(self, terrain, row, col):
         if self.cfg.add_roughness_to_selected_terrain:
@@ -245,6 +303,44 @@ class Terrain:
         self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
 
 
+    def add_parkour_terrain_to_map(self, terrain, row, col):
+        """ Add a parkour terrain to the map.
+            This function is mostly identical to add_terrain_to_map, but instead of
+            setting the env_origin as (x_center, y_center), this function will set
+            the env_origin as (x_min, y_center), as the parkour terrains are obstacle courses.
+             """
+        if self.cfg.add_roughness_to_selected_terrain:
+            terrain_utils.random_uniform_terrain(terrain, 
+                                                 min_height=-0.04, 
+                                                 max_height=0.04, 
+                                                 step=0.005, 
+                                                 downsampled_scale=0.2)
+
+        i = row
+        j = col
+        # Compute global slice indices
+        start_x = self.border + i * self.length_per_env_pixels
+        end_x   = self.border + (i + 1) * self.length_per_env_pixels
+        start_y = self.border + j * self.width_per_env_pixels
+        end_y   = self.border + (j + 1) * self.width_per_env_pixels
+
+        # Patch in subterrain
+        self.height_field_raw[start_x:end_x, start_y:end_y] = terrain.height_field_raw
+
+        # Set origin differently
+        env_origin_x = i * self.env_length # Not centered
+        env_origin_y = (j + 0.5) * self.env_width
+
+        # Work out a safe Z origin
+        x1 = int((self.env_length/2. - 1) / terrain.horizontal_scale)
+        x2 = int((self.env_length/2. + 1) / terrain.horizontal_scale)
+        y1 = int((self.env_width/2. - 1) / terrain.horizontal_scale)
+        y2 = int((self.env_width/2. + 1) / terrain.horizontal_scale)
+        # env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * terrain.vertical_scale why bro
+        env_origin_z = 0.0
+
+        # Set env_origins
+        self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
 
 
 # ===================================================
