@@ -44,11 +44,11 @@ class MujocoController(BaseController):
             self._wave_step   = 0
 
         if self._wave_active:
-            active_row = NY - 1 - self._wave_step
+            active_row = NY - 2 - self._wave_step
             if active_row >= 0:
                 start = active_row * NX
-                end   = (active_row + 1) * NX       # row-major slice
-                scan[0, start:end] = -0.5           # -1 is 30cm wall
+                end   = (active_row + 2) * NX       # row-major slice
+                scan[0, start:end] = -2.0          # -1 is 30cm wall
                 self._wave_step += 1
             else:
                 # finished: reset state-machine
@@ -59,19 +59,6 @@ class MujocoController(BaseController):
 
         return scan
 
-
-        # # 132 cells = 12 columns (x-axis, forward)  ×  11 rows (y-axis, left⇄right)
-        # NX, NY = 12, 11                        
-        # scan = torch.zeros((1, self.cfg.num_scan_obs), dtype=torch.float32)
-
-        # if self.gamepad._rb_pressed:      # your Gamepad class already exposes this
-        #     front_rows = [8, 9, 10]            # rows in front of the robot
-        #     for r in front_rows:
-        #         start = r * NX                # row-major flattening
-        #         end   = (r + 1) * NY
-        #         scan[0, start:end] = -5.0      # –1 ⇒ 30 cm obstacle in training data
-
-        # return scan
 
 
     def refresh_robot_states(self):

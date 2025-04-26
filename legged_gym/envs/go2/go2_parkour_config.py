@@ -42,7 +42,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         curriculum = True
         promote_threshold = 0.60
         demote_threshold = 0.40
-        terrain_proportions = [1.0, 0.0, 0.0] # Gap, Box/Platform, Hurdles
+        terrain_proportions = [1.0, 0.0, 0.0] # [Gap, Box, Hurdles]
         max_init_terrain_level = 2
         
         # ============== BOX HURDLES ==============
@@ -61,12 +61,12 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         #     "x_positions": obstacle_x_positions,
         #     "y_positions": obstacle_y_positions,  # (-) right, (+) left
             
-        #     "half_valid_width": 4.0,
+        #     "half_valid_width": 5.0,
         #     "obstacle_heights": box_heights,  
         #     "obstacle_lengths": box_lengths,             
 
-        #     "border_width": 0.25,
-        #     "border_height": 3.0,
+        #     "border_width": 0.50,
+        #     "border_height": -2.0,
         # }
         
         # ============== GAP HURDLES ==============
@@ -90,7 +90,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             "obstacle_heights": gap_heights,  
             "obstacle_lengths": gap_lengths,             
 
-            "border_width": 0.25,
+            "border_width": 0.50,
             "border_height": -2.0,
         }
 
@@ -184,7 +184,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         name = "go2"
         foot_name = "foot"
         penalize_contacts_on = ["base", "hip", "thigh", "calf", "Head"]
-        terminate_after_contacts_on = ["base", "Head"]
+        terminate_after_contacts_on = ["base"]
         self_collisions = 0 # 1 to disable, 0 to enable (bitwise filter)
 
     class commands ( LeggedRobotCfg.commands ):
@@ -262,7 +262,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             delta_torques = -1.0e-7
             # ========================= 
             collision = -10.0
-            orientation = -1.0
+            orientation = -2.0
             stumble_feet = -1.0
             # ========================= 
             dof_error = -0.04

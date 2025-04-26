@@ -196,7 +196,7 @@ class Terrain:
         gap_x_start = 5.0
         gap_dx = 3.5
         num_gaps = 7
-        gap_lengths = [difficulty] * num_gaps 
+        gap_lengths = [difficulty+0.1] * num_gaps 
         gap_heights = [-2.0] * num_gaps
 
         # Box parkour terrain
@@ -233,9 +233,9 @@ class Terrain:
                                           y_positions=[0.0] * num_gaps,
                                           obstacle_heights=gap_heights,
                                           obstacle_lengths=gap_lengths,
-                                          half_valid_width=4.0,
-                                          border_width=0.25,
-                                          border_height=3.0)
+                                          half_valid_width=5.0,
+                                          border_width=0.50,
+                                          border_height=-2.0)
 
         # Box terrain
         elif choice < self.proportions[1]:
@@ -248,9 +248,9 @@ class Terrain:
                                           y_positions=[0.0] * num_boxes,
                                           obstacle_heights=box_heights,
                                           obstacle_lengths=box_lengths,
-                                          half_valid_width=4.0,
-                                          border_width=0.25,
-                                          border_height=3.0)
+                                          half_valid_width=5.0,
+                                          border_width=0.50,
+                                          border_height=-2.0)
 
         # Hurdle terrain
         else:
@@ -263,9 +263,9 @@ class Terrain:
                                           y_positions=[0.0] * num_hurdles,
                                           obstacle_heights=hurdle_heights,
                                           obstacle_lengths=hurdle_lengths,
-                                          half_valid_width=4.0,
-                                          border_width=0.25,
-                                          border_height=3.0)
+                                          half_valid_width=5.0,
+                                          border_width=0.50,
+                                          border_height=-2.0)
 
         return terrain
 
