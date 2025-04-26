@@ -193,11 +193,11 @@ def export_policy_as_jit(actor_critic, estimator, path):
         print(f"Exported policy saved to: {policy_path}")
 
         # Save adaptation module
-        encoder_path = os.path.join(path, 'encoder.pt')
+        adapt_path = os.path.join(path, 'adaptation_module.pt')
         module = copy.deepcopy(actor_critic.adaptation_encoder_).to('cpu')
         traced_script_module = torch.jit.script(module)
-        traced_script_module.save(encoder_path)
-        print(f"Exported adaptation module saved to: {encoder_path}")
+        traced_script_module.save(adapt_path)
+        print(f"Exported adaptation module saved to: {adapt_path}")
 
         # Save estimator
         estimator_path = os.path.join(path, 'estimator.pt')

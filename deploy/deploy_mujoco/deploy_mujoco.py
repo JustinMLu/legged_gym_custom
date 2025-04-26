@@ -10,18 +10,69 @@ from deploy.base.deploy_base import BaseController, ConfigParser
 from gamepad_reader import Gamepad
 
 class MujocoController(BaseController):
-    
+
     def __init__(self, cfg: ConfigParser) -> None:
         super().__init__(cfg)
+        self.gamepad = Gamepad(cfg.rc_scale[0], 
+                               cfg.rc_scale[1], 
+                               cfg.rc_scale[2])
 
-        # Init gamepad
-        self.gamepad = Gamepad(cfg.rc_scale[0], cfg.rc_scale[1], cfg.rc_scale[2])
-        
         # Init Mujoco here so refresh_robot_states() can access mj_data
         self.mj_model = mujoco.MjModel.from_xml_path(cfg.xml_path)
         self.mj_data = mujoco.MjData(self.mj_model)
         self.mj_model.opt.timestep = cfg.simulation_dt
         mujoco.mj_resetDataKeyframe(self.mj_model, self.mj_data, 0)
+
+
+        self._wave_active = False
+        self._wave_step = 0
+        self._wave_len = 11
+
+    def _get_scan_obs(self) -> torch.Tensor:
+        """
+        Return (1, num_scan_obs) tensor for the scan-encoder.
+
+        If RB is pressed, spoof a wall that the policy learned to jump over: 
+        three rows (≈0.9-1.2 m ahead) are set to -1.  
+        Otherwise we return all-zeros (flat ground).
+        """
+        NX, NY = 12, 11
+        scan = torch.zeros((1, self.cfg.num_scan_obs), dtype=torch.float32)
+        
+        if self.gamepad._rb_pressed and not self._wave_active:
+            self._wave_active = True
+            self._wave_step   = 0
+
+        if self._wave_active:
+            active_row = NY - 1 - self._wave_step
+            if active_row >= 0:
+                start = active_row * NX
+                end   = (active_row + 1) * NX       # row-major slice
+                scan[0, start:end] = -0.5           # -1 is 30cm wall
+                self._wave_step += 1
+            else:
+                # finished: reset state-machine
+                self._wave_active = False
+
+            if self._wave_step >= self._wave_len:
+                self._wave_active = False
+
+        return scan
+
+
+        # # 132 cells = 12 columns (x-axis, forward)  ×  11 rows (y-axis, left⇄right)
+        # NX, NY = 12, 11                        
+        # scan = torch.zeros((1, self.cfg.num_scan_obs), dtype=torch.float32)
+
+        # if self.gamepad._rb_pressed:      # your Gamepad class already exposes this
+        #     front_rows = [8, 9, 10]            # rows in front of the robot
+        #     for r in front_rows:
+        #         start = r * NX                # row-major flattening
+        #         end   = (r + 1) * NY
+        #         scan[0, start:end] = -5.0      # –1 ⇒ 30 cm obstacle in training data
+
+        # return scan
+
 
     def refresh_robot_states(self):
         """ Retrieve the latest robot state (joints, velocities, orientation, etc.) from 
@@ -50,6 +101,8 @@ class MujocoController(BaseController):
         """ Calculates torques from position commands using position PD control.
         """
         return kp*(target_q-q) + kd*(target_dq-dq)
+    
+
 
 
 if __name__ == "__main__":

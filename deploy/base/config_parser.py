@@ -21,15 +21,17 @@ class ConfigParser:
                 "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR)
 
             # ===================== COMMON ==========================
-            # Path to policy network
+            # Network paths
             self.policy_path = cfg["policy_path"].replace(
                 "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR).replace("*model", cfg["model_name"])
             
-            # Path to encoder network
-            self.encoder_path = cfg["encoder_path"].replace(
+            self.adaptation_path = cfg["adaptation_path"].replace(
                 "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR).replace("*model", cfg["model_name"])
             
             self.estimator_path = cfg["estimator_path"].replace(
+                "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR).replace("*model", cfg["model_name"])
+        
+            self.scan_encoder_path = cfg["scan_encoder_path"].replace(
                 "{LEGGED_GYM_ROOT_DIR}", LEGGED_GYM_ROOT_DIR).replace("*model", cfg["model_name"])
             
             # Timing
@@ -67,6 +69,7 @@ class ConfigParser:
             self.num_actions = cfg["num_actions"]
             self.num_proprio = cfg["num_proprio"]
             self.buffer_length = cfg["buffer_length"]
+            self.num_scan_obs = cfg["num_scan_obs"]
             self.num_obs = self.num_proprio+(self.num_proprio*self.buffer_length)
 
             # Phase features

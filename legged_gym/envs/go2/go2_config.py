@@ -15,10 +15,10 @@ class Go2Cfg( LeggedRobotCfg ):
         num_observations = num_proprio+(num_proprio*history_buffer_length)
 
         # Phase features
-        period = 0.35
+        period = 0.45
         fr_offset = 0.0 
-        bl_offset = 0.5
-        fl_offset = 0.0
+        bl_offset = 0.0
+        fl_offset = 0.5
         br_offset = 0.5
 
     class terrain( LeggedRobotCfg.terrain ):
@@ -27,11 +27,10 @@ class Go2Cfg( LeggedRobotCfg ):
         measured_points_y = [-0.75, -0.6, -0.45, -0.3, -0.15, 0., 0.15, 0.3, 0.45, 0.6, 0.75]   # 11
         
         # General
-        mesh_type = 'trimesh'
-        measure_heights = True      # for go2 this just enables draw_debug_vis
-        add_roughness_to_selected_terrain = True
+        mesh_type = 'plane'
+        measure_heights = False      # for go2 this just enables draw_debug_vis
+        add_roughness_to_selected_terrain = False
         
-        # Normal
         num_rows = 10             # num. difficulties
         num_cols = 20             # max. terrain choices
         terrain_length = 8.
@@ -59,7 +58,7 @@ class Go2Cfg( LeggedRobotCfg ):
         }
 
         # ==================== Manual Terrain Selection ====================
-        selected = True
+        selected = False
 
         random_uniform_kwargs = {
             "type": "terrain_utils.random_uniform_terrain",
@@ -183,15 +182,15 @@ class Go2Cfg( LeggedRobotCfg ):
 
         # Command curriculum
         curriculum = False
-        max_forward_vel = 1.75    # [m/s], (+) is forward
-        max_reverse_vel = -1.0    # [m/s], (+) is forward
-        vel_increment = 0.10      # [m/s]
+        max_forward_vel = 1.0    # [m/s], (+) is forward
+        max_reverse_vel = -1.0   # [m/s], (+) is forward
+        vel_increment = 0.10     # [m/s]
 
         # Ranges
-        heading_command = True
+        heading_command = False
         class ranges:
             lin_vel_x = [-1.0, 1.0]     # [m/s]
-            lin_vel_y = [0.0, 0.0]     # [m/s]
+            lin_vel_y = [-0.75, 0.75]     # [m/s]
             ang_vel_yaw = [-1.0, 1.0]   # [rad/s]
             heading = [-0.2, 0.2]
 
@@ -224,7 +223,7 @@ class Go2Cfg( LeggedRobotCfg ):
     class rewards( LeggedRobotCfg.rewards ):
         only_positive_rewards = True
         soft_dof_pos_limit = 0.9       # [%]
-        base_height_target = 0.29      # [m]
+        base_height_target = 0.25      # [m]
 
         pitch_deg_target = 0.0         # [deg]   (+) down, (-) up
         roll_deg_target = 0.0          # [deg]   (+) right, (-) left
@@ -236,33 +235,24 @@ class Go2Cfg( LeggedRobotCfg ):
         class scales( LeggedRobotCfg.rewards.scales ):
             # =========================
             tracking_lin_vel = 1.5
-            tracking_ang_vel = 1.5
+            tracking_ang_vel = 1.0
             # ========================= 
             phase_contact_match = 1.0
-            phase_foot_lifting = 1.0
+            phase_foot_lifting = 0.25
             # =========================
+            lin_vel_z = -2.0
             action_rate = -0.1         
-            lin_vel_z = -1.0
             ang_vel_xy = -0.01
             torques = -0.00001
             dof_acc = -2.5e-7
             delta_torques = -1.0e-7
             # ========================= 
-            orientation = -2.5          # Changed
-            stumble_feet = -1.0
+            orientation = -5.0
+            base_height = -20.0
             collision = -10.0
-            calf_collision = -20.0
             # ========================= 
-            dof_error = -0.05
-            hip_pos = -0.5
-            # =========================
-            # zero_cmd_dof_error = -0.4   # Not needed for base
-            thigh_symmetry = -0.2         # Cheetah only
-            calf_symmetry = -0.2          # Cheetah only
-            # # =========================
-            # minimum_base_height = -20.  # Parkour only
-            # heading_alignment = -2.0    # Parkour only
-            # jump_velocity = 2.5         # Parkour only
+            dof_error = -0.04
+            hip_pos = -0.75
             
 
 class Go2CfgPPO( LeggedRobotCfgPPO ):
@@ -294,10 +284,10 @@ class Go2CfgPPO( LeggedRobotCfgPPO ):
         algorithm_class_name = 'PPO'
        
         num_steps_per_env = 24
-        max_iterations = 10000
+        max_iterations = 5000
         save_interval = 50
 
-        run_name = 'go2_cheetah_base'
+        run_name = 'go2_base_policy'
         experiment_name = 'go2'
 
         # load and resume

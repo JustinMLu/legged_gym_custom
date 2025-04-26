@@ -1,7 +1,7 @@
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 import numpy as np
 
-class Go2JumperCfg( LeggedRobotCfg ):
+class Go2ParkourCfg( LeggedRobotCfg ):
 
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
@@ -39,69 +39,87 @@ class Go2JumperCfg( LeggedRobotCfg ):
 
         # ======================== Parkour Terrains ========================
         parkour = True
-        hurdle_x_positions = [4, 7, 10, 13, 16, 19, 22, 25]
-        hurdle_y_positions = [0.0] * len(hurdle_x_positions)
-        hurdle_heights = [0.10, 0.15, 0.20, 0.20, 0.25, 0.25, 0.275, 0.275]
 
-        parkour_hurdle_kwargs = {
-            "platform_len": 3.,
-            "platform_height": 0.,
-    
-            "x_positions": hurdle_x_positions,
-            "y_positions": hurdle_y_positions,  # (-) right, (+) left
-            
-            "half_valid_width": 4.0,
-            "hurdle_heights": hurdle_heights,  
-            "hurdle_thickness": 0.35,             
+        # # ============ REGULAR HURDLES ============
+        # x_start = 4.0
+        # dx = 1.99
+        # num_hurdles = 14
+        # hurdle_x_positions = list(np.arange(x_start, x_start+num_hurdles*dx, dx))
+        # hurdle_y_positions = [0.0] * num_hurdles
+        # hurdle_thickness = [0.35] * num_hurdles
+        # hurdle_heights = [0.10, 0.10, 
+        #                   0.15, 0.15, 
+        #                   0.20, 0.20, 
+        #                   0.25, 0.25, 
+        #                   0.30, 0.30, 
+        #                   0.35, 0.35, 
+        #                   0.40, 0.40]
 
-            "border_width": 0.25,
-            "border_height": 1.0,
-        }
-
-        # Cool platforming terrain config
-        # x_start = 5.0
-        # dx = 2.0
-        # num_hurdles = 11
-        # hurdle_x_positions = list(np.arange(x_start,
-        #                                     x_start + num_hurdles * dx,
-        #                                     dx))
-
-        # hurdle_y_positions = [0.0] * len(hurdle_x_positions)
-        # hurdle_heights = [0.2, 0.5, 0.9, 1.4, 1.9, 2.4, 1.9, 2.4, 1.7, 2.1, 1.5]
-        
         # parkour_hurdle_kwargs = {
-        #     "platform_len": 3.,
-        #     "platform_height": 0.,
+        #     "start_platform_length": 3.,
+        #     "start_platform_height": 0.,
     
         #     "x_positions": hurdle_x_positions,
         #     "y_positions": hurdle_y_positions,  # (-) right, (+) left
             
         #     "half_valid_width": 4.0,
         #     "hurdle_heights": hurdle_heights,  
-        #     "hurdle_thickness": 1.75,             
+        #     "hurdle_thickness": hurdle_thickness,             
+
+        #     "border_width": 0.25,
+        #     "border_height": 1.0,
+        # }
+        
+        # # ========== PLATFORMING HURDLES ==========
+        # x_start = 5.0
+        # dx = 1.25
+        # num_hurdles = 16
+        # hurdle_x_positions = list(np.arange(x_start, x_start+num_hurdles*dx, dx))
+        # hurdle_y_positions = [0.0] * num_hurdles
+        # hurdle_heights = [0.1, 0.25, 0.45, 0.70, 0.45, 0.70, 1.0, 1.4, 0.8, 0.8, 0.40, 0.40, 0.80, 0.45, 0.80, 1.2]
+        # hurdle_thickness = [1.25] * num_hurdles
+
+        # parkour_hurdle_kwargs = {
+        #     "start_platform_length": 3.,
+        #     "start_platform_height": 0.,
+    
+        #     "x_positions": hurdle_x_positions,
+        #     "y_positions": hurdle_y_positions,  # (-) right, (+) left
+            
+        #     "half_valid_width": 4.0,
+        #     "hurdle_heights": hurdle_heights,  
+        #     "hurdle_thickness": hurdle_thickness,             
 
         #     "border_width": 0.25,
         #     "border_height": 3.0,
         # }
 
-        # Not used for now
-        parkour_hurdle_randomized_kwargs = {
-            "platform_len": 3.,
-            "platform_height": 0.,
+        # ============== GAP HURDLES ==============
+        x_start = 5.0
+        dx = 3.5
+        num_hurdles = 7
+        hurdle_x_positions = list(np.arange(x_start,x_start+num_hurdles*dx,dx))
+        hurdle_y_positions = [0.0] * num_hurdles
+        hurdle_heights = [-2.0] * num_hurdles
+        hurdle_thickness = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4]
 
-            "x_range": [2.0, 5.0],          # These are the DELTAS BETWEEN HURDLES
-            "y_range": [-8.1, -7.9],        # (-) right, (+) left
-
-            "num_hurdles": 5,                   
-            "hurdle_thickness": 0.35,             
-            "hurdle_height_range": [0.15, 0.35],  
-            "half_valid_width": [3.8, 3.9],
+        parkour_hurdle_kwargs = {
+            "start_platform_length": 3.,
+            "start_platform_height": 0.,
+    
+            "x_positions": hurdle_x_positions,
+            "y_positions": hurdle_y_positions,  # (-) right, (+) left
+            
+            "half_valid_width": 4.0,
+            "hurdle_heights": hurdle_heights,  
+            "hurdle_thickness": hurdle_thickness,             
 
             "border_width": 0.25,
-            "border_height": 1.0,
+            "border_height": 3.0,
         }
-        
-        # ==================== Manual Terrain Selection ====================
+
+
+        # # Disable curriculum and selected terrain
         curriculum = False
         selected = False
 
@@ -193,7 +211,7 @@ class Go2JumperCfg( LeggedRobotCfg ):
         name = "go2"
         foot_name = "foot"
         penalize_contacts_on = ["base", "hip", "thigh", "calf", "Head"]
-        terminate_after_contacts_on = ["base"]
+        terminate_after_contacts_on = ["base", "Head"]
         self_collisions = 0 # 1 to disable, 0 to enable (bitwise filter)
 
     class commands ( LeggedRobotCfg.commands ):
@@ -212,9 +230,9 @@ class Go2JumperCfg( LeggedRobotCfg ):
         # Ranges
         heading_command = True
         class ranges:
-            lin_vel_x = [0.75, 1.5]     # [m/s]
+            lin_vel_x = [0.75, 1.5]    # [m/s]
             lin_vel_y = [0.0, 0.0]     # [m/s]
-            ang_vel_yaw = [-0.0, 0.0]   # [rad/s]
+            ang_vel_yaw = [-0.0, 0.0]  # [rad/s]
             heading = [-0.2, 0.2]
 
     class normalization( LeggedRobotCfg.normalization ):
@@ -246,7 +264,7 @@ class Go2JumperCfg( LeggedRobotCfg ):
     class rewards( LeggedRobotCfg.rewards ):
         only_positive_rewards = True
         soft_dof_pos_limit = 0.9       # [%]
-        base_height_target = 0.29      # [m]
+        base_height_target = 0.25      # [m]
 
         pitch_deg_target = 0.0         # [deg]   (+) down, (-) up
         roll_deg_target = 0.0          # [deg]   (+) right, (-) left
@@ -270,24 +288,24 @@ class Go2JumperCfg( LeggedRobotCfg ):
             dof_acc = -2.5e-7
             delta_torques = -1.0e-7
             # ========================= 
+            collision = -20.0           # Doubled since v2
             orientation = -1.0
             stumble_feet = -1.0
-            collision = -10.0
-            calf_collision = -10.0
             # ========================= 
-            dof_error = -0.05
-            hip_pos = -0.5
-            # =========================
+            dof_error = -0.04
             zero_cmd_dof_error = -0.4
+            hip_pos = -0.5
+            thigh_pos = -0.5
+            # =========================
             thigh_symmetry = -0.2
             calf_symmetry = -0.2
             # =========================
-            minimum_base_height = -20.
             heading_alignment = -2.0    # Parkour only
             jump_velocity = 3.75        # Uses jump mask
+            # jump_height = 2.0           # Uses jump mask
             
 
-class Go2JumperCfgPPO( LeggedRobotCfgPPO ):
+class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
         init_noise_std = 1.0
         actor_hidden_dims = [512, 256, 128]
@@ -316,11 +334,11 @@ class Go2JumperCfgPPO( LeggedRobotCfgPPO ):
         algorithm_class_name = 'PPO'
        
         num_steps_per_env = 24
-        max_iterations = 10000
-        save_interval = 50
+        max_iterations = 20000
+        save_interval = 500
 
-        run_name = 'jumper_scandots_v3'
-        experiment_name = 'go2_jumper'
+        run_name = 'parkour_v4_without_height_reward'
+        experiment_name = 'go2_parkour'
 
         # load and resume
         resume = False

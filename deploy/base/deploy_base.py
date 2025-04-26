@@ -29,8 +29,9 @@ class BaseController:
         # Get config, load policy and encoder
         self.cfg = cfg
         self.policy = torch.jit.load(cfg.policy_path)
-        self.encoder = torch.jit.load(cfg.encoder_path)
+        self.adaptation = torch.jit.load(cfg.adaptation_path)
         self.estimator = torch.jit.load(cfg.estimator_path)
+        self.scan_encoder = torch.jit.load(cfg.scan_encoder_path)
 
         # Initialize essential buffers
         self.qj = np.zeros(cfg.num_actions, dtype=np.float32)    # joint pos.
@@ -98,6 +99,17 @@ class BaseController:
         """
         raise NotImplementedError("refresh_robot_states() not implemented")
 
+    # ------------------------------------------------------------------  
+    def _get_scan_obs(self) -> torch.Tensor:
+        """
+        Return a (1, num_scan_obs) tensor that will be fed to self.scan_encoder().
+        Default implementation = a completely flat height-map (zeros).
+
+        Child classes can override this method (e.g. to spoof an obstacle when the
+        user presses a button, or to pass real LiDAR data on the robot).
+        """
+        return torch.zeros((1, self.cfg.num_scan_obs), dtype=torch.float32)
+    # ------------------------------------------------------------------
 
     def step(self, elapsed_time_s):
         """ Execute one iteration of the control loop, performing the following steps:
@@ -179,13 +191,17 @@ class BaseController:
         # Use adaptation module
         hist_len = self.cfg.buffer_length * self.cfg.num_proprio
         hist_tensor = obs_tensor[:, :hist_len].reshape(1, self.cfg.buffer_length, self.cfg.num_proprio)
-        latent = self.encoder(hist_tensor)
+        priv_latent = self.adaptation(hist_tensor)
 
         # Use estimator 
-        estimated_vel = self.estimator(obs_tensor)
+        estimated_obs = self.estimator(obs_tensor)
+
+        # Use scan encoder
+        scan_tensor  = self._get_scan_obs()
+        scan_latent = self.scan_encoder(scan_tensor)
 
         # Concatenate
-        actor_input = torch.cat((obs_tensor, latent, estimated_vel), dim=-1)
+        actor_input = torch.cat((obs_tensor, priv_latent, scan_latent, estimated_obs), dim=-1)
 
         # Get actions from policy network, clip
         self.actions = self.policy(actor_input)

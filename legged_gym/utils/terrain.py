@@ -32,7 +32,7 @@ class Terrain:
 
         # NOTE: Actual terrain choice logic is here
         if cfg.curriculum:
-            self.curiculum()
+            self.default_curriculum()
 
         elif cfg.selected:
             self.selected_terrain()
@@ -64,21 +64,6 @@ class Terrain:
             self.add_terrain_to_map(terrain, i, j)
     
 
-    def curiculum(self):
-        """ Generate a curriculum of terrains with varying difficulty and choice.
-            Proportions can be set in the config file to control the amount of each terrain.
-            - Rows represent difficulty
-            - Columns represent terrain choice 
-        """
-        for j in range(self.cfg.num_cols):
-            for i in range(self.cfg.num_rows):
-                difficulty = i / self.cfg.num_rows      # Rows represent difficulty
-                choice = j / self.cfg.num_cols + 0.001
-
-                terrain = self.make_terrain(choice, difficulty) # Can make it easier if you'd like
-                self.add_terrain_to_map(terrain, i, j)
-
-
     def selected_terrain(self):
         """ Select singular terrain from a dictionary in the config file.
         """
@@ -93,15 +78,29 @@ class Terrain:
                                                 horizontal_scale=self.cfg.horizontal_scale)
 
             eval(terrain_type)(terrain, **self.cfg.terrain_kwargs)
-            
-            if self.cfg.add_roughness_to_selected_terrain:
-                terrain_utils.random_uniform_terrain(terrain, 
-                                                     min_height=-0.02, 
-                                                     max_height=0.02, 
-                                                     step=0.005, 
-                                                     downsampled_scale=0.075)    
             self.add_terrain_to_map(terrain, i, j)
+
+
+    def default_curriculum(self):
+        """ Generate a curriculum of terrains with varying difficulty and choice.
+            Proportions can be set in the config file to control the amount of each terrain.
+            - Rows represent difficulty
+            - Columns represent terrain choice 
+        """
+        for j in range(self.cfg.num_cols):          # num_cols = how many terrain types
+            for i in range(self.cfg.num_rows):      # num_rows = how many levels
+                difficulty = i / self.cfg.num_rows
+                choice = j / self.cfg.num_cols + 0.001
+
+                terrain = self.make_terrain(choice, difficulty) # Can make it easier if you'd like
+                self.add_terrain_to_map(terrain, i, j)
     
+
+    # def parkour_curriculum(self):
+    #     for j in range(self.cfg.num_cols):
+    #         for i in range(self.cfg.num_rows):
+    #             difficulty = i / self.cfg.num_rows
+
 
     def parkour_terrain(self):
         """ Select the parkour terrain. This is custom functionality
@@ -114,21 +113,19 @@ class Terrain:
                                                 vertical_scale=self.cfg.vertical_scale,
                                                 horizontal_scale=self.cfg.horizontal_scale)
 
-            terrain_utils.parkour_hurdle_terrain(terrain, **self.cfg.parkour_hurdle_kwargs)
             # terrain_utils.parkour_hurdle_terrain_randomized(terrain, **self.cfg.parkour_hurdle_randomized_kwargs)
-            
-
-            if self.cfg.add_roughness_to_selected_terrain:
-                terrain_utils.random_uniform_terrain(terrain, 
-                                                     min_height=-0.04, 
-                                                     max_height=0.04, 
-                                                     step=0.005, 
-                                                     downsampled_scale=0.2)    
-            
+            terrain_utils.parkour_hurdle_terrain(terrain, **self.cfg.parkour_hurdle_kwargs)
             self.add_parkour_terrain_to_map(terrain, i, j)
         
 
     def add_parkour_terrain_to_map(self, terrain, row, col):
+        if self.cfg.add_roughness_to_selected_terrain:
+            terrain_utils.random_uniform_terrain(terrain, 
+                                                 min_height=-0.04, 
+                                                 max_height=0.04, 
+                                                 step=0.005, 
+                                                 downsampled_scale=0.2)
+
         i = row
         j = col
         # Compute global slice indices
@@ -149,7 +146,8 @@ class Terrain:
         x2 = int((self.env_length/2. + 1) / terrain.horizontal_scale)
         y1 = int((self.env_width/2. - 1) / terrain.horizontal_scale)
         y2 = int((self.env_width/2. + 1) / terrain.horizontal_scale)
-        env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * terrain.vertical_scale
+        # env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2]) * terrain.vertical_scale why bro
+        env_origin_z = 0.0
 
         # Set env_origins
         self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
@@ -215,6 +213,12 @@ class Terrain:
 
     
     def add_terrain_to_map(self, terrain, row, col):
+        if self.cfg.add_roughness_to_selected_terrain:
+            terrain_utils.random_uniform_terrain(terrain, 
+                                                 min_height=-0.04, 
+                                                 max_height=0.04, 
+                                                 step=0.005, 
+                                                 downsampled_scale=0.2)
         i = row
         j = col
         # Compute global slice indices
@@ -241,6 +245,9 @@ class Terrain:
         self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
 
 
+
+
+# ===================================================
 def gap_terrain(terrain, gap_size, platform_size=1.):
     gap_size = int(gap_size / terrain.horizontal_scale)
     platform_size = int(platform_size / terrain.horizontal_scale)
@@ -254,7 +261,6 @@ def gap_terrain(terrain, gap_size, platform_size=1.):
    
     terrain.height_field_raw[center_x-x2 : center_x + x2, center_y-y2 : center_y + y2] = -1000
     terrain.height_field_raw[center_x-x1 : center_x + x1, center_y-y1 : center_y + y1] = 0
-
 
 def pit_terrain(terrain, depth, platform_size=1.):
     depth = int(depth / terrain.vertical_scale)

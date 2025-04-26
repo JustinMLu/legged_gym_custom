@@ -14,7 +14,7 @@ def play(args):
     # Override some parameters for testing
     env_cfg.env.num_envs = min(env_cfg.env.num_envs, 10)
     env_cfg.terrain.num_rows = 1
-    env_cfg.terrain.num_cols = 2
+    env_cfg.terrain.num_cols = 1
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = True
     env_cfg.domain_rand.randomize_friction = False
@@ -22,6 +22,7 @@ def play(args):
     env_cfg.domain_rand.randomize_center_of_mass = False
     env_cfg.domain_rand.randomize_motor_strength = False
     env_cfg.domain_rand.push_robots = False
+    env_cfg.commands.zero_command = False
 
     # prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)

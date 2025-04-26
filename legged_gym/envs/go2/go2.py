@@ -230,6 +230,26 @@ class Go2Robot(LeggedRobot):
         super()._init_buffers()
         self._init_custom_buffers()
 
+    def check_termination(self):
+        """ Check if environments need to be reset
+        """
+
+        # Terminate if certain links are contacted
+        self.reset_buf = torch.any(torch.norm(self.contact_forces[:, self.termination_contact_indices, :], dim=-1) > 1., dim=1)
+        
+        # Terminate timed out robots
+        self.time_out_buf = self.episode_length_buf > self.max_episode_length # no terminal reward for time-outs
+        self.reset_buf |= self.time_out_buf
+
+        # Terminate robots that flipped over
+        self.upside_down_buf = self.projected_gravity[:, 2] > 0. # past 90 degrees
+        self.reset_buf |= self.upside_down_buf
+
+        # If parkour enabled, terminate robots that fell down a hole
+        if self.cfg.terrain.parkour:
+            self.fell_into_hole_buf = self.root_states[:, 2] < -1.0
+            self.reset_buf |= self.fell_into_hole_buf
+
 
     def reset_idx(self, env_ids):
         """ Reset some environments.
@@ -407,7 +427,7 @@ class Go2Robot(LeggedRobot):
             hurdle_x = torch.tensor(self.cfg.terrain.hurdle_x_positions, device=self.device)
 
             # Trigger jump flag
-            in_jump_zone = (robot_x >= (hurdle_x - 1.0)) & (robot_x <= hurdle_x)
+            in_jump_zone = (robot_x >= (hurdle_x - 1.2)) & (robot_x <= hurdle_x + 0.2)
             self.jump_flags = in_jump_zone.any(dim=1, keepdim=True).float()
 
             # =================================== DEBUG PRINT ===================================
@@ -618,7 +638,7 @@ class Go2Robot(LeggedRobot):
         roll_error = torch.square(roll_deg - self.cfg.rewards.roll_deg_target)
         return torch.exp(-roll_error / self.cfg.rewards.tracking_sigma)
     
-
+    
     # ========================================= JUMPER =========================================
     def _reward_heading_alignment(self):
         """ Penalize the robot for deviating from a forward (0 rad) heading,
@@ -656,10 +676,16 @@ class Go2Robot(LeggedRobot):
         forward_reward = torch.clamp(base_lin_vel[:, 0], min=0.0)
         upward_reward  = torch.clamp(base_lin_vel[:, 2], min=0.0)
         
-        reward = 0.25*forward_reward + 1.0*upward_reward
+        reward = 0.5*forward_reward + 1.0*upward_reward
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
         return reward * jump_mask
 
+    def _reward_jump_height(self):
+        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
+        extra = torch.clamp(base_height - self.cfg.rewards.base_height_target, min=0.0)
+
+        jump_mask = (self.jump_flags[:, 0] > 0.0).float()
+        return torch.square(extra) * jump_mask
 
     def _reward_thigh_symmetry(self):
         """ Penalize DOF left-right thigh differences. Ordering of 

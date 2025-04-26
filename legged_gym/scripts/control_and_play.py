@@ -62,8 +62,8 @@ def play(args):
 
     # Specify custom camera
     ISO_PITCH = np.deg2rad(25)        # Pitch (up/down) angle
-    ISO_YAW   = np.deg2rad(45)        # Yaw (rotation) angle
-    ISO_DIST  = 3.0                   # metres from the robot
+    ISO_YAW   = np.deg2rad(0)        # Yaw (rotation) angle
+    ISO_DIST  = 2.0                   # metres from the robot
     ISO_FOV   = 25.0                  # deg – optional, see below
 
     # Build camera direction vector
