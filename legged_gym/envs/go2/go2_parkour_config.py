@@ -29,7 +29,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         # General
         mesh_type = 'trimesh'
         measure_heights = True      # for go2 this just enables draw_debug_vis
-        add_roughness_to_selected_terrain = True
+        add_roughness_to_selected_terrain = False
     
         # Parkour
         num_rows = 10               # num. difficulties
@@ -184,7 +184,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         name = "go2"
         foot_name = "foot"
         penalize_contacts_on = ["base", "hip", "thigh", "calf", "Head"]
-        terminate_after_contacts_on = ["base"]
+        terminate_after_contacts_on = ["base", "Head"]
         self_collisions = 0 # 1 to disable, 0 to enable (bitwise filter)
 
     class commands ( LeggedRobotCfg.commands ):
@@ -274,10 +274,11 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             calf_symmetry = -0.2
             # =========================
             heading_alignment = -4.0    # Parkour only
-            fwd_jump_vel = 3.75/2       # Uses jump mask
+            reverse_penalty = -1.0      # ABSOLUTELY parkour only
+            fwd_jump_vel = 2.0          # Uses jump mask
             up_jump_vel = 3.75          # Uses jump mask
             # jump_height = 1.0           # Uses jump mask
-            # forward_progress = 0.01     # Parkour only
+    
             
 
 class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
@@ -312,7 +313,7 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 5000
         save_interval = 50
 
-        run_name = 'parkour_v5_gap_BETA'
+        run_name = 'parkour_v5_gap'
         experiment_name = 'go2_parkour'
 
         # load and resume

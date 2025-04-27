@@ -34,6 +34,7 @@ def quaternion_to_euler(quat_angle):
 class Go2Robot(LeggedRobot):
     def __init__(self, cfg, sim_params, physics_engine, sim_device, headless):
         super().__init__(cfg, sim_params, physics_engine, sim_device, headless)
+        self.debug_viz = True
         
 
     def _create_envs(self):
@@ -749,7 +750,13 @@ class Go2Robot(LeggedRobot):
 
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
         return up_rew * jump_mask
-
+    
+    def _reward_reverse_penalty(self):
+        """ Penalizes reverse velocity. Requires a NEGATIVE coefficient
+        """
+        world_lin_vel = self.root_states[:, 7:10] # [vx, vy, vz]
+        reverse_vel = torch.clamp(world_lin_vel[:, 0], max=0.0) # [-inf, 0]
+        return -reverse_vel # negative sign for coeff consistency only
 
     def _reward_jump_height(self):
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
