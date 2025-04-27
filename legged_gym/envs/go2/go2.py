@@ -327,12 +327,9 @@ class Go2Robot(LeggedRobot):
 
         # Print base height
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
-        extra = torch.clamp(base_height - self.cfg.rewards.base_height_target, min=0.0)
         print(f"Base height: {base_height.item():.3f} m")
-        # print(f"Extra height: {extra.item():.3f} m")
 
 
-    
     def post_physics_step(self):
         """ check terminations, compute observations and rewards
             calls self._post_physics_step_callback() for common computations 
