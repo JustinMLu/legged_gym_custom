@@ -74,7 +74,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         dx = 3.5
         n = 7
         gap_heights = [-2.0] * n
-        gap_lengths = [0.2, 0.4, 0.6, 0.8, 1.0, 1.0, 1.0]
+        gap_lengths = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4]
 
         obstacle_x_positions = list(np.arange(x_start,x_start+n*dx,dx))
         obstacle_y_positions = [0.0] * n
@@ -266,7 +266,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             stumble_feet = -1.0
             # ========================= 
             dof_error = -0.04
-            zero_cmd_dof_error = -0.4
+            zero_cmd_dof_error = -1.0
             hip_pos = -0.5
             thigh_pos = -0.5
             # =========================
@@ -275,9 +275,9 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             # =========================
             heading_alignment = -4.0    # Parkour only
             reverse_penalty = -1.0      # ABSOLUTELY parkour only
-            fwd_jump_vel = 2.0          # Uses jump mask
-            up_jump_vel = 3.75          # Uses jump mask
-            # jump_height = 1.0           # Uses jump mask
+            fwd_jump_vel = 2.0          # Uses jump mask & not-zero cmd mask
+            up_jump_vel = 3.75          # Uses jump mask & not-zero cmd mask
+            # jump_height = 1.0           # Uses jump mask & not-zero cmd mask
     
             
 
@@ -313,7 +313,7 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 5000
         save_interval = 50
 
-        run_name = 'parkour_v5_gap'
+        run_name = 'parkour_v6_gap'
         experiment_name = 'go2_parkour'
 
         # load and resume

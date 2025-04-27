@@ -327,7 +327,9 @@ class Go2Robot(LeggedRobot):
 
         # Print base height
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
+        extra = torch.clamp(base_height - self.cfg.rewards.base_height_target, min=0.0)
         print(f"Base height: {base_height.item():.3f} m")
+        # print(f"Extra height: {extra.item():.3f} m")
 
 
     
@@ -373,6 +375,9 @@ class Go2Robot(LeggedRobot):
 
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
             self._draw_debug_vis()
+
+        # Print some debugs
+        # self.print_debug_info()
     
 
     def _post_physics_step_callback(self):
@@ -669,15 +674,6 @@ class Go2Robot(LeggedRobot):
         return torch.sum(1.0*(torch.norm(self.contact_forces[:, self.calf_indices, :], dim=-1) > threshold), dim=1)
 
 
-    def _reward_minimum_base_height(self):
-        """ Penalizes base hight BELOW target threshold only. 
-            Uses "base_height_target" from the config file.
-        """
-        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
-        height_deficit = (self.cfg.rewards.base_height_target - base_height).clamp(min=0.0)
-        return torch.square(height_deficit)
-    
-
     def _reward_tracking_pitch(self):
         """ Rewards close-to-target pitch angles of the robot base.
             Returns values from 0 to 1, where 1 means perfect pitch tracking.
@@ -727,7 +723,6 @@ class Go2Robot(LeggedRobot):
         desired_heading = wrap_to_pi(self.commands[:, 3]) if self.cfg.commands.heading_command \
                   else torch.zeros_like(heading)
 
-
         # Wrap the heading to [-pi, pi]
         angle_error = wrap_to_pi(desired_heading - heading)
         return torch.square(angle_error)
@@ -740,8 +735,10 @@ class Go2Robot(LeggedRobot):
         fwd_rew = torch.clamp(world_lin_vel[:, 0], min=0.0)
 
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
-        return fwd_rew * jump_mask
+        not_zero_mask = (torch.norm(self.commands[:, :3], dim=1) >= 0.2).float()
+        return fwd_rew * jump_mask * not_zero_mask
     
+
     def _reward_up_jump_vel(self):
         """ LITERALLY JUST REWARDS UPWARD VELOCITY
         """
@@ -749,8 +746,10 @@ class Go2Robot(LeggedRobot):
         up_rew = torch.clamp(world_lin_vel[:, 2], min=0.0)
 
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
-        return up_rew * jump_mask
+        not_zero_mask = (torch.norm(self.commands[:, :3], dim=1) >= 0.2).float()
+        return up_rew * jump_mask * not_zero_mask
     
+
     def _reward_reverse_penalty(self):
         """ Penalizes reverse velocity. Requires a NEGATIVE coefficient
         """
@@ -759,17 +758,15 @@ class Go2Robot(LeggedRobot):
         return -reverse_vel # negative sign for coeff consistency only
 
     def _reward_jump_height(self):
-        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
-        extra = torch.clamp(base_height - self.cfg.rewards.base_height_target, min=0.0)
-
+        """ Reward base height above 0.42 z-value. This was empirically determined
+            for the Go2. We CANNOT use self.measured_heights because of the huge
+            gaps in the terrain when doing parkour.
+        """
+        extra = torch.clamp(self.root_states[:, 2] - 0.42, min=0.0)
+    
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
-        return torch.square(extra) * jump_mask
-
-
-    def _reward_forward_progress(self):
-        robot_x = (self.root_states[:, 0] - self.env_origins[:, 0])
-        log_x = torch.log1p(torch.clamp(robot_x, min=0.0))
-        return log_x
+        not_zero_mask = (torch.norm(self.commands[:, :3], dim=1) >= 0.2).float()
+        return torch.square(extra) * jump_mask * not_zero_mask
 
 
     # Function that I moved into Go2.py, planning to move it back 
