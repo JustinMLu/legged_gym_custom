@@ -204,8 +204,8 @@ class PPO:
                 regularization_loss = (privileged_latent_batch - adaptation_latent_batch.detach()).norm(p=2, dim=1).mean()
 
                 # ================= Regularization coefficient schedule =================
-                start_val, end_val, start_step, duration = 0.0, 0.1, 2000, 3000         # Define schedule parameters
-                # start_val, end_val, start_step, duration = 0.0, 0.1, 0, 1               # RESUME
+                # start_val, end_val, start_step, duration = 0.0, 0.1, 2000, 3000         # Define schedule parameters
+                start_val, end_val, start_step, duration = 0.0, 0.1, 0, 1               # RESUME
                 stage = min(max((self.total_updates - start_step) / duration, 0.0), 1.0)  # Calculate stage (0 to 1)
                 regularization_coef = start_val + stage * (end_val - start_val)           # Interpolate coefficient
                 # =======================================================================

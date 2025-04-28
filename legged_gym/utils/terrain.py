@@ -201,7 +201,7 @@ class Terrain:
 
         # Box parkour terrain
         box_x_start = 5.0
-        box_dx = 1.25
+        box_dx = 1.75
         num_boxes = 16
         box_lengths = [1.25] * num_boxes
         box_heights = [0.1, 0.25, 0.45, 0.70, 

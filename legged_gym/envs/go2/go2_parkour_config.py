@@ -46,13 +46,24 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         max_init_terrain_level = 2
 
 
-        # ============== FORCED JUMP ==============
+        # # ============== GAP FINETUNE ==============
+        # gap_heights = [-2.0, 0.10, -2.0,
+        #                -2.0, 0.15, -2.0,
+        #                -2.0, 0.20, -2.0,
+        #                -2.0, 0.20, -2.0,
+        #                -2.0, 0.25, -2.0,
+        #                -2.0, 0.25, -2.0]
+        
+        # gap_lengths = [0.2, 0.2, 0.2]  * 6
 
-        # gap_heights = [-2.0, 0.2, -2.0]
-        # gap_lengths = [0.2, 0.2, 0.2]
-
-        # obstacle_x_positions = [6.0, 6.2, 6.4]
-        # obstacle_y_positions = [0.0, 0.0, 0.0]
+        # obstacle_x_positions = [6.0, 6.2, 6.4,
+        #                         10.0, 10.2, 10.4,
+        #                         14.0, 14.2, 14.4,
+        #                         18.0, 18.2, 18.4,
+        #                         22.0, 22.2, 22.4,
+        #                         26.0, 26.2, 26.4]
+        
+        # obstacle_y_positions = [0.0, 0.0, 0.0] * 6
 
         # parkour_kwargs = {
         #     "start_platform_length": 3.,
@@ -69,7 +80,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         #     "border_height": -2.0,
         # }
         
-        # # ============== GAP HURDLES ==============
+        # ============== GAP HURDLES ==============
         x_start = 5.0
         dx = 3.5
         n = 7
@@ -310,10 +321,10 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         algorithm_class_name = 'PPO'
        
         num_steps_per_env = 24
-        max_iterations = 5000
+        max_iterations = 20000
         save_interval = 50
 
-        run_name = 'parkour_v8_scan_trigger'
+        run_name = 'parkour_v8'
         experiment_name = 'go2_parkour'
 
         # load and resume
