@@ -44,15 +44,15 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         demote_threshold = 0.40
         terrain_proportions = [1.0, 0.0, 0.0] # [Gap, Box, Hurdles]
         max_init_terrain_level = 2
-        
-        # ============== BOX HURDLES ==============
-        # x_start = 5.0
-        # dx = 1.25
-        # n = 16
-        # obstacle_x_positions = list(np.arange(x_start, x_start+n*dx, dx))
-        # obstacle_y_positions = [0.0] * n
-        # box_heights = [0.1, 0.25, 0.45, 0.70, 0.45, 0.70, 1.0, 1.4, 0.8, 0.8, 0.40, 0.40, 0.80, 0.45, 0.80, 1.2]
-        # box_lengths = [1.25] * n
+
+
+        # ============== FORCED JUMP ==============
+
+        # gap_heights = [-2.0, 0.2, -2.0]
+        # gap_lengths = [0.2, 0.2, 0.2]
+
+        # obstacle_x_positions = [6.0, 6.2, 6.4]
+        # obstacle_y_positions = [0.0, 0.0, 0.0]
 
         # parkour_kwargs = {
         #     "start_platform_length": 3.,
@@ -62,14 +62,14 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         #     "y_positions": obstacle_y_positions,  # (-) right, (+) left
             
         #     "half_valid_width": 5.0,
-        #     "obstacle_heights": box_heights,  
-        #     "obstacle_lengths": box_lengths,             
+        #     "obstacle_heights": gap_heights,  
+        #     "obstacle_lengths": gap_lengths,             
 
         #     "border_width": 0.50,
         #     "border_height": -2.0,
         # }
         
-        # ============== GAP HURDLES ==============
+        # # ============== GAP HURDLES ==============
         x_start = 5.0
         dx = 3.5
         n = 7
@@ -313,7 +313,7 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 5000
         save_interval = 50
 
-        run_name = 'parkour_v7_bugfix'
+        run_name = 'parkour_v8_scan_trigger'
         experiment_name = 'go2_parkour'
 
         # load and resume

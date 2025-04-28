@@ -321,13 +321,18 @@ class Go2Robot(LeggedRobot):
     def print_debug_info(self):
         """ Prints some debug information to the console.
         """
-        # Print base xy
-        base_xyz = self.root_states[:, 0:3]
-        print(f"x: {base_xyz[:, 0].item():.3f} m | y: , {base_xyz[:, 1].item():.3f}, m | z: {base_xyz[:, 2].item():.3f} m")
+        # # Print base xy
+        # base_xyz = self.root_states[:, 0:3]
+        # print(f"x: {base_xyz[:, 0].item():.3f} m | y: , {base_xyz[:, 1].item():.3f}, m | z: {base_xyz[:, 2].item():.3f} m")
 
-        # Print base height
-        base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
-        print(f"Base height: {base_height.item():.3f} m")
+        # Print scan obs buf
+        # print(f"Scan obs buf: {self.scan_obs_buf[0, :]}")
+
+        # num_x = len(self.cfg.terrain.measured_points_x)
+        # num_y = len(self.cfg.terrain.measured_points_y)
+        # reshaped = self.measured_heights.reshape(-1, num_x, num_y) # (num_envs, 12, 11)
+
+        # print(reshaped)
 
 
     def post_physics_step(self):
@@ -335,6 +340,8 @@ class Go2Robot(LeggedRobot):
             calls self._post_physics_step_callback() for common computations 
             calls self._draw_debug_vis() if needed
         """
+
+        self.print_debug_info()
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
 
@@ -372,9 +379,6 @@ class Go2Robot(LeggedRobot):
 
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
             self._draw_debug_vis()
-
-        # Print some debugs
-        # self.print_debug_info()
     
 
     def _post_physics_step_callback(self):
@@ -476,15 +480,26 @@ class Go2Robot(LeggedRobot):
         # Deal with parkour jump zone
         if self.cfg.terrain.parkour:
 
-            # Get local robot and obstacle x coordinates
-            robot_x = (self.root_states[:, 0] - self.env_origins[:, 0]).unsqueeze(1)
-            obstacle_x = torch.tensor(self.cfg.terrain.obstacle_x_positions, device=self.device)
 
-            # Trigger jump flag
-            in_jump_zone = (robot_x >= (obstacle_x - 1.2)) & (robot_x <= obstacle_x + 0.2)
-            jump_zone_mask = in_jump_zone.any(dim=1)
-            jump_idx = torch.nonzero(jump_zone_mask, as_tuple=False).squeeze(1)
+            min_outlier_threshold = 8
+            height_threshold = 0.1
+
+
+            num_outliers = torch.sum(torch.abs(self.measured_heights) > height_threshold, dim=1)
+            jump_zone_mask = (num_outliers >= min_outlier_threshold)
             self.jump_flags = jump_zone_mask.unsqueeze(1).float()
+
+
+
+            # # Get local robot and obstacle x coordinates
+            # robot_x = (self.root_states[:, 0] - self.env_origins[:, 0]).unsqueeze(1)
+            # obstacle_x = torch.tensor(self.cfg.terrain.obstacle_x_positions, device=self.device)
+
+            # # Trigger jump flag
+            # in_jump_zone = (robot_x >= (obstacle_x - 1.2)) & (robot_x <= obstacle_x + 0.2)
+            # jump_zone_mask = in_jump_zone.any(dim=1)
+            # jump_idx = torch.nonzero(jump_zone_mask, as_tuple=False).squeeze(1)
+            # self.jump_flags = jump_zone_mask.unsqueeze(1).float()
 
             
 
@@ -494,9 +509,7 @@ class Go2Robot(LeggedRobot):
 
             #     # NOTE: .item() requires moving the tensor to CPU first
             #     for env_id in in_zone_env_ids.cpu().tolist():
-            #         local_x = robot_x[env_id].item()             # already env-local
-            #         print(f"[JUMP-DBG]  robot env {env_id:4d} inside jump zone "
-            #             f"(local x = {local_x:6.2f} m)")
+            #         print(f"[JUMP-DBG]  robot env {env_id:1d} inside jump zone ")
             # ===================================================================================
 
         # CUR OBS    

@@ -669,7 +669,7 @@ class LeggedRobot(BaseTask):
 
         # Init height points buffer
         self.height_points = self._init_height_points()
-        self.measured_heights = 0
+        self.measured_heights = torch.zeros(self.num_envs, self.num_height_points, device=self.device)
 
         # Init history buffer
         self.obs_history_buf = torch.zeros(

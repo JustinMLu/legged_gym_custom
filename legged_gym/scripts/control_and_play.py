@@ -27,7 +27,7 @@ def play(args):
     env_cfg.commands.heading_command = False             # ESSENTIAL OTHERWISE JOYSTICK WILL FIGHT YOU
 
     # Initialize gamepad
-    gamepad = Gamepad(1.4, 0.0, 1.57)           # Manually have to calibrate with rc_scale :(
+    gamepad = Gamepad(1.25, 0.0, 1.57)           # Manually have to calibrate with rc_scale :(
 
     # Prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
