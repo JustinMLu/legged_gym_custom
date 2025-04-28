@@ -313,7 +313,7 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 5000
         save_interval = 50
 
-        run_name = 'parkour_v6_gap'
+        run_name = 'parkour_v7_bugfix'
         experiment_name = 'go2_parkour'
 
         # load and resume

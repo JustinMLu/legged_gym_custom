@@ -451,9 +451,8 @@ class Go2Robot(LeggedRobot):
             if self.cfg.commands.heading_command:
                 forward = quat_apply(self.base_quat[idx], self.forward_vec[idx])
                 cur_heading = torch.atan2(forward[:, 1], forward[:, 0])
-                self.commands[idx, 3] = torch.clip(wrap_to_pi(cur_heading), 
-                                                   self.command_ranges["heading"][0], 
-                                                   self.command_ranges["heading"][1])
+                self.commands[idx, 3] = cur_heading
+                
 
     def compute_observations(self):
         """ Computes observations for the robot. Overloaded to include unique observations for Go2.
