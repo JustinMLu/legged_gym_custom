@@ -36,7 +36,7 @@ class ActorCritic(nn.Module):
                 num_proprio: Size of proprioceptive observation space (current robot state)
                 num_privileged_obs: Size of privileged observation space (sim-only information)
                 num_critic_obs: Dimension of critic observation space (can differ from actor)
-                num_estimated_obs: Size of observations to be estimated by MlpEstimator
+                num_estimated_obs: Size of observations to be estimated (by a separate estimator)
                 num_scan_obs: Size of scan/perception observation space
                 num_actions: Dimension of action space
                 history_buffer_length: Number of historical observations to maintain
