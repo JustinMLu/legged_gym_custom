@@ -326,6 +326,7 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         num_learning_epochs = 5
         num_mini_batches = 4
         learning_rate = 2e-4
+        estimator_learning_rate = 1e-4
         schedule = 'fixed' # fixed or adaptive
         gamma = 0.99
         lam = 0.95

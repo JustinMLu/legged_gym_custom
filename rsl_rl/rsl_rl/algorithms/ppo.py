@@ -21,6 +21,7 @@ class PPO:
                  value_loss_coef=1.0,
                  entropy_coef=0.0,
                  learning_rate=1e-3,
+                 estimator_learning_rate=1e-3,
                  max_grad_norm=1.0,
                  use_clipped_value_loss=True,
                  schedule="fixed",
@@ -32,6 +33,7 @@ class PPO:
         self.desired_kl = desired_kl
         self.schedule = schedule
         self.learning_rate = learning_rate
+        self.estimator_learning_rate = estimator_learning_rate
 
         # PPO components
         self.actor_critic = actor_critic
@@ -49,13 +51,13 @@ class PPO:
             {'params': self.actor_critic.privileged_encoder_.parameters()},
             {'params': self.actor_critic.std},
             {'params': self.actor_critic.scan_encoder.parameters()}, # Scan encoder goes here
-        ], lr=learning_rate)
+        ], lr=self.learning_rate)
 
         # Optimizer (Adaptation Encoder)
         self.adaptation_optimizer = optim.Adam(self.actor_critic.adaptation_encoder_.parameters(), lr=self.learning_rate)
 
         # Optimizer (Estimator)
-        self.estimator_optimizer = optim.Adam(self.estimator.parameters(), lr=self.learning_rate)
+        self.estimator_optimizer = optim.Adam(self.estimator.parameters(), lr=self.estimator_learning_rate)
 
         # Transition data object
         self.transition = RolloutStorage.Transition()

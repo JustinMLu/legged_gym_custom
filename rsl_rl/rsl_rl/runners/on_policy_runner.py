@@ -66,6 +66,7 @@ class OnPolicyRunner:
                        value_loss_coef=self.alg_cfg["value_loss_coef"],
                        entropy_coef=self.alg_cfg["entropy_coef"],
                        learning_rate=self.alg_cfg["learning_rate"],
+                       estimator_learning_rate=self.alg_cfg["estimator_learning_rate"],
                        max_grad_norm=self.alg_cfg["max_grad_norm"],
                        use_clipped_value_loss=self.alg_cfg["use_clipped_value_loss"],
                        schedule=self.alg_cfg["schedule"],
