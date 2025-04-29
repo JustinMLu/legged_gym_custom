@@ -4,15 +4,15 @@ import torch.nn as nn
 import torch.optim as optim
 
 from rsl_rl.modules import ActorCritic
-from rsl_rl.modules.support_networks import LinearVelocityEstimator
+from rsl_rl.modules.support_networks import MlpEstimator
 from rsl_rl.storage import RolloutStorage
 
 class PPO:
     actor_critic: ActorCritic
-    estimator: LinearVelocityEstimator
+    estimator: MlpEstimator
     def __init__(self,
                  actor_critic: ActorCritic,
-                 estimator: LinearVelocityEstimator,
+                 estimator: MlpEstimator,
                  num_learning_epochs=1,
                  num_mini_batches=1,
                  clip_param=0.2,
@@ -204,14 +204,14 @@ class PPO:
                 regularization_loss = (privileged_latent_batch - adaptation_latent_batch.detach()).norm(p=2, dim=1).mean()
 
                 # ================= Regularization coefficient schedule =================
-                # start_val, end_val, start_step, duration = 0.0, 0.1, 2000, 3000         # Define schedule parameters
-                start_val, end_val, start_step, duration = 0.0, 0.1, 0, 1               # RESUME
+                start_val, end_val, start_step, duration = 0.0, 0.1, 2000, 3000         # Define schedule parameters
+                # start_val, end_val, start_step, duration = 0.0, 0.1, 0, 1               # RESUME
                 stage = min(max((self.total_updates - start_step) / duration, 0.0), 1.0)  # Calculate stage (0 to 1)
                 regularization_coef = start_val + stage * (end_val - start_val)           # Interpolate coefficient
                 # =======================================================================
                 
                 # Estimator loss
-                pred = self.estimator(obs_batch)
+                pred = self.estimator(obs_batch) # obs_batch contains current AND history obs
                 estimator_loss = (pred - true_estimated_obs_batch).norm(p=2, dim=1).pow(2).mean()
                 
                 # Estimator backprop

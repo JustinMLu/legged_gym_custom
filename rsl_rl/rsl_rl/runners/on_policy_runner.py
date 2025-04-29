@@ -9,7 +9,7 @@ import torch
 
 from rsl_rl.algorithms import PPO
 from rsl_rl.modules import ActorCritic, ActorCriticRecurrent
-from rsl_rl.modules.support_networks import LinearVelocityEstimator, ScanEncoder
+from rsl_rl.modules.support_networks import MlpEstimator, ScanEncoder
 from rsl_rl.env import VecEnv
 
 
@@ -36,8 +36,10 @@ class OnPolicyRunner:
                                    num_scan_obs=self.env.num_scan_obs,
                                    num_actions=self.env.num_actions,
                                    history_buffer_length=self.env.history_buffer_length,
-                                   actor_hidden_dims=self.policy_cfg["actor_hidden_dims"],
-                                   critic_hidden_dims=self.policy_cfg["critic_hidden_dims"],
+                                   actor_hidden_dims=self.policy_cfg["actor_hidden_dims"],                  # Actor hidden dims
+                                   critic_hidden_dims=self.policy_cfg["critic_hidden_dims"],                # Critic hidden dims
+                                   priv_encoder_hidden_dims=self.policy_cfg["priv_encoder_hidden_dims"],    # Priv hidden dims
+                                   scan_encoder_hidden_dims=self.policy_cfg["scan_encoder_hidden_dims"],    # Scan hidden dims
                                    latent_encoder_output_dim=self.policy_cfg["latent_encoder_output_dim"],
                                    scan_encoder_output_dim=self.policy_cfg["scan_encoder_output_dim"],
                                    activation=self.policy_cfg["activation"],
@@ -45,10 +47,14 @@ class OnPolicyRunner:
                                    )
         
 
-        estimator = LinearVelocityEstimator(num_base_obs=self.env.num_proprio,
-                                            history_buffer_length=self.env.history_buffer_length,
-                                            output_dim=self.env.num_estimated_obs,
-                                            activation=self.policy_cfg["activation"])
+        estimator = MlpEstimator(num_proprio=self.env.num_proprio,
+                                 history_buffer_length=self.env.history_buffer_length,
+                                 output_dim=self.env.num_estimated_obs,
+                                 hidden_dims=self.policy_cfg["estimator_hidden_dims"],
+                                 activation=self.policy_cfg["activation"],
+                                 use_history=self.policy_cfg["use_history"]
+                                 )
+        
 
         self.alg = PPO(actor_critic=actor_critic,
                        estimator=estimator,

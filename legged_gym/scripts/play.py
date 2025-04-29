@@ -12,9 +12,9 @@ import torch
 def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # Override some parameters for testing
-    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 25)
-    env_cfg.terrain.num_rows = 3
-    env_cfg.terrain.num_cols = 3
+    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 20)
+    env_cfg.terrain.num_rows = 2
+    env_cfg.terrain.num_cols = 1
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = True
     env_cfg.domain_rand.randomize_friction = False

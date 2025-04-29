@@ -41,19 +41,28 @@ class ScanEncoder(nn.Module):
         return self.scan_encoder(scan_obs)
 
 
-class LinearVelocityEstimator(nn.Module):
-    def __init__(self, num_base_obs, history_buffer_length, output_dim, hidden_dims=[128, 64], activation="elu"):
-        """ Initialize a LinearVelocityEstimator instance.
+class MlpEstimator(nn.Module):
+    def __init__(self, num_proprio, history_buffer_length, output_dim, hidden_dims=[128, 64], activation="elu", use_history=True):
+        """ Initialize a MlpEstimator instance.
 
             Args:
-                num_base_obs: Size of an individual observation (WITHOUT history stuff)
+                num_proprio: Size of an individual observation (WITHOUT history stuff)
                 history_buffer_length: Length of the history buffer
                 output_dim: Dimensionality of the output features
                 hidden_dims: List of hidden layer sizes
                 activation: Activation function to use ('elu', 'relu', 'tanh', etc.)
+                use_history: Whether to use just the current obs input, or the current obs + history buffer
         """
         super().__init__()
-        self.input_dim = num_base_obs + (num_base_obs*history_buffer_length)
+        self.use_history = use_history
+        self.num_proprio = num_proprio
+        self.history_buffer_length = history_buffer_length
+
+        # Change input_dim based on use_history flag
+        if self.use_history:
+            self.input_dim = self.num_proprio + (self.num_proprio*self.history_buffer_length)
+        else:
+            self.input_dim = self.num_proprio
         self.output_dim = output_dim
         activation = get_activation(activation)
 
@@ -69,14 +78,23 @@ class LinearVelocityEstimator(nn.Module):
                 fc_layers.append(activation)
         
         self.estimator = nn.Sequential(*fc_layers)
+        print(f"Estimator: {self.estimator}")
     
-    def forward(self, input):
-        return self.estimator(input)
+    def forward(self, obs_with_history):
+        """ Forward pass through the estimator and return the estimated quantities.
+            If use_history=True, the input is expected to be of shape (batch_size, num_proprio + history_buffer_length * num_proprio).
+            If use_history=False, the input is expected to be of shape (batch_size, num_proprio).
+        """
+        # Slice out current obs. if use_history=False
+        if self.use_history:
+            return self.estimator(obs_with_history)
+        else:
+            return self.estimator(obs_with_history[:, -self.num_proprio:])
 
 
 class PrivilegedEncoder(nn.Module):
 
-    def __init__(self, num_privileged_obs, encoder_hidden_dims=[64, 20], output_dim=20, activation='elu'):
+    def __init__(self, num_privileged_obs, output_dim=20, hidden_dims=[64, 20], activation='elu'):
         """ Initialize a PrivilegedEncoder instance.
         
             Args:
@@ -89,16 +107,16 @@ class PrivilegedEncoder(nn.Module):
         self.activation = get_activation(activation)
         self.num_privileged = num_privileged_obs
         self.output_dim = output_dim
-        self.encoder_hidden_dims = encoder_hidden_dims
+        self.encoder_hidden_dims = hidden_dims
 
         fc_layers = []
-        fc_layers.append(nn.Linear(num_privileged_obs, encoder_hidden_dims[0]))
+        fc_layers.append(nn.Linear(num_privileged_obs, hidden_dims[0]))
         fc_layers.append(self.activation)
-        for l in range(len(encoder_hidden_dims)):
-            if l == len(encoder_hidden_dims) - 1:
-                fc_layers.append(nn.Linear(encoder_hidden_dims[l], output_dim)) # Last layer
+        for l in range(len(hidden_dims)):
+            if l == len(hidden_dims) - 1:
+                fc_layers.append(nn.Linear(hidden_dims[l], output_dim)) # Last layer
             else:
-                fc_layers.append(nn.Linear(encoder_hidden_dims[l], encoder_hidden_dims[l + 1]))
+                fc_layers.append(nn.Linear(hidden_dims[l], hidden_dims[l + 1]))
                 fc_layers.append(self.activation)
         self.priv_encoder = nn.Sequential(*fc_layers)
 
@@ -110,11 +128,11 @@ class PrivilegedEncoder(nn.Module):
 
 class AdaptationEncoder(nn.Module):
 
-    def __init__(self, num_base_obs, history_buffer_length, output_dim=20, activation='elu'):
+    def __init__(self, num_proprio, history_buffer_length, output_dim=20, activation='elu'):
         """ Initialize an AdaptationEncoder instance.
         
             Args:
-                num_base_obs: Size of an individual observation (WITHOUT history stuff)
+                num_proprio: Size of an individual observation (WITHOUT history stuff)
                 history_buffer_length: Length of the history buffer
                 output_dim: Dimensionality of the output features
                 activation: Activation function to use ('elu', 'relu', 'tanh', etc.)
@@ -123,12 +141,12 @@ class AdaptationEncoder(nn.Module):
         super().__init__()
         self.activation = get_activation(activation)
         self.history_buffer_length = history_buffer_length
-        self.num_base_obs = num_base_obs
+        self.num_proprio = num_proprio
         self.output_dim = output_dim
         channel_size = 10
         
         # 1: linear layer that encodes each observation 
-        self.fc_encoder = nn.Sequential(nn.Linear(num_base_obs, 3*channel_size), self.activation)
+        self.fc_encoder = nn.Sequential(nn.Linear(num_proprio, 3*channel_size), self.activation)
         
         # 2: convolutional layers that process the history buffer
         self.conv_layers = nn.Sequential(
@@ -147,11 +165,11 @@ class AdaptationEncoder(nn.Module):
         # 3: final linear layer that maps to the output size
         self.fc_final = nn.Sequential(nn.Linear(3*channel_size, output_dim), self.activation)
     
-    def forward(self, obs_history):
+    def forward(self, unflattened_obs_history):
         """ Forward pass through the adaptation encoder. Expects (un-flattened) observation history
-            of dimension (batch_size, history_buffer_length, num_base_obs).
+            of dimension (batch_size, history_buffer_length, num_proprio).
         """
-        projected_obs = self.fc_encoder(obs_history)
+        projected_obs = self.fc_encoder(unflattened_obs_history)
         output = self.conv_layers(projected_obs.permute(0, 2, 1)) # permute to (batch_size, channels, seq_len)
         output = self.fc_final(output)
         return output

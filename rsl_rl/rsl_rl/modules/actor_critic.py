@@ -19,22 +19,33 @@ class ActorCritic(nn.Module):
                         num_estimated_obs,
                         num_scan_obs,                     
                         num_actions,                          
-                        history_buffer_length,              # NEW
+                        history_buffer_length,
                         actor_hidden_dims=[256, 256, 256],
                         critic_hidden_dims=[256, 256, 256],
-                        latent_encoder_output_dim=20,       # NEW
-                        scan_encoder_output_dim=32,         # NEW
+                        priv_encoder_hidden_dims=[64, 20],
+                        scan_encoder_hidden_dims=[128, 64],
+                        latent_encoder_output_dim=20,
+                        scan_encoder_output_dim=32,
                         activation='elu',
                         init_noise_std=1.0,
                         **kwargs):
+        
         """ Initialize an ActorCritic instance.
         
             Args:
-                num_proprio: The number of proprioceptive/base observations
-                num_critic_obs: Dimension of critic observation space (can differ from actor - e.g privileged info)
+                num_proprio: Size of proprioceptive observation space (current robot state)
+                num_privileged_obs: Size of privileged observation space (sim-only information)
+                num_critic_obs: Dimension of critic observation space (can differ from actor)
+                num_estimated_obs: Size of observations to be estimated by MlpEstimator
+                num_scan_obs: Size of scan/perception observation space
                 num_actions: Dimension of action space
+                history_buffer_length: Number of historical observations to maintain
                 actor_hidden_dims: List of hidden layer sizes for actor network
                 critic_hidden_dims: List of hidden layer sizes for critic network
+                priv_encoder_hidden_dims: List of hidden layer sizes for privileged encoder
+                scan_encoder_hidden_dims: List of hidden layer sizes for scan encoder
+                latent_encoder_output_dim: Output dimension of latent encoders (privileged/adaptation)
+                scan_encoder_output_dim: Output dimension of scan encoder
                 activation: Activation function to use ('elu', 'relu', 'tanh', etc.)
                 init_noise_std: Initial standard deviation for action distribution
                 **kwargs: Additional arguments (will be ignored with a warning)
@@ -55,7 +66,7 @@ class ActorCritic(nn.Module):
         self.num_actions = num_actions
 
         print("\n============== DEBUG: ActorCritic ATTRIBUTES ==============")
-        print(f"num_base_obs: {self.num_proprio}")
+        print(f"num_proprio: {self.num_proprio}")
         print(f"num_privileged_obs: {self.num_privileged_obs}")
         print(f"num_critic_obs: {self.num_critic_obs}")
         print(f"num_estimated_obs: {self.num_estimated_obs}")
@@ -96,19 +107,19 @@ class ActorCritic(nn.Module):
         self.critic = nn.Sequential(*critic_layers)
 
         # Build encoders (4096 x 9 x 45) --> (4096 x 9 x 30)
-        self.adaptation_encoder_ = AdaptationEncoder(num_base_obs=self.num_proprio, 
+        self.adaptation_encoder_ = AdaptationEncoder(num_proprio=self.num_proprio, 
                                                      history_buffer_length=self.history_buffer_length, 
                                                      output_dim=latent_encoder_output_dim, 
-                                                     activation='elu')
+                                                     activation='elu') # Hardcoded dims in the class because it's a CNN
         
         self.privileged_encoder_ = PrivilegedEncoder(num_privileged_obs=self.num_privileged_obs,
-                                                     encoder_hidden_dims=[64, 20], # Hardcoded dims here
                                                      output_dim=latent_encoder_output_dim, 
+                                                     hidden_dims=priv_encoder_hidden_dims,
                                                      activation='elu') 
         
         self.scan_encoder = ScanEncoder(num_scan_obs = num_scan_obs,
                                         output_dim=scan_encoder_output_dim,
-                                        hidden_dims=[128, 64], # Hardcoded dims here
+                                        hidden_dims=scan_encoder_hidden_dims,
                                         activation='elu')
 
         # Print the network architecture
@@ -165,7 +176,7 @@ class ActorCritic(nn.Module):
             Input: full observation tensor - assumes history is at the back for now
             Returns: Latent vector encoding
         """
-        hist = obs_buf[:, :-self.num_proprio] # Only the history part -> TODO: Change the CNN architecture to support current as well
+        hist = obs_buf[:, :-self.num_proprio] # Only the history part
         return self.adaptation_encoder_(hist.reshape(-1, self.history_buffer_length, self.num_proprio))
     
     def get_latent(self, obs_buf, privileged_obs_buf, adaptation_mode=False):

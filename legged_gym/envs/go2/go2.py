@@ -734,6 +734,11 @@ class Go2Robot(LeggedRobot):
 
         # Wrap the heading to [-pi, pi]
         angle_error = wrap_to_pi(desired_heading - heading)
+
+        # Debug prints that only work when we have 1 robot
+        # print(f"Current heading: {heading.item():.3f}")
+        # print(f"Desired heading: {desired_heading.item():.3f}")
+        # print(f"Actual reward: {(-4 * torch.square(angle_error)).item():.3f}")
         return torch.square(angle_error)
     
     def _reward_fwd_jump_vel(self):
