@@ -14,7 +14,7 @@ def play(args):
     # Override some parameters for testing
     env_cfg.env.num_envs = min(env_cfg.env.num_envs, 20)
     env_cfg.terrain.num_rows = 2
-    env_cfg.terrain.num_cols = 1
+    env_cfg.terrain.num_cols = 2
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = True
     env_cfg.domain_rand.randomize_friction = False
@@ -43,8 +43,11 @@ def play(args):
     joint_index = 1                             # which joint is used for logging
     stop_state_log = 100                        # number of steps before plotting states
     stop_rew_log = env.max_episode_length + 1   # number of steps before print average episode rewards
-    camera_position = np.array(env_cfg.viewer.pos, dtype=np.float64)
-    camera_vel = np.array([1., 1., 0.])
+
+    # Camera settings
+    camera_offset = np.array([-10.0, 2.0, -3.0])
+    camera_position = np.array(env_cfg.viewer.pos, dtype=np.float64) + camera_offset
+    camera_vel = np.array([1.2, 0., 0.])
     camera_direction = np.array(env_cfg.viewer.lookat) - np.array(env_cfg.viewer.pos)
     img_idx = 0
 
@@ -89,8 +92,9 @@ def play(args):
                     'contact_forces_z': env.contact_forces[robot_index, env.feet_indices, 2].cpu().numpy()
                 }
             )
-        elif i==stop_state_log:
+        elif i==stop_state_log and SHOW_PLOTS:
             logger.plot_states()
+
         if  0 < i < stop_rew_log:
             if infos["episode"]:
                 num_episodes = torch.sum(env.reset_buf).item()
@@ -100,8 +104,9 @@ def play(args):
             logger.print_rewards()
 
 if __name__ == '__main__':
+    SHOW_PLOTS = False
     EXPORT_POLICY = True
     RECORD_FRAMES = False
-    MOVE_CAMERA = False
+    MOVE_CAMERA = True
     args = get_args()
     play(args)
