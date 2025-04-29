@@ -660,7 +660,7 @@ class Go2Robot(LeggedRobot):
         # Normalize & apply swing mask
         swing_masks = torch.stack([~fl_stance, ~fr_stance, ~bl_stance, ~br_stance], dim=1)
         normalized_heights = (foot_heights / self.cfg.rewards.max_foot_height)
-        height_rewards = torch.where(swing_masks, normalized_heights, 0.0)
+        height_rewards = torch.where(swing_masks, normalized_heights, -normalized_heights)
     
         # Compute reward, normalize by # of feet on ground
         reward = torch.sum(height_rewards, dim=1) / 2.0 
