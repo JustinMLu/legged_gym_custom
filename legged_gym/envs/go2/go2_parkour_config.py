@@ -260,8 +260,8 @@ class Go2ParkourCfg( LeggedRobotCfg ):
 
         class scales( LeggedRobotCfg.rewards.scales ):
             # =========================
-            tracking_lin_vel = 1.5
-            tracking_ang_vel = 1.5
+            tracking_lin_vel = 2.0
+            tracking_ang_vel = 2.0
             phase_contact_match = 1.0
             phase_foot_lifting = 1.0
             # =========================
@@ -286,8 +286,8 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             # =========================
             heading_alignment = -4.0    # Parkour only
             reverse_penalty = -1.0      # ABSOLUTELY parkour only
-            fwd_jump_vel = 2.0          # Uses jump mask & not-zero cmd mask
-            up_jump_vel = 3.75          # Uses jump mask & not-zero cmd mask
+            fwd_jump_vel = 1.0          # Uses jump mask & not-zero cmd mask
+            up_jump_vel = 3.5           # Uses jump mask & not-zero cmd mask
             # jump_height = 1.0           # Uses jump mask & not-zero cmd mask
     
             
@@ -324,7 +324,7 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 20000
         save_interval = 50
 
-        run_name = 'parkour_v8'
+        run_name = 'parkour_v9'
         experiment_name = 'go2_parkour'
 
         # load and resume
