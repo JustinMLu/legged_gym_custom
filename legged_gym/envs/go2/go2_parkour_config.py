@@ -262,8 +262,8 @@ class Go2ParkourCfg( LeggedRobotCfg ):
 
         class scales( LeggedRobotCfg.rewards.scales ):
             # =========================
-            tracking_lin_vel = 2.5
-            tracking_ang_vel = 2.0
+            tracking_lin_vel = 2.25
+            tracking_ang_vel = 2.25
             phase_contact_match = 1.0
             phase_foot_lifting = 1.0
             # =========================
@@ -288,9 +288,9 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             # =========================
             heading_alignment = -4.0    # Parkour only
             reverse_penalty = -1.0      # ABSOLUTELY parkour only
-            fwd_jump_vel = 1.0          # Uses jump mask & not-zero cmd mask
-            up_jump_vel = 3.5           # Uses jump mask & not-zero cmd mask
-            # jump_height = 1.0           # Uses jump mask & not-zero cmd mask
+            fwd_jump_vel = 1.25         # Jump & cmd mask
+            up_jump_vel = 3.75          # Jump & cmd mask
+            # jump_height = 1.0           # Jump & cmd mask
     
             
 
@@ -311,7 +311,8 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         scan_encoder_output_dim = 32
 
         # Estimator
-        estimator_hidden_dims = [128, 64]
+        # estimator_hidden_dims = [128, 64]
+        estimator_hidden_dims = [256, 128]
         use_history = True
         
         # Activation (all)
@@ -338,12 +339,11 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
     class runner( LeggedRobotCfgPPO.runner ):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
-       
         num_steps_per_env = 24
         max_iterations = 20000
         save_interval = 50
 
-        run_name = 'parkour_v10'
+        run_name = 'parkour_v11'
         experiment_name = 'go2_parkour'
 
         # load and resume
