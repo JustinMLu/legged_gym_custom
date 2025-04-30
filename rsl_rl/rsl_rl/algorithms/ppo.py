@@ -41,7 +41,7 @@ class PPO:
         if resume:
             self.start_val, self.end_val, self.start_step, self.duration = 0.0, 0.1, 0, 1 
 
-        print("\n🫩 Regularization coefficient schedule: start_val: {}, end_val: {}, start_step: {}, duration: {}\n".format(self.start_val, self.end_val, self.start_step, self.duration))
+        print("\n🤓  Regularization coefficient schedule: start_val: {}, end_val: {}, start_step: {}, duration: {}\n".format(self.start_val, self.end_val, self.start_step, self.duration))
 
         # PPO components
         self.actor_critic = actor_critic

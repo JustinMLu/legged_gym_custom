@@ -347,7 +347,6 @@ class Go2Robot(LeggedRobot):
         # self.print_debug_info()
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
-
         self.episode_length_buf += 1
         self.common_step_counter += 1
 
@@ -772,16 +771,15 @@ class Go2Robot(LeggedRobot):
         return -reverse_vel # negative sign for coeff consistency only
 
 
-    def _reward_jump_height(self):
-        """ Reward base height above 0.42 z-value. This was empirically determined
-            for the Go2. We CANNOT use self.measured_heights because of the huge
-            gaps in the terrain when doing parkour.
+    def _reward_min_height(self):
+        """ Penalize robot for being too low according to root states.
+            Note: Does not normalize according to terrain height.
         """
-        extra = torch.clamp(self.root_states[:, 2] - 0.42, min=0.0)
-    
-        jump_mask = (self.jump_flags[:, 0] > 0.0).float()
-        not_zero_mask = (torch.norm(self.commands[:, :3], dim=1) >= 0.2).float()
-        return torch.square(extra) * jump_mask * not_zero_mask
+        robot_z = self.root_states[:, 2]
+        z_error = torch.clip((self.cfg.rewards.base_height_target - robot_z), 
+                             min=0.0, 
+                             max=self.cfg.rewards.base_height_target)
+        return torch.square(z_error)
 
 
     # Function that I moved into Go2.py, planning to move it back 

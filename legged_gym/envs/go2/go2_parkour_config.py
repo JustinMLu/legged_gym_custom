@@ -251,7 +251,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
     class rewards( LeggedRobotCfg.rewards ):
         only_positive_rewards = True
         soft_dof_pos_limit = 0.9       # [%]
-        base_height_target = 0.25      # [m]
+        base_height_target = 0.28      # [m]
 
         pitch_deg_target = 0.0         # [deg]   (+) down, (-) up
         roll_deg_target = 0.0          # [deg]   (+) right, (-) left
@@ -262,8 +262,8 @@ class Go2ParkourCfg( LeggedRobotCfg ):
 
         class scales( LeggedRobotCfg.rewards.scales ):
             # =========================
-            tracking_lin_vel = 2.25
-            tracking_ang_vel = 2.25
+            tracking_lin_vel = 2.5
+            tracking_ang_vel = 2.5
             phase_contact_match = 1.0
             phase_foot_lifting = 1.0
             # =========================
@@ -288,9 +288,9 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             # =========================
             heading_alignment = -4.0    # Parkour only
             reverse_penalty = -1.0      # ABSOLUTELY parkour only
-            fwd_jump_vel = 1.25         # Jump & cmd mask
+            fwd_jump_vel = 2.0         # Jump & cmd mask
             up_jump_vel = 3.75          # Jump & cmd mask
-            # jump_height = 1.0           # Jump & cmd mask
+            min_height = -0.01
     
             
 
@@ -343,7 +343,7 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 20000
         save_interval = 50
 
-        run_name = 'parkour_v11'
+        run_name = 'parkour_v13'
         experiment_name = 'go2_parkour'
 
         # load and resume
