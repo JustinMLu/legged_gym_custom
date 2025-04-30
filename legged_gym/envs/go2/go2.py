@@ -779,7 +779,10 @@ class Go2Robot(LeggedRobot):
         z_error = torch.clip((self.cfg.rewards.base_height_target - robot_z), 
                              min=0.0, 
                              max=self.cfg.rewards.base_height_target)
-        return torch.square(z_error)
+        
+        # Want the robot to be able to crouch if its trying to learn to jump though
+        jump_mask = (self.jump_flags[:, 0] > 0.0).float()
+        return torch.abs(z_error) * jump_mask
 
 
     # Function that I moved into Go2.py, planning to move it back 

@@ -86,7 +86,8 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         dx = 3.5
         n = 7
         gap_heights = [-2.0] * n
-        gap_lengths = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.2]
+        gap_lengths = [0.2, 0.4, 0.6, 0.8, 1.0, 1.1, 1.2]
+        # gap_lengths = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
         obstacle_x_positions = list(np.arange(x_start,x_start+n*dx,dx))
         obstacle_y_positions = [0.0] * n
@@ -251,7 +252,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
     class rewards( LeggedRobotCfg.rewards ):
         only_positive_rewards = True
         soft_dof_pos_limit = 0.9       # [%]
-        base_height_target = 0.28      # [m]
+        base_height_target = 0.26      # [m]
 
         pitch_deg_target = 0.0         # [deg]   (+) down, (-) up
         roll_deg_target = 0.0          # [deg]   (+) right, (-) left
@@ -262,8 +263,8 @@ class Go2ParkourCfg( LeggedRobotCfg ):
 
         class scales( LeggedRobotCfg.rewards.scales ):
             # =========================
-            tracking_lin_vel = 2.5
-            tracking_ang_vel = 2.5
+            tracking_lin_vel = 2.0
+            tracking_ang_vel = 1.5
             phase_contact_match = 1.0
             phase_foot_lifting = 1.0
             # =========================
@@ -286,11 +287,11 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             thigh_symmetry = -0.2
             calf_symmetry = -0.2
             # =========================
-            heading_alignment = -4.0    # Parkour only
-            reverse_penalty = -1.0      # ABSOLUTELY parkour only
+            heading_alignment = -2.0   # Parkour only
+            reverse_penalty = -1.0     # ABSOLUTELY parkour only
             fwd_jump_vel = 2.0         # Jump & cmd mask
-            up_jump_vel = 3.75          # Jump & cmd mask
-            min_height = -0.01
+            up_jump_vel = 3.75         # Jump & cmd mask
+            min_height = -0.1          # Jump mask
     
             
 
