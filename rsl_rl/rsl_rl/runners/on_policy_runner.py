@@ -26,6 +26,8 @@ class OnPolicyRunner:
         self.policy_cfg = train_cfg["policy"]
         self.device = device
         self.env = env
+
+        print("\nRESUME?: ", self.cfg["resume"])
         
         # =========================================================================
         # Instantiate ActorCritic class instance
@@ -71,6 +73,7 @@ class OnPolicyRunner:
                        use_clipped_value_loss=self.alg_cfg["use_clipped_value_loss"],
                        schedule=self.alg_cfg["schedule"],
                        desired_kl=self.alg_cfg["desired_kl"],
+                       resume=self.cfg["resume"], # Resume will change ROA schedule coefs
                        device=self.device,
                        )
         

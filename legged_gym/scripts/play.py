@@ -12,9 +12,9 @@ import torch
 def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # Override some parameters for testing
-    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 20)
-    env_cfg.terrain.num_rows = 2
-    env_cfg.terrain.num_cols = 2
+    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 5)
+    env_cfg.terrain.num_rows = 1
+    env_cfg.terrain.num_cols = 1
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = True
     env_cfg.domain_rand.randomize_friction = False
@@ -107,6 +107,6 @@ if __name__ == '__main__':
     SHOW_PLOTS = False
     EXPORT_POLICY = True
     RECORD_FRAMES = False
-    MOVE_CAMERA = True
+    MOVE_CAMERA = False
     args = get_args()
     play(args)

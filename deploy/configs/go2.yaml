@@ -89,7 +89,7 @@ clip_observations: 100.0
 clip_actions: 3.14
 
 # Remote controller scale
-rc_scale: [1.0, 0.0, 0.75]
+rc_scale: [1.4, 0.0, 1.57]
 
 # Empirically-tested joint ranges
 # Hips (all):   [ -0.75,  0.75 ]

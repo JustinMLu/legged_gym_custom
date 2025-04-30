@@ -86,7 +86,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         dx = 3.5
         n = 7
         gap_heights = [-2.0] * n
-        gap_lengths = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4]
+        gap_lengths = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.2]
 
         obstacle_x_positions = list(np.arange(x_start,x_start+n*dx,dx))
         obstacle_y_positions = [0.0] * n

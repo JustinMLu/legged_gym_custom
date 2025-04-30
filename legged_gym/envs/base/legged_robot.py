@@ -626,7 +626,7 @@ class LeggedRobot(BaseTask):
         """ Initializes the buffers used to store the simulation state and observational data.
         """
         # Debug print
-        print("======== _init_buffers(): Initializing buffers.... ========")
+        print("\n======== _init_buffers(): Initializing buffers.... ========\n")
 
         # get gym GPU state tensors
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
@@ -679,7 +679,7 @@ class LeggedRobot(BaseTask):
             device=self.device,
             dtype=torch.float
         )
-        print("Obs history initialized with shape: ", self.obs_history_buf.shape)
+        print("\nObs history initialized with shape: ", self.obs_history_buf.shape)
 
         # ================ Buffers used for the privileged observation encoder ================
 
@@ -811,7 +811,7 @@ class LeggedRobot(BaseTask):
                 2.3 create actor with these properties and add them to the env
              3. Store indices of different bodies of the robot
         """
-        print("============ _create_envs(): Creating envs.... ============") 
+        print("\n============ _create_envs(): Creating envs.... ============") 
         asset_path = self.cfg.asset.file.format(LEGGED_GYM_ROOT_DIR=LEGGED_GYM_ROOT_DIR)
         asset_root = os.path.dirname(asset_path)
         asset_file = os.path.basename(asset_path)

@@ -321,18 +321,15 @@ class Go2Robot(LeggedRobot):
     def print_debug_info(self):
         """ Prints some debug information to the console.
         """
-        # # Print base xy
-        # base_xyz = self.root_states[:, 0:3]
-        # print(f"x: {base_xyz[:, 0].item():.3f} m | y: , {base_xyz[:, 1].item():.3f}, m | z: {base_xyz[:, 2].item():.3f} m")
+        # # Print base XYZ
+        base_xyz = self.root_states[:, 0:3]
+        print(f"x: {base_xyz[:, 0].item():.3f} m | y: , {base_xyz[:, 1].item():.3f}, m | z: {base_xyz[:, 2].item():.3f} m")
 
-        # Print scan obs buf
-        # print(f"Scan obs buf: {self.scan_obs_buf[0, :]}")
-
-        # num_x = len(self.cfg.terrain.measured_points_x)
-        # num_y = len(self.cfg.terrain.measured_points_y)
-        # reshaped = self.measured_heights.reshape(-1, num_x, num_y) # (num_envs, 12, 11)
-
-        # print(reshaped)
+        # Print measured heights as grid
+        num_x = len(self.cfg.terrain.measured_points_x)
+        num_y = len(self.cfg.terrain.measured_points_y)
+        reshaped = self.measured_heights.reshape(-1, num_x, num_y) # (num_envs, 12, 11)
+        print(reshaped)
 
 
     def post_physics_step(self):
@@ -341,7 +338,7 @@ class Go2Robot(LeggedRobot):
             calls self._draw_debug_vis() if needed
         """
 
-        self.print_debug_info()
+        # self.print_debug_info()
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
 
