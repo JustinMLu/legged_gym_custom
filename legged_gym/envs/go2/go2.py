@@ -40,36 +40,37 @@ class Go2Robot(LeggedRobot):
     def _create_envs(self):
         super()._create_envs()
         
-        # Get indices of hip, thigh, and calf links
+        # Get hip link indices
         hip_names = [s for s in self.body_names if "hip" in s]
         self.hip_indices = torch.zeros(len(hip_names), dtype=torch.long, device=self.device, requires_grad=False)
-        
         for i in range(len(hip_names)):
             self.hip_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], hip_names[i])
 
+        # Get thigh link indices
         thigh_names = [s for s in self.body_names if "thigh" in s]
         self.thigh_indices = torch.zeros(len(thigh_names), dtype=torch.long, device=self.device, requires_grad=False)
-
         for i in range(len(thigh_names)):
             self.thigh_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], thigh_names[i])
 
+        # Get calf link indices
         calf_names = [s for s in self.body_names if "calf" in s]
         self.calf_indices = torch.zeros(len(calf_names), dtype=torch.long, device=self.device, requires_grad=False)
-
         for i in range(len(calf_names)):
             self.calf_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], calf_names[i])
 
-        # Get indices of hip, thigh and calf joints
+        # Get hip joint indices
         hip_joint_names = ["FL_hip_joint", "FR_hip_joint", "RL_hip_joint", "RR_hip_joint"]
         self.hip_joint_indices = torch.zeros(len(hip_joint_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i, name in enumerate(hip_joint_names):
             self.hip_joint_indices[i] = self.dof_names.index(name)
 
+        # Get thigh joint indices
         thigh_joint_names = ["FL_thigh_joint", "FR_thigh_joint", "RL_thigh_joint", "RR_thigh_joint"]
         self.thigh_joint_indices = torch.zeros(len(thigh_joint_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i, name in enumerate(thigh_joint_names):
             self.thigh_joint_indices[i] = self.dof_names.index(name)
 
+        # Get calf joint indices
         calf_joint_names = ["FL_calf_joint", "FR_calf_joint", "RL_calf_joint", "RR_calf_joint"]
         self.calf_joint_indices = torch.zeros(len(calf_joint_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i, name in enumerate(calf_joint_names):
@@ -208,17 +209,22 @@ class Go2Robot(LeggedRobot):
         """
         if len(env_ids) == 0:
             return
+        
         # update terrain curriculum
         if self.cfg.terrain.curriculum:
             self._update_terrain_curriculum(env_ids)
+
         # avoid updating command curriculum at each step since the maximum command is common to all envs
         if self.cfg.commands.curriculum and (self.common_step_counter % self.max_episode_length==0):
             self.update_command_curriculum(env_ids)
+
         # reset robot states
         self._reset_dofs(env_ids)
         self._reset_root_states(env_ids)
+
         # resample commands
         self._resample_commands(env_ids)
+
         # reset buffers
         self.last_actions[env_ids] = 0.
         self.last_dof_vel[env_ids] = 0.
@@ -477,15 +483,12 @@ class Go2Robot(LeggedRobot):
         # Deal with parkour jump zone
         if self.cfg.terrain.parkour:
 
-
             min_outlier_threshold = 8
             height_threshold = 0.1
-
 
             num_outliers = torch.sum(torch.abs(self.measured_heights) > height_threshold, dim=1)
             jump_zone_mask = (num_outliers >= min_outlier_threshold)
             self.jump_flags = jump_zone_mask.unsqueeze(1).float()
-
 
 
             # # Get local robot and obstacle x coordinates
@@ -498,7 +501,6 @@ class Go2Robot(LeggedRobot):
             # jump_idx = torch.nonzero(jump_zone_mask, as_tuple=False).squeeze(1)
             # self.jump_flags = jump_zone_mask.unsqueeze(1).float()
 
-            
 
             # =================================== DEBUG PRINT ===================================
             # if torch.any(self.jump_flags):                       # at least one robot in-zone
@@ -738,6 +740,7 @@ class Go2Robot(LeggedRobot):
         # print(f"Actual reward: {(-4 * torch.square(angle_error)).item():.3f}")
         return torch.square(angle_error)
     
+
     def _reward_fwd_jump_vel(self):
         """ LITERALLY JUST REWARDS FORWARD VELOCITY
         """
@@ -767,6 +770,7 @@ class Go2Robot(LeggedRobot):
         world_lin_vel = self.root_states[:, 7:10] # [vx, vy, vz]
         reverse_vel = torch.clamp(world_lin_vel[:, 0], max=0.0) # [-inf, 0]
         return -reverse_vel # negative sign for coeff consistency only
+
 
     def _reward_jump_height(self):
         """ Reward base height above 0.42 z-value. This was empirically determined
