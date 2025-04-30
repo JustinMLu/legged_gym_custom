@@ -252,7 +252,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
     class rewards( LeggedRobotCfg.rewards ):
         only_positive_rewards = True
         soft_dof_pos_limit = 0.9       # [%]
-        base_height_target = 0.26      # [m]
+        base_height_target = 0.25      # [m]
 
         pitch_deg_target = 0.0         # [deg]   (+) down, (-) up
         roll_deg_target = 0.0          # [deg]   (+) right, (-) left
@@ -276,7 +276,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             delta_torques = -1.0e-7
             # ========================= 
             collision = -10.0
-            orientation = -1.0
+            orientation = -2.0
             stumble_feet = -1.0
             # ========================= 
             dof_error = -0.04
@@ -287,12 +287,10 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             thigh_symmetry = -0.2
             calf_symmetry = -0.2
             # =========================
-            heading_alignment = -2.0   # Parkour only
-            reverse_penalty = -1.0     # ABSOLUTELY parkour only
-            fwd_jump_vel = 2.0         # Jump & cmd mask
+            heading_alignment = -4.0   # Parkour only
+            reverse_penalty = -1.0     # Parkour only
+            fwd_jump_vel = 1.50        # Jump & cmd mask
             up_jump_vel = 3.75         # Jump & cmd mask
-            min_height = -0.1          # Jump mask
-    
             
 
 class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
