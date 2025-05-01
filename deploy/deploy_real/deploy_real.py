@@ -3,6 +3,7 @@ from typing import Union
 import numpy as np
 import time
 import torch
+import re
 
 from unitree_sdk2py.core.channel import ChannelPublisher, ChannelFactoryInitialize
 from unitree_sdk2py.core.channel import ChannelSubscriber, ChannelFactoryInitialize
@@ -13,10 +14,8 @@ from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowCmd_ as LowCmdGo
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowState_ as LowStateHG
 from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowState_ as LowStateGo
 from unitree_sdk2py.utils.crc import CRC
-
 from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import MotionSwitcherClient
 from unitree_sdk2py.go2.sport.sport_client import SportClient
-
 from unitree_sdk2py.idl.std_msgs.msg.dds_ import String_
 from unitree_sdk2py.idl.default import std_msgs_msg_dds__String_
 
@@ -58,6 +57,8 @@ class RobotController(BaseController):
         self.msc.SetTimeout(5.0)
         self.msc.Init()
         status, result = self.msc.CheckMode()
+
+        # Set the robot to standby mode
         while result['name']:
             self.sc.StandDown()
             self.msc.ReleaseMode()
@@ -70,7 +71,65 @@ class RobotController(BaseController):
         # Initialize low command
         init_cmd_go(self.low_cmd, weak_motor=self.cfg.weak_motor)
 
-    def refresh_robot_states(self):
+        # ======================= Fake scan observation setup =======================
+        # Stuff for fake obs
+        self.scan_idx = 0
+        self.phase_sync_point = -1
+        self.fake_scan_obs = []
+        self.mode = 'NORMAL'
+        
+        with open('SCAN_v12_ft_ii.txt') as f:
+            text = f.read()
+
+        # Split on blank lines (two or more newlines)
+        blocks = re.split(r'\n\s*\n', text.strip())
+
+        # Parse lists into fake_scan_obs
+        for blk in blocks:
+            content = blk.strip().lstrip('[').rstrip(']')
+            nums = [float(x) for x in content.split()]
+            self.fake_scan_obs.append(nums)
+        print("Parsed fake scan obs of length: ", len(self.fake_scan_obs))
+
+        # Get our sync point and REMOVE IT FROM THE LIST
+        self.phase_sync_point = self.fake_scan_obs[0][0]
+        self.fake_scan_obs = self.fake_scan_obs[1:]
+        print("Phase sync point: ", self.phase_sync_point)
+        # ===========================================================================
+
+
+    def _get_scan_obs(self) -> torch.Tensor:
+        """ Return (1, num_scan_obs) tensor for the scan-encoder.
+        """
+        # Always zero unless in REPLAY mode
+        scan_tensor = torch.zeros((1, self.cfg.num_scan_obs), dtype=torch.float32)
+        
+        # Switch to WAITING mode if RB is pressed
+        if (self.remote_controller.button[KeyMap.R1] or self.remote_controller.button[KeyMap.R2]) and self.mode == 'NORMAL':
+            self.mode = 'WAITING'
+        
+        # Switch to REPLAY if WAITING and phases are synced
+        if self.mode == 'WAITING' and np.abs(self.phase - self.phase_sync_point) < 0.005:
+            self.mode = 'REPLAY'
+            print("Replay mode activated")
+
+        # During REPLAY, actually modify scan_tensor
+        if self.mode == 'REPLAY':
+            scan = self.fake_scan_obs[self.scan_idx]
+            scan_tensor = torch.tensor(scan, dtype=torch.float32).view(1, -1)
+            self.scan_idx += 1
+            print("Scan idx: ", self.scan_idx)
+
+            # If we reach the end of the replay buffer, switch back to NORMAL
+            if self.scan_idx == len(self.fake_scan_obs) - 1:
+                self.mode = 'NORMAL'
+                print("Replay mode deactivated")
+                self.scan_idx = 0
+        
+        return scan_tensor
+
+
+    def _refresh_robot_states(self):
         """ Retrieve the latest robot state (joints, velocities, orientation, etc.) from 
             the environment and store it in this controller's internal buffers. 
         
@@ -84,7 +143,7 @@ class RobotController(BaseController):
         # Input smoothed commands
         smoothed_cmd = self.get_smoothed_command([self.remote_controller.ly, 
                                                   self.remote_controller.lx*-1, 
-                                                  self.remote_controller.rx*-1], 0.025)
+                                                  self.remote_controller.rx*-1], 0.15)
         self.cmd[0] = smoothed_cmd[0]
         self.cmd[1] = smoothed_cmd[1]
         self.cmd[2] = smoothed_cmd[2]
@@ -177,7 +236,7 @@ class RobotController(BaseController):
     def update_projected_gravity(self):
         """ Update the projected gravity separately. This is useful when the robot is in sleep mode. """
         quat = self.low_state.imu_state.quaternion
-        self.projected_gravity = self.get_gravity_orientation(quat)
+        self.projected_gravity = self._get_gravity_orientation(quat)
 
     def run(self):
         # Update time
@@ -209,6 +268,7 @@ if __name__ == "__main__":
 
     # Load config from path
     file_path = f"{LEGGED_GYM_ROOT_DIR}/deploy/configs/{args.config_file}"
+    # file_path = f"deploy/configs/{args.config_file}" For jetson
     
     # Initialize DDS communication
     ChannelFactoryInitialize(0, args.net)

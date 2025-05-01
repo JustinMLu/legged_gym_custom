@@ -171,6 +171,7 @@ class Go2Robot(LeggedRobot):
         # Jump flags - not used in obs anymore
         self.jump_flags = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
 
+        self.runOnce = True
 
     def _init_buffers(self):
         """ Initializes the buffers used to store the simulation state and observational data.
@@ -544,6 +545,17 @@ class Go2Robot(LeggedRobot):
         
         # SCAN OBS
         self.scan_obs_buf = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.3 - self.measured_heights, -1, 1.)
+
+        # # LOGGING SCAN OBS FOR MUJOCO
+        if self.jump_flags[0]:
+            with open('legged_gym/envs/go2/FAKE_SCAN_OBS.txt', 'a') as f:
+                
+                if self.runOnce:
+                    phase_value = float(self.phase[0].cpu().numpy())
+                    f.write(f"[{phase_value}]\n\n")
+                    self.runOnce = False
+                
+                f.write(f"{self.scan_obs_buf[0].cpu().numpy()}\n\n")
         
         # CRITIC OBS
         self.critic_obs_buf = torch.cat((
@@ -782,10 +794,10 @@ class Go2Robot(LeggedRobot):
         
         # Want the robot to be able to crouch if its trying to learn to jump though
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
-        return torch.abs(z_error) * jump_mask
+        return z_error * jump_mask
 
 
-    # Function that I moved into Go2.py, planning to move it back 
+    # ========================================= FEEEET =========================================
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 
             the contact reporting of PhysX is unreliable on meshes 

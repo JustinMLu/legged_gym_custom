@@ -51,9 +51,12 @@ class BaseController:
 
         # Command smoothing - used for both controllers
         self.smoothed_cmd = np.zeros(3, dtype=np.float32)
+
+        # Gait phase
+        self.phase = 0.0
         
 
-    def get_gravity_orientation(self, quaternion):
+    def _get_gravity_orientation(self, quaternion):
         """ Returns gravity orientation in the frame specified by the quaternion.
 
         Args:
@@ -75,19 +78,7 @@ class BaseController:
         return gravity_orientation
     
 
-    def get_smoothed_command(self, raw_cmd, smoothing_factor):
-        """ Smooths the controller command by gradually blending the new commands with the previous.
-            Lower values (0.01 - 0.05) give smoother but slower responses, while higher values (0.1 - 0.2)
-            give faster but less smooth responses.
-            Args:
-                raw_cmd (np.array): The controller command [vx, vy, wz].
-                smoothing_factor (float): The factor by which to smooth the command.
-        """
-        self.smoothed_cmd = self.smoothed_cmd + smoothing_factor * (raw_cmd - self.smoothed_cmd)
-        return self.smoothed_cmd
-
-
-    def refresh_robot_states(self):
+    def _refresh_robot_states(self):
         """ Retrieve the latest robot state (joints, velocities, orientation, etc.) from 
             the environment and store it in this controller's internal buffers. 
         
@@ -97,7 +88,7 @@ class BaseController:
                 - ang_vel (in the local frame)
                 - base_quat (base orientation quaternion)
         """
-        raise NotImplementedError("refresh_robot_states() not implemented")
+        raise NotImplementedError("_refresh_robot_states() not implemented")
 
     # ------------------------------------------------------------------  
     def _get_scan_obs(self) -> torch.Tensor:
@@ -108,8 +99,20 @@ class BaseController:
         Child classes can override this method (e.g. to spoof an obstacle when the
         user presses a button, or to pass real LiDAR data on the robot).
         """
-        return torch.zeros((1, self.cfg.num_scan_obs), dtype=torch.float32)
+        raise NotImplementedError("_get_scan_obs() not implemented")
     # ------------------------------------------------------------------
+
+
+    def get_smoothed_command(self, raw_cmd, smoothing_factor):
+        """ Smooths the controller command by gradually blending the new commands with the previous.
+            Lower values (0.01 - 0.05) give smoother but slower responses, while higher values (0.1 - 0.2)
+            give faster but less smooth responses.
+            Args:
+                raw_cmd (np.array): The controller command [vx, vy, wz].
+                smoothing_factor (float): The factor by which to smooth the command.
+        """
+        self.smoothed_cmd = self.smoothed_cmd + smoothing_factor * (raw_cmd - self.smoothed_cmd)
+        return self.smoothed_cmd
 
     def step(self, elapsed_time_s):
         """ Execute one iteration of the control loop, performing the following steps:
@@ -122,16 +125,16 @@ class BaseController:
                 elapsed_time_s (float): The *real* time elapsed in seconds.
         """
         # Refresh robot states
-        self.refresh_robot_states()
-        self.projected_gravity = self.get_gravity_orientation(self.base_quat)
+        self._refresh_robot_states()
+        self.projected_gravity = self._get_gravity_orientation(self.base_quat)
         self.roll, self.pitch, self.yaw = quaternion_to_euler(self.base_quat)
         
         # Calculate per-leg phase variables
-        phase = (elapsed_time_s % self.cfg.period) / self.cfg.period
-        phase_fr = (phase + self.cfg.fr_offset) % 1
-        phase_bl = (phase + self.cfg.bl_offset) % 1
-        phase_fl = (phase + self.cfg.fl_offset) % 1
-        phase_br = (phase + self.cfg.br_offset) % 1
+        self.phase = (elapsed_time_s % self.cfg.period) / self.cfg.period
+        phase_fr = (self.phase + self.cfg.fr_offset) % 1
+        phase_bl = (self.phase + self.cfg.bl_offset) % 1
+        phase_fl = (self.phase + self.cfg.fl_offset) % 1
+        phase_br = (self.phase + self.cfg.br_offset) % 1
 
         # Zero out phase variables if small command
         cmd_norm = np.linalg.norm(self.cmd[:3])

@@ -8,11 +8,13 @@ import yaml
 import pdb
 from deploy.base.deploy_base import BaseController, ConfigParser
 from gamepad_reader import Gamepad
+import re
 
 class MujocoController(BaseController):
 
     def __init__(self, cfg: ConfigParser) -> None:
         super().__init__(cfg)
+
         self.gamepad = Gamepad(cfg.rc_scale[0], 
                                cfg.rc_scale[1], 
                                cfg.rc_scale[2])
@@ -23,45 +25,65 @@ class MujocoController(BaseController):
         self.mj_model.opt.timestep = cfg.simulation_dt
         mujoco.mj_resetDataKeyframe(self.mj_model, self.mj_data, 0)
 
+        # ======================= Fake scan observation setup =======================
+        # Stuff for fake obs
+        self.scan_idx = 0
+        self.phase_sync_point = -1
+        self.fake_scan_obs = []
+        self.mode = 'NORMAL'
 
-        self._wave_active = False
-        self._wave_step = 0
-        self._wave_len = 11
+        with open('SCAN_v12_ft_iii.txt') as f:
+            text = f.read()
+
+        # Split on blank lines (two or more newlines)
+        blocks = re.split(r'\n\s*\n', text.strip())
+
+        # Parse lists into fake_scan_obs
+        for blk in blocks:
+            content = blk.strip().lstrip('[').rstrip(']')
+            nums = [float(x) for x in content.split()]
+            self.fake_scan_obs.append(nums)
+        print("Parsed fake scan observations of length: ", len(self.fake_scan_obs))
+
+        # Get our sync point and REMOVE IT FROM THE LIST
+        self.phase_sync_point = self.fake_scan_obs[0][0]
+        self.fake_scan_obs = self.fake_scan_obs[1:]
+        print("Phase sync point: ", self.phase_sync_point)
+        # ===========================================================================
+
 
     def _get_scan_obs(self) -> torch.Tensor:
+        """ Return (1, num_scan_obs) tensor for the scan-encoder.
         """
-        Return (1, num_scan_obs) tensor for the scan-encoder.
-
-        If RB is pressed, spoof a wall that the policy learned to jump over: 
-        three rows (≈0.9-1.2 m ahead) are set to -1.  
-        Otherwise we return all-zeros (flat ground).
-        """
-        NX, NY = 12, 11
-        scan = torch.zeros((1, self.cfg.num_scan_obs), dtype=torch.float32)
+        # Always zero unless in REPLAY mode
+        scan_tensor = torch.zeros((1, self.cfg.num_scan_obs), dtype=torch.float32)
         
-        if self.gamepad._rb_pressed and not self._wave_active:
-            self._wave_active = True
-            self._wave_step   = 0
+        # Switch to WAITING mode if RB is pressed
+        if self.gamepad._rb_pressed and self.mode == 'NORMAL':
+            self.mode = 'WAITING'
+        
+        # Switch to REPLAY if WAITING and phases are synced
+        if self.mode == 'WAITING' and np.abs(self.phase - self.phase_sync_point) < 0.005:
+            self.mode = 'REPLAY'
+            print("Replay mode activated")
 
-        if self._wave_active:
-            active_row = NY - 2 - self._wave_step
-            if active_row >= 0:
-                start = active_row * NX
-                end   = (active_row + 2) * NX       # row-major slice
-                scan[0, start:end] = -2.0          # -1 is 30cm wall
-                self._wave_step += 1
-            else:
-                # finished: reset state-machine
-                self._wave_active = False
+        # During REPLAY, actually modify scan_tensor
+        if self.mode == 'REPLAY':
+            scan = self.fake_scan_obs[self.scan_idx]
+            scan_tensor = torch.tensor(scan, dtype=torch.float32).view(1, -1)
+            self.scan_idx += 1
+            print("Scan idx: ", self.scan_idx)
 
-            if self._wave_step >= self._wave_len:
-                self._wave_active = False
-
-        return scan
-
+            # If we reach the end of the replay buffer, switch back to NORMAL
+            if self.scan_idx == len(self.fake_scan_obs) - 1:
+                self.mode = 'NORMAL'
+                print("Replay mode deactivated")
+                self.scan_idx = 0
+        
+        return scan_tensor
 
 
-    def refresh_robot_states(self):
+    def _refresh_robot_states(self):
         """ Retrieve the latest robot state (joints, velocities, orientation, etc.) from 
             the environment and store it in this controller's internal buffers. 
         
@@ -73,7 +95,7 @@ class MujocoController(BaseController):
         """
 
         # Input smoothed commands
-        smoothed_cmd = self.get_smoothed_command([self.gamepad.vx, self.gamepad.vy, self.gamepad.wz], 0.025)
+        smoothed_cmd = self.get_smoothed_command([self.gamepad.vx, self.gamepad.vy, self.gamepad.wz], 0.15)
         self.cmd[0] = smoothed_cmd[0]
         self.cmd[1] = smoothed_cmd[1]
         self.cmd[2] = smoothed_cmd[2]
@@ -84,13 +106,12 @@ class MujocoController(BaseController):
         self.ang_vel = self.mj_data.qvel[3:6]    # angular vel (local frame)
         self.base_quat = self.mj_data.qpos[3:7]  # base rot. in quaternion
 
+
     def compute_torques(self, target_q, q, kp, target_dq, dq, kd):
         """ Calculates torques from position commands using position PD control.
         """
         return kp*(target_q-q) + kd*(target_dq-dq)
     
-
-
 
 if __name__ == "__main__":
     import argparse
@@ -113,9 +134,8 @@ if __name__ == "__main__":
     viewer = mujoco.viewer.launch_passive(controller.mj_model, controller.mj_data)
     viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
     viewer.cam.trackbodyid = 0
-    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = False
+    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
     viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = False
-
 
     while viewer.is_running():
         

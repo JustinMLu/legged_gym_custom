@@ -14,8 +14,8 @@ def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # Override some parameters for testing
     env_cfg.env.num_envs = min(env_cfg.env.num_envs, 1)
-    env_cfg.terrain.num_rows = 1
-    env_cfg.terrain.num_cols = 1
+    env_cfg.terrain.num_rows = 10
+    env_cfg.terrain.num_cols = 10
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = True
     env_cfg.commands.user_command = [0.0, 0.0, 0.0, 0.0] # this SHOULD stop the resampling?
@@ -62,7 +62,7 @@ def play(args):
 
     # Specify custom camera
     ISO_PITCH = np.deg2rad(25)        # Pitch (up/down) angle
-    ISO_YAW   = np.deg2rad(0)        # Yaw (rotation) angle
+    ISO_YAW   = np.deg2rad(45)        # Yaw (rotation) angle
     ISO_DIST  = 2.0                   # metres from the robot
     ISO_FOV   = 25.0                  # deg – optional, see below
 

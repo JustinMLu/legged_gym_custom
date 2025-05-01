@@ -1,6 +1,6 @@
 # ==================== UNIFIED CONFIG (MUJOCO & REAL) ====================
 # Model folder name
-model_name: &model "parkour_v1"
+model_name: &model "parkour_v12_ft_iii"
 
 # Network paths
 policy_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/*model/policy.pt"
@@ -9,23 +9,13 @@ estimator_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/*model/estimator.pt"
 scan_encoder_path: "{LEGGED_GYM_ROOT_DIR}/deploy/networks/go2/*model/scan_encoder.pt"
 
 # Mujoco path
-xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_flat.xml" 
+xml_path: "{LEGGED_GYM_ROOT_DIR}/resources/robots/go2/mujoco/scene_objects.xml" 
 
 # Action & Observations
 num_actions: 12
 num_proprio: 52
 buffer_length: 10
 num_scan_obs: 132
-
-# ===========================================================================================
-# TODO: Make period based on linear velocity
-
-# TODO: Fix conflict between resampling commands and terrain level promotion/demotion logic.
-#       i.e if the robot samples a fwd cmd and then a backward cmd, it can be wrongly demoted
-#       to a lower level. SOLUTION: integrate the abs. vel./commanded vel. every env step
-
-# TODO: Implement MIT rl_locomotion curriculum, if you have time. If not, extreme parkour.
-# ===========================================================================================
 
 # Phase Features (max 0.40, min. 0.30)
 period: 0.35
@@ -39,11 +29,9 @@ msg_type: "go" # "hg" or "go" # (REAL ONLY)
 lowcmd_topic: "rt/lowcmd"     # (REAL ONLY)
 lowstate_topic: "rt/lowstate" # (REAL ONLY)
 
-
 # Timing
 simulation_dt: 0.005  
 control_decimation: 4   # Controller update freq (simulation_dt * control_decimation=0.02; 50Hz)
-
 
 # leg_joint2motor_idx: fixes the order of the motors in the observation
 # (e.g: Isaac and Mujoco are L-R-L-R, but Unitree Go2's joint order is R-L-R-L)
@@ -66,7 +54,6 @@ kds: [1.0, 1.0, 1.0,
       1.0, 1.0, 1.0,
       1.0, 1.0, 1.0]
 
-# CHEETAH
                 # hip, thigh, calf
 default_angles: [0.1, 0.8, -1.5,    # Front left
                 -0.1, 0.8, -1.5,    # Front right
@@ -74,7 +61,7 @@ default_angles: [0.1, 0.8, -1.5,    # Front left
                 -0.1, 1.0, -1.5]    # Rear right
 
 # Offsets (degrees)
-pitch_offset: 0.0  # positive offset = robot pitches upwards
+pitch_offset: 2.0  # positive offset = robot pitches upwards
 roll_offset: 0.0   # positive offset = robot rolls to the left
 
 # Scales
@@ -89,10 +76,21 @@ clip_observations: 100.0
 clip_actions: 3.14
 
 # Remote controller scale
-rc_scale: [1.4, 0.0, 1.57]
+rc_scale: [1.2, 0.0, 1.0]
 
-# Empirically-tested joint ranges
+
+# ===========================================================================================
+# JOINT RANGES
 # Hips (all):   [ -0.75,  0.75 ]
 # Front thighs: [ -1.50,  1.75 ]
 # Rear thighs:  [  0.00,  2.75 ]
 # Calves (all): [ -2.75, -0.75 ]
+
+# TODO: Make period based on linear velocity
+
+# TODO: Fix conflict between resampling commands and terrain level promotion/demotion logic.
+#       i.e if the robot samples a fwd cmd and then a backward cmd, it can be wrongly demoted
+#       to a lower level. SOLUTION: integrate the abs. vel./commanded vel. every env step
+
+# TODO: Implement MIT rl_locomotion curriculum, if you have time. If not, extreme parkour.
+# ===========================================================================================
