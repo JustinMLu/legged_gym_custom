@@ -71,63 +71,6 @@ class RobotController(BaseController):
         # Initialize low command
         init_cmd_go(self.low_cmd, weak_motor=self.cfg.weak_motor)
 
-        # ======================= Fake scan observation setup =======================
-        # Stuff for fake obs
-        self.scan_idx = 0
-        self.phase_sync_point = -1
-        self.fake_scan_obs = []
-        self.mode = 'NORMAL'
-        
-        with open('SCAN_v12_ft_ii.txt') as f:
-            text = f.read()
-
-        # Split on blank lines (two or more newlines)
-        blocks = re.split(r'\n\s*\n', text.strip())
-
-        # Parse lists into fake_scan_obs
-        for blk in blocks:
-            content = blk.strip().lstrip('[').rstrip(']')
-            nums = [float(x) for x in content.split()]
-            self.fake_scan_obs.append(nums)
-        print("Parsed fake scan obs of length: ", len(self.fake_scan_obs))
-
-        # Get our sync point and REMOVE IT FROM THE LIST
-        self.phase_sync_point = self.fake_scan_obs[0][0]
-        self.fake_scan_obs = self.fake_scan_obs[1:]
-        print("Phase sync point: ", self.phase_sync_point)
-        # ===========================================================================
-
-
-    def _get_scan_obs(self) -> torch.Tensor:
-        """ Return (1, num_scan_obs) tensor for the scan-encoder.
-        """
-        # Always zero unless in REPLAY mode
-        scan_tensor = torch.zeros((1, self.cfg.num_scan_obs), dtype=torch.float32)
-        
-        # Switch to WAITING mode if RB is pressed
-        if (self.remote_controller.button[KeyMap.R1] or self.remote_controller.button[KeyMap.R2]) and self.mode == 'NORMAL':
-            self.mode = 'WAITING'
-        
-        # Switch to REPLAY if WAITING and phases are synced
-        if self.mode == 'WAITING' and np.abs(self.phase - self.phase_sync_point) < 0.005:
-            self.mode = 'REPLAY'
-            print("Replay mode activated")
-
-        # During REPLAY, actually modify scan_tensor
-        if self.mode == 'REPLAY':
-            scan = self.fake_scan_obs[self.scan_idx]
-            scan_tensor = torch.tensor(scan, dtype=torch.float32).view(1, -1)
-            self.scan_idx += 1
-            print("Scan idx: ", self.scan_idx)
-
-            # If we reach the end of the replay buffer, switch back to NORMAL
-            if self.scan_idx == len(self.fake_scan_obs) - 1:
-                self.mode = 'NORMAL'
-                print("Replay mode deactivated")
-                self.scan_idx = 0
-        
-        return scan_tensor
-
 
     def _refresh_robot_states(self):
         """ Retrieve the latest robot state (joints, velocities, orientation, etc.) from 
@@ -139,6 +82,8 @@ class RobotController(BaseController):
                 - ang_vel (in the local frame)
                 - base_quat (base orientation quaternion)
         """
+        # Update jump button
+        self.jump_button_pressed = (self.remote_controller.button[KeyMap.R1] or self.remote_controller.button[KeyMap.R2])
 
         # Input smoothed commands
         smoothed_cmd = self.get_smoothed_command([self.remote_controller.ly, 

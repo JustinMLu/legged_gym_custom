@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from deploy.base.config_parser import ConfigParser
+import re
 
 def quaternion_to_euler(quat_angle):
         """ Converts a quaternion into euler angles (roll, pitch, yaw).
@@ -54,6 +55,33 @@ class BaseController:
 
         # Gait phase
         self.phase = 0.0
+
+        # ======================= Fake scan observation setup =======================
+        # Stuff for fake obs
+        self.jump_button_pressed = False
+        self.scan_idx = 0
+        self.phase_sync_point = -1
+        self.fake_scan_obs = []
+        self.mode = 'NORMAL'
+
+        with open('SCAN_v12_ft_iii.txt') as f:
+            text = f.read()
+
+        # Split on blank lines (two or more newlines)
+        blocks = re.split(r'\n\s*\n', text.strip())
+
+        # Parse lists into fake_scan_obs
+        for blk in blocks:
+            content = blk.strip().lstrip('[').rstrip(']')
+            nums = [float(x) for x in content.split()]
+            self.fake_scan_obs.append(nums)
+        print("Parsed fake scan observations of length: ", len(self.fake_scan_obs))
+
+        # Get our sync point and REMOVE IT FROM THE LIST
+        self.phase_sync_point = self.fake_scan_obs[0][0]
+        self.fake_scan_obs = self.fake_scan_obs[1:]
+        print("Phase sync point: ", self.phase_sync_point)
+        # ===========================================================================
         
 
     def _get_gravity_orientation(self, quaternion):
@@ -78,18 +106,6 @@ class BaseController:
         return gravity_orientation
     
 
-    def _refresh_robot_states(self):
-        """ Retrieve the latest robot state (joints, velocities, orientation, etc.) from 
-            the environment and store it in this controller's internal buffers. 
-        
-            Should update the following data:
-                - qj (joint pos.)
-                - dqj (joint vel.)
-                - ang_vel (in the local frame)
-                - base_quat (base orientation quaternion)
-        """
-        raise NotImplementedError("_refresh_robot_states() not implemented")
-
     # ------------------------------------------------------------------  
     def _get_scan_obs(self) -> torch.Tensor:
         """
@@ -99,9 +115,47 @@ class BaseController:
         Child classes can override this method (e.g. to spoof an obstacle when the
         user presses a button, or to pass real LiDAR data on the robot).
         """
-        raise NotImplementedError("_get_scan_obs() not implemented")
+        # Always zero unless in REPLAY mode
+        scan_tensor = torch.zeros((1, self.cfg.num_scan_obs), dtype=torch.float32)
+        
+        # Switch to WAITING mode if RB is pressed
+        if self.jump_button_pressed and self.mode == 'NORMAL':
+            self.mode = 'WAITING'
+        
+        # Switch to REPLAY if WAITING and phases are synced
+        if self.mode == 'WAITING' and np.abs(self.phase - self.phase_sync_point) < 0.005:
+            self.mode = 'REPLAY'
+            print("Replay mode activated")
+
+        # During REPLAY, actually modify scan_tensor
+        if self.mode == 'REPLAY':
+            scan = self.fake_scan_obs[self.scan_idx]
+            scan_tensor = torch.tensor(scan, dtype=torch.float32).view(1, -1)
+            self.scan_idx += 1
+            print(f"Feeding scan_obs[{self.scan_idx}]")
+
+            # If we reach the end of the replay buffer, switch back to NORMAL
+            if self.scan_idx == len(self.fake_scan_obs) - 1:
+                self.mode = 'NORMAL'
+                print("Replay mode deactivated")
+                self.scan_idx = 0
+        
+        return scan_tensor
     # ------------------------------------------------------------------
 
+
+    def _refresh_robot_states(self):
+        """ Retrieve the latest robot state (joints, velocities, orientation, etc.) from 
+            the environment and store it in this controller's internal buffers. 
+        
+            Should update the following data:
+                - qj (joint pos.)
+                - dqj (joint vel.)
+                - ang_vel (in the local frame)
+                - base_quat (base orientation quaternion)
+                - Jump button (if spoofing scan obs)
+        """
+        raise NotImplementedError("_refresh_robot_states() not implemented")
 
     def get_smoothed_command(self, raw_cmd, smoothing_factor):
         """ Smooths the controller command by gradually blending the new commands with the previous.
