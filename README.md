@@ -1,24 +1,23 @@
-# Legged Gym Custom - A Less-Deprecated Isaac Gym Reinforcement Learning Framework  #
+# ARCAD Gym  #
 
 <img src="https://github.com/user-attachments/assets/1a5062e2-f062-4528-929f-09ea0b1da057" width="400"/>
 <img src="https://github.com/user-attachments/assets/aafa9d2f-bfbf-452e-8215-3e1fd6227e85" width="400"/>
 
 ---
 
-Legged Gym Custom is an extension of NVIDIA and RSL's Legged Gym RL framework.
+ARCAD Gym is an in-house extension of legged_gym for the Agile Robotics Control and Design (ARCAD) Group, at the University of Michigan.
 
-Originally used by the Robotic Systems Lab to train the ANYmal quadruped on a variety of different environments, this fork adds a sim-to-sim-to-real verification and training pipeline from Isaac Sim to Mujoco and then onto the real robot, as well as a unified robot config format and improved terrain selection/curriculum specifications. The original repo has a surprisingly large number of bugs, so critical improvements and bug fixes have been made to the codebase to ensure more reliable experimentation. 
+This fork adds a sim-to-sim-to-real inference  pipeline from Isaac Sim to Mujoco and then onto the real robot and completely reimplements Regularized Online Adaptation (ROA). Bugfixes to the terrain generation and base RL pipeline have also been made.
+
 
 Custom functions implemented:
-- Regularized Online Adaptation (ROA), using encoder neural networks to estimate environment extrinsics
-- MLP State Estimator - can learn to estimate linear/angular velocity, acceleration, base height, etc.
-- Sim2Sim deployment in Mujoco
-- Sim2Real deployment to the Go2 robot
-- Xbox ontroller support for Mujoco and Isaac Sim 
-- Lidar and vision support via a heightmap neural network for the Go2 (WIP)
-- Autoencoder support for all auxiliary neural nets (WIP)
+- Regularized Online Adaptation (ROA) w/ MLP state estimator
+- Completely modular observation buffers in Isaac Gym - no more slicing a giant `self.obs_buf` tensor over and over
+- Fully-functional Mujoco and Go2 robot deployment scripts
+- Xbox controller support for Mujoco and Isaac Sim 
+- The code is readable by a human being
 
-**Affiliation**: ARCAD Lab, University of Michigan  
+**Affiliation**: Justin Lu - ARCAD Lab, University of Michigan
 
 ---
 
