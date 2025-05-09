@@ -288,10 +288,9 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             # =========================
             heading_alignment = -4.0    # Parkour only
             reverse_penalty = -1.0      # ABSOLUTELY parkour only
-            fwd_jump_vel = 1.25         # Jump & cmd mask
-            up_jump_vel = 3.75          # Jump & cmd mask
-            # jump_height = 1.0           # Jump & cmd mask
-    
+            jump_zone_forward_vel = 1.25         # Jump & cmd mask
+            jump_zone_upward_vel = 3.75          # Jump & cmd mask
+
             
 
 class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):

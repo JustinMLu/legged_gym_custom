@@ -106,7 +106,7 @@ class Terrain:
 
         for j in range(self.cfg.num_cols):
             for i in range(self.cfg.num_rows):
-                difficulty = i / self.cfg.num_rows
+                difficulty = (i+1)/10 # 1/10, 2/10 ... num_rows/10
                 choice = j / self.cfg.num_cols + 0.001
             
 
@@ -196,7 +196,7 @@ class Terrain:
         gap_x_start = 5.0
         gap_dx = 3.5
         num_gaps = 7
-        gap_lengths = [difficulty+0.1] * num_gaps 
+        gap_lengths = [difficulty] * num_gaps 
         gap_heights = [-2.0] * num_gaps
 
         # Box parkour terrain

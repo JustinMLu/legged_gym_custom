@@ -32,9 +32,9 @@ Custom functions implemented:
    - Try running an example `cd examples && python 1080_balls_of_solitude.py`
    - For troubleshooting check docs `isaacgym/docs/index.html`
 5. Install the version of rsl_rl that comes with this repository
-   -  `cd legged_gym_custom/rsl_rl && pip install -e .` 
-6. Install legged_gym_custom
-   - `cd legged_gym_custom && pip install -e .`
+   -  `cd arcad_gym/rsl_rl && pip install -e .` 
+6. Install arcad_gym
+   - `cd arcad_gym && pip install -e .`
 
 ### CODE STRUCTURE ###
 1. Each environment is defined by an env file (`legged_robot.py`) and a config file (`legged_robot_config.py`). The config file contains two classes: one containing  all the environment parameters (`LeggedRobotCfg`) and one for the training parameters (`LeggedRobotCfgPPo`).  

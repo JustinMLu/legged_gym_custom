@@ -547,15 +547,15 @@ class Go2Robot(LeggedRobot):
         self.scan_obs_buf = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.3 - self.measured_heights, -1, 1.)
 
         # # LOGGING SCAN OBS FOR MUJOCO
-        if self.jump_flags[0]:
-            with open('legged_gym/envs/go2/FAKE_SCAN_OBS.txt', 'a') as f:
+        # if self.jump_flags[0]:
+        #     with open('legged_gym/deploy/base/FAKE_SCAN_OBS.txt', 'a') as f:
                 
-                if self.runOnce:
-                    phase_value = float(self.phase[0].cpu().numpy())
-                    f.write(f"[{phase_value}]\n\n")
-                    self.runOnce = False
+        #         if self.runOnce:
+        #             phase_value = float(self.phase[0].cpu().numpy())
+        #             f.write(f"[{phase_value}]\n\n")
+        #             self.runOnce = False
                 
-                f.write(f"{self.scan_obs_buf[0].cpu().numpy()}\n\n")
+        #         f.write(f"{self.scan_obs_buf[0].cpu().numpy()}\n\n")
         
         # CRITIC OBS
         self.critic_obs_buf = torch.cat((
@@ -635,14 +635,14 @@ class Go2Robot(LeggedRobot):
 
         # Reward / penalty for each foot
         reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
-        reward += torch.where(~(self.fl_contact ^ fl_stance), 0.25, -0.0)
-        reward += torch.where(~(self.fr_contact ^ fr_stance), 0.25, -0.0)
-        reward += torch.where(~(self.bl_contact ^ bl_stance), 0.25, -0.0)
-        reward += torch.where(~(self.br_contact ^ br_stance), 0.25, -0.0)
+        reward += torch.where(~(self.fl_contact ^ fl_stance), 0.25, -0.25)
+        reward += torch.where(~(self.fr_contact ^ fr_stance), 0.25, -0.25)
+        reward += torch.where(~(self.bl_contact ^ bl_stance), 0.25, -0.25)
+        reward += torch.where(~(self.br_contact ^ br_stance), 0.25, -0.25)
 
         return reward
 
-
+    # =================================== PHASE GAIT REWARDS ===================================
     def _reward_phase_foot_lifting(self):
         """ Reward proper foot lifting based on gait phase.
             Uses same general logic as _reward_phase_contact_match()
@@ -711,7 +711,6 @@ class Go2Robot(LeggedRobot):
         return torch.exp(-roll_error / self.cfg.rewards.tracking_sigma)
     
     
-    # ========================================= JUMPER =========================================
     def _reward_thigh_symmetry(self):
         """ Penalize DOF left-right thigh differences. Ordering of 
             joint_indices buffer is [0] = FL, [1] = FR, [2] = RL, [3] = RR
@@ -728,11 +727,13 @@ class Go2Robot(LeggedRobot):
         left_calf_dof_pos = self.dof_pos[:, self.calf_joint_indices[[0, 2]]]
         right_calf_dof_pos = self.dof_pos[:, self.calf_joint_indices[[1, 3]]]
         return torch.sum(torch.abs(left_calf_dof_pos - right_calf_dof_pos), dim=1)
+    
 
-
+    # ========================================= JUMPER =========================================
     def _reward_heading_alignment(self):
         """ Penalize the robot for deviating from a forward (0 rad) heading,
             computed from its base quaternion using the forward vector.
+            Penalize only when the robot is moving.
         """
         # Compute heading from the forward vec
         fwd = quat_apply(self.base_quat, self.forward_vec)
@@ -749,11 +750,24 @@ class Go2Robot(LeggedRobot):
         # print(f"Current heading: {heading.item():.3f}")
         # print(f"Desired heading: {desired_heading.item():.3f}")
         # print(f"Actual reward: {(-4 * torch.square(angle_error)).item():.3f}")
-        return torch.square(angle_error)
+
+        not_zero_mask = (torch.norm(self.commands[:, :3], dim=1) >= 0.2).float()
+        return torch.square(angle_error) * not_zero_mask
     
 
-    def _reward_fwd_jump_vel(self):
-        """ LITERALLY JUST REWARDS FORWARD VELOCITY
+    def _reward_reverse_penalty(self):
+        """ Penalizes reverse velocity. Requires a NEGATIVE coefficient.
+            Stop being a coward, Go2. Just jump over the ledge!
+        """
+        world_lin_vel = self.root_states[:, 7:10] # [vx, vy, vz]
+        reverse_vel = torch.clamp(world_lin_vel[:, 0], max=0.0) # [-inf, 0]
+        return -reverse_vel # negative sign for coeff consistency only
+    
+
+    def _reward_jump_zone_forward_vel(self):
+        """ Rewards global forward velocity when the robot is in the jump zone
+            (i.e self.jump_flags is true for that robot env). 
+            Reward only when the robot is moving.
         """
 
         world_lin_vel = self.root_states[:, 7:10]  # [vx, vy, vz]
@@ -764,8 +778,10 @@ class Go2Robot(LeggedRobot):
         return fwd_rew * jump_mask * not_zero_mask
     
 
-    def _reward_up_jump_vel(self):
-        """ LITERALLY JUST REWARDS UPWARD VELOCITY
+    def _reward_jump_zone_upward_vel(self):
+        """ Rewards global upwards velocity when the robot is in the jump zone
+            (i.e self.jump_flags is true for that robot env).
+            Reward only when the robot is moving.
         """
         world_lin_vel = self.root_states[:, 7:10]  # [vx, vy, vz]
         up_rew = torch.clamp(world_lin_vel[:, 2], min=0.0)
@@ -774,14 +790,6 @@ class Go2Robot(LeggedRobot):
         not_zero_mask = (torch.norm(self.commands[:, :3], dim=1) >= 0.2).float()
         return up_rew * jump_mask * not_zero_mask
     
-
-    def _reward_reverse_penalty(self):
-        """ Penalizes reverse velocity. Requires a NEGATIVE coefficient
-        """
-        world_lin_vel = self.root_states[:, 7:10] # [vx, vy, vz]
-        reverse_vel = torch.clamp(world_lin_vel[:, 0], max=0.0) # [-inf, 0]
-        return -reverse_vel # negative sign for coeff consistency only
-
 
     def _reward_min_height(self):
         """ Penalize robot for being too low according to root states.
