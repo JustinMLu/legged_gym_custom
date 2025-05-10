@@ -23,8 +23,8 @@ class Go2ParkourCfg( LeggedRobotCfg ):
 
     class terrain( LeggedRobotCfg.terrain ):
         # Scandots (132)
-        measured_points_x = [-0.45, -0.3, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2] # 12
-        measured_points_y = [-0.75, -0.6, -0.45, -0.3, -0.15, 0., 0.15, 0.3, 0.45, 0.6, 0.75]   # 11
+        measured_points_x = [-0.45, -0.3, -0.15, 0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2] # 12
+        measured_points_y = [-0.75, -0.6, -0.45, -0.3, -0.15, 0.0, 0.15, 0.3, 0.45, 0.6, 0.75]   # 11
         
         # General
         mesh_type = 'trimesh'
@@ -38,6 +38,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         terrain_width = 10.
 
         # ====================== PARKOUR TERRAIN ======================
+        selected = False
         parkour = True
         curriculum = True # TURN OFF FOR FINETUNING
         
@@ -107,7 +108,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         }
         # =============================================================
 
-        # ======================== Box Hurdles ========================
+        # ====================== Box Hurdles WIP ======================
         # x_start = 5.0
         # dx = 1.75
         # n = 16
@@ -136,8 +137,6 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         #     "border_height": -2.0,
         # }
         # =============================================================
-
-        selected = False
 
     class domain_rand:      
         randomize_friction = True
@@ -232,20 +231,20 @@ class Go2ParkourCfg( LeggedRobotCfg ):
 
     class rewards( LeggedRobotCfg.rewards ):
         only_positive_rewards = True
-        soft_dof_pos_limit = 0.9       # [%]
-        base_height_target = 0.27      # [m]
+        soft_dof_pos_limit = 0.9            # [%]
+        base_height_target = 0.27           # [m]
 
-        pitch_deg_target = 0.0         # [deg]   (+) down, (-) up
-        roll_deg_target = 0.0          # [deg]   (+) right, (-) left
+        pitch_deg_target = 0.0              # [deg]   (+) down, (-) up
+        roll_deg_target = 0.0               # [deg]   (+) right, (-) left
 
-        max_foot_height = 0.08         # [m]
-        percent_time_on_ground = 0.50  # [%]
-        max_contact_force = 70         # [N]
+        max_foot_height = 0.08              # [m]
+        percent_time_on_ground = 0.50       # [%]
+        max_contact_force = 70              # [N]
 
         class scales( LeggedRobotCfg.rewards.scales ):
             # =========================
-            tracking_lin_vel = 2.0
-            tracking_ang_vel = 2.0
+            tracking_lin_vel = 2.25
+            tracking_ang_vel = 2.25
             phase_contact_match = 1.0
             phase_foot_lifting = 1.0
             # =========================
@@ -261,17 +260,18 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             stumble_feet = -1.0
             # ========================= 
             dof_error = -0.04
-            zero_cmd_dof_error = -1.0
             hip_pos = -0.5
             thigh_pos = -0.5
             # =========================
             thigh_symmetry = -0.2
             calf_symmetry = -0.2
             # =========================
-            heading_alignment = -4.0    # Parkour only
-            reverse_penalty = -1.0      # Parkour only
-            jump_zone_forward_vel = 1.50         # Jump & cmd mask
-            jump_zone_upward_vel = 3.75          # Jump & cmd mask
+            heading_alignment = -4.5       # Parkour only
+            reverse_penalty = -1.0         # Parkour only
+            jump_zone_forward_vel = 1.75   # Jump & cmd mask
+            jump_zone_upward_vel = 3.75    # Jump & cmd mask
+            zero_cmd_dof_error = -1.0      # cmd mask
+            # stop_spinning = -1.0           # cmd mask
             # feet_contact_forces = -0.01
             
 
@@ -292,7 +292,6 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         scan_encoder_output_dim = 32
 
         # Estimator
-        # estimator_hidden_dims = [128, 64]
         estimator_hidden_dims = [256, 128]
         use_history = True
         
@@ -308,8 +307,8 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         num_learning_epochs = 5
         num_mini_batches = 4
         estimator_learning_rate = 1e-4
-        learning_rate = 4e-4
-        schedule = 'adaptive' # fixed or adaptive
+        learning_rate = 2e-4
+        schedule = 'fixed' # fixed or adaptive
         gamma = 0.99
         lam = 0.95
         desired_kl = 0.01
@@ -324,7 +323,7 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 10000
         save_interval = 50
 
-        run_name = 'parkour_v13'
+        run_name = 'parkour_v14'
         experiment_name = 'go2_parkour'
 
         # load and resume

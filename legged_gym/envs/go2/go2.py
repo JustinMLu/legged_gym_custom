@@ -746,10 +746,10 @@ class Go2Robot(LeggedRobot):
         # Wrap the heading to [-pi, pi]
         angle_error = wrap_to_pi(desired_heading - heading)
 
-        # Debug prints that only work when we have 1 robot
+        # DEBUG PRINTS that only work when we have 1 robot
         # print(f"Current heading: {heading.item():.3f}")
         # print(f"Desired heading: {desired_heading.item():.3f}")
-        # print(f"Actual reward: {(-4 * torch.square(angle_error)).item():.3f}")
+        # print(f"Reward: {(-1 * torch.square(angle_error)).item():.3f}")
 
         not_zero_mask = (torch.norm(self.commands[:, :3], dim=1) >= 0.2).float()
         return torch.square(angle_error) * not_zero_mask
@@ -803,9 +803,26 @@ class Go2Robot(LeggedRobot):
         # Want the robot to be able to crouch if its trying to learn to jump though
         jump_mask = (self.jump_flags[:, 0] > 0.0).float()
         return z_error * jump_mask
+    
+
+    def _reward_zero_cmd_dof_error(self):
+        """ Penalize DOF positions away from default 
+        """
+        zero_mask = (torch.norm(self.commands[:, :3], dim=1) < 0.2).float()
+        dof_error = torch.sum(torch.square(self.dof_pos - self.default_dof_pos), dim=1)
+        return dof_error * zero_mask
 
 
-    # ========================================= FEEEET =========================================
+    def _reward_stop_spinning(self):
+        """ STOP SPINNING IN PLACE WHEN NO COMMAND IS GIVEN!
+            WHAT'S THE MATTER WITH YOU?
+        """
+        zero_mask = (torch.norm(self.commands[:, :3], dim=1) < 0.2).float()
+        angular_penalty = torch.sum(torch.square(self.base_ang_vel), dim=1)
+        return angular_penalty * zero_mask
+
+
+    # ====================== Old reward that was orig. in legged_robot.py ======================
     def _reward_feet_air_time(self):
         """ Reward long steps. Need to filter the contacts because 
             the contact reporting of PhysX is unreliable on meshes 
