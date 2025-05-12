@@ -287,7 +287,8 @@ class PPO:
         mean_regularization_loss /= num_updates
         mean_estimator_loss /= num_updates
         self.storage.clear()
-        self.increase_update_count()
+        self.increase_update_count() # increment total update count
+        self.enforce_max_std(0.80) # enforce maximum std
         return mean_value_loss, mean_surrogate_loss, mean_regularization_loss, regularization_coef, mean_estimator_loss
 
 
@@ -296,6 +297,13 @@ class PPO:
         """
         self.total_updates += 1
 
+    def enforce_max_std(self, max_action_std=1.0):
+        """ Enforce the maximum standard deviation of the action distribution.
+            This is a form of regularization to prevent the model from going crazy,
+        """
+        cur_std = self.actor_critic.std.detach()
+        max_std_tensor = torch.tensor(max_action_std, device=cur_std.device, dtype=cur_std.dtype)
+        self.actor_critic.std.data = torch.min(cur_std, max_std_tensor).detach()
 
     def update_dagger(self):
         """ Update the adaptation encoder using DAgger. This is a form of imitation learning where the model is 
