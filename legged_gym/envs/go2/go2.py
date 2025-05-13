@@ -813,14 +813,6 @@ class Go2Robot(LeggedRobot):
         return dof_error * zero_mask
 
 
-    def _reward_stop_spinning(self):
-        """ STOP SPINNING IN PLACE WHEN NO COMMAND IS GIVEN!
-            WHAT'S THE MATTER WITH YOU?
-        """
-        zero_mask = (torch.norm(self.commands[:, :3], dim=1) < 0.2).float()
-        angular_penalty = torch.sum(torch.square(self.base_ang_vel), dim=1)
-        return angular_penalty * zero_mask
-
 
     # ====================== Old reward that was orig. in legged_robot.py ======================
     def _reward_feet_air_time(self):

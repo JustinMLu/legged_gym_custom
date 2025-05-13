@@ -288,7 +288,7 @@ class PPO:
         mean_estimator_loss /= num_updates
         self.storage.clear()
         self.increase_update_count() # increment total update count
-        self.enforce_max_std(0.80) # enforce maximum std
+        self.enforce_max_std(1.0) # enforce maximum std
         return mean_value_loss, mean_surrogate_loss, mean_regularization_loss, regularization_coef, mean_estimator_loss
 
 

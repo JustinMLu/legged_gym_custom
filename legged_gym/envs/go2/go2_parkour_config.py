@@ -32,7 +32,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
         add_roughness_to_selected_terrain = False
     
         # Parkour
-        num_rows = 15               # num. difficulties
+        num_rows = 12               # num. difficulties
         num_cols = 20               # max. terrain choices
         terrain_length = 28.
         terrain_width = 10.
@@ -106,36 +106,6 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             "border_width": 0.50,
             "border_height": -2.0,
         }
-        # =============================================================
-
-        # ====================== Box Hurdles WIP ======================
-        # x_start = 5.0
-        # dx = 1.75
-        # n = 16
-        # box_lengths = [1.25] * n
-        # box_heights = [0.1, 0.25, 0.45, 0.70, 
-        #                0.45, 0.70, 1.0, 1.4, 
-        #                0.8, 0.8, 0.40, 0.40, 
-        #                0.80, 0.45, 0.80, 1.2]
-
-
-        # obstacle_x_positions = list(np.arange(x_start,x_start+n*dx,dx))
-        # obstacle_y_positions = [0.0] * n
-
-        # parkour_kwargs = {
-        #     "start_platform_length": 3.,
-        #     "start_platform_height": 0.,
-    
-        #     "x_positions": obstacle_x_positions,
-        #     "y_positions": obstacle_y_positions,  # (-) right, (+) left
-            
-        #     "obstacle_heights": box_heights,  
-        #     "obstacle_lengths": box_lengths,             
-
-        #     "half_valid_width": 5.0,
-        #     "border_width": 0.50,
-        #     "border_height": -2.0,
-        # }
         # =============================================================
 
     class domain_rand:      
@@ -271,7 +241,6 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             jump_zone_forward_vel = 1.75   # Jump & cmd mask
             jump_zone_upward_vel = 3.75    # Jump & cmd mask
             zero_cmd_dof_error = -1.0      # cmd mask
-            # stop_spinning = -1.0           # cmd mask
             # feet_contact_forces = -0.01
             
 
@@ -323,7 +292,7 @@ class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):
         max_iterations = 10000
         save_interval = 50
 
-        run_name = 'parkour_v14'
+        run_name = 'parkour_v15'
         experiment_name = 'go2_parkour'
 
         # load and resume
