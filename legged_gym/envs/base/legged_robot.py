@@ -50,7 +50,7 @@ class LeggedRobot(BaseTask):
 
         self.device = sim_device
         self.num_envs = self.cfg.env.num_envs
-        print("⚠️  Pre-allocating privileged_mass_params so _create_envs() can access it")
+        print("⚠️  legged_robot.py: Early init of privileged_mass_params so _create_envs() can access it")
         self.privileged_mass_params = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
 
 
@@ -626,7 +626,7 @@ class LeggedRobot(BaseTask):
         """ Initializes the buffers used to store the simulation state and observational data.
         """
         # Debug print
-        print("\n======== _init_buffers(): Initializing buffers.... ========\n")
+        print("⚠️  legged_robot.py: _init_buffers() called...") 
 
         # get gym GPU state tensors
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
@@ -811,7 +811,7 @@ class LeggedRobot(BaseTask):
                 2.3 create actor with these properties and add them to the env
              3. Store indices of different bodies of the robot
         """
-        print("\n============ _create_envs(): Creating envs.... ============") 
+        print("⚠️  legged_robot.py: _create_envs() called...") 
         asset_path = self.cfg.asset.file.format(LEGGED_GYM_ROOT_DIR=LEGGED_GYM_ROOT_DIR)
         asset_root = os.path.dirname(asset_path)
         asset_file = os.path.basename(asset_path)

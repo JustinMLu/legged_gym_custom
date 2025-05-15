@@ -65,7 +65,7 @@ class ActorCritic(nn.Module):
         self.num_scan_obs = num_scan_obs
         self.num_actions = num_actions
 
-        print("\n============== DEBUG: ActorCritic ATTRIBUTES ==============")
+        print("\n================= ActorCritic initialized =================")
         print(f"num_proprio: {self.num_proprio}")
         print(f"num_privileged_obs: {self.num_privileged_obs}")
         print(f"num_critic_obs: {self.num_critic_obs}")

@@ -36,12 +36,13 @@ class PPO:
         self.learning_rate = learning_rate
         self.estimator_learning_rate = estimator_learning_rate
 
-        # ROA scheduling parameters - defined HERE
+        # ROA scheduling parameters
+        # TODO: Don't hardcode them here, make them configurable
         self.start_val, self.end_val, self.start_step, self.duration = 0.0, 0.05, 5000, 10000
         if resume:
             self.start_val, self.end_val, self.start_step, self.duration = 0.0, 0.1, 0, 1 
         print("\n===========================================================")
-        print("⚠️  REGULARIZATION COEF. SCHEDULE:\nstart_val: {}, end_val: {}, start_step: {}, duration: {}".format(self.start_val, self.end_val, self.start_step, self.duration))
+        print("⚠️  REGULARIZATION SCHEDULE:\nstart_val: {}\nend_val: {}\nstart_step: {}\nduration: {}".format(self.start_val, self.end_val, self.start_step, self.duration))
         print("===========================================================\n")
 
         # PPO components
