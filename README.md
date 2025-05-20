@@ -5,9 +5,7 @@
 
 ---
 
-ARCAD Gym is an in-house extension of legged_gym for the Agile Robotics Control and Design (ARCAD) Group, at the University of Michigan.
-
-This fork adds a sim-to-sim-to-real inference  pipeline from Isaac Sim to Mujoco and then onto the real robot and completely reimplements Regularized Online Adaptation (ROA). Bugfixes to the terrain generation and base RL pipeline have also been made.
+ARCAD Gym is an in-house extension of legged_gym for the Agile Robotics Control and Design (ARCAD) Group, at the University of Michigan. This fork adds a sim-to-sim-to-real inference pipeline from Isaac Sim to Mujoco and then onto the real robot and completely reimplements Regularized Online Adaptation (ROA). Bugfixes to the terrain generation and base RL pipeline have also been made.
 
 
 Custom functions implemented:
@@ -21,7 +19,7 @@ Custom functions implemented:
 
 ---
 
-### Installation ###
+### 🚧 Installation ###
 1. Clone this repository
 2. Create a new python virtual env with python 3.6, 3.7 or 3.8 (3.8 recommended)
 3. Install pytorch 1.10 with cuda-11.3:
@@ -36,22 +34,63 @@ Custom functions implemented:
 6. Install arcad_gym
    - `cd arcad_gym && pip install -e .`
 
-### CODE STRUCTURE ###
-1. Each environment is defined by an env file (`legged_robot.py`) and a config file (`legged_robot_config.py`). The config file contains two classes: one containing  all the environment parameters (`LeggedRobotCfg`) and one for the training parameters (`LeggedRobotCfgPPo`).  
-2. Both env and config classes use inheritance.  
-3. Each non-zero reward scale specified in `cfg` will add a function with a corresponding name to the list of elements which will be summed to get the total reward.  
-4. Tasks must be registered using `task_registry.register(name, EnvClass, EnvConfig, TrainConfig)`. This is done in `envs/__init__.py`, but can also be done from outside of this repository.  
+---
 
-### Usage ###
+### 💾 Export Network (with ROA) ###
+Playing a policy automatically exports its network components to `logs/{experiment_name}/exported/policies`. Exported files include:
+- The policy (MLP only, RNN support is deprecated) is exported as ```policy.pt```
+- The estimator network is exported as ```estimator.pt```
+- The adaptation module (ROA) is exported as ```adaptation_moduke.pt```
+- The scan encoder is exported as ```scan_encoder.pt```
+
+---
+
+### 🖥️ Training a Parkour Policy ###
+Currently, ```ARCAD Gym``` is optimized for quadrupedal robot parkour. Follow these steps to train and deploy a policy for the unitree Go2 that can eprform complex maneuvers like hurdles and jumps on & over objects.
+
+1. Train the base parkour policy:  
+  ```python legged_gym/scripts/train.py --task=go2_parkour --headless```
+
+2. Finetune the base parkour policy:  
+  ```python legged_gym/scripts/train.py --task=go2_parkour_finetune --headless```
+
+3. Generate scan observations:
+    - Uncomment lines 541-558 in ```play.py```
+    - Run the script to generate ```FAKE_SCAN_OBS.txt```
+    - Rename this file and move it to ```deploy/base```
+    - Reference examples: ```SCAN_v12_ft_i.txt``` and ```SCAN_v12_ft_iii.txt``` (included for pre-trained policies)
+
+4. Organize policy files:
+    - Create a directory in ```deploy/networks/go2/<your_policy_name>```
+    - Move the exported policy files into this directory
+
+5. Configure deployment:
+    - Update the ```model_name``` in ```deploy/configs/go2.yaml``` to match your policy folder
+    - Ensure parameters match your IsaacGym configuration
+    - Update the filename in ```deploy_base-deploy_base.py``` to point to your scan observations file
+
+6. Deploy in Mujoco:  
+  ```python deploy/deploy_mujoco/deploy_mujoco.py go2.yaml```
+    -  Plug in an Xbox controller before running and control the robot! 
+
+7. Deploy to physical robot:  
+  ```python deploy/deploy_real/deploy_real.py eth0 go2.yaml```
+    -  Connect to your Go2 robot via ethernet cable or SSH into its onboard Jetson
+    - Follow the setup instructions in [unitree_rl_gym](https://github.com/unitreerobotics/unitree_rl_gym) before attempting real-world deployment
+
+---
+
+### 🖥️ General Usage ###
+For standard (non-parkour) training and evaluation:
+
 1. Train:  
-  ```python legged_gym/scripts/train.py --task=anymal_c_flat```
+  ```python legged_gym/scripts/train.py --task=<your_task_here>```
     -  To run on CPU add following arguments: `--sim_device=cpu`, `--rl_device=cpu` (sim on CPU and rl on GPU is possible).
     -  To run headless (no rendering) add `--headless`.
     - **Important**: To improve performance, once the training starts press `v` to stop the rendering. You can then enable it later to check the progress.
     - The trained policy is saved in `issacgym_anymal/logs/<experiment_name>/<date_time>_<run_name>/model_<iteration>.pt`. Where `<experiment_name>` and `<run_name>` are defined in the train config.
-        - Example usage: 
-            - ```python legged_gym/scripts/train.py --task=go2 --resume --load_run=Feb19_19-10-10_ --checkpoint=700 --headless```
-            - ```python scripts/play.py --task=go2 --load_run=Feb19_sprinting_dog --checkpoint=700```
+    - E.g: loading a specific run (Feb19_19-10-10_goober) at a specific checkpoint (700) and resuming headless training: 
+        - ```python legged_gym/scripts/train.py --task=go2 --load_run=Feb19_19-10-10_goober --checkpoint=700 --headless --resume```
     
     -  The following command line arguments override the values set in the config files:
         - ```--task=TASK```: Task name.
@@ -63,37 +102,25 @@ Custom functions implemented:
         - ```--num_envs=NUM_ENVS```:  Number of environments to create.
         - ```--seed=SEED```:  Random seed.
         - ```--max_iterations=MAX_ITERATIONS```:  Maximum number of training iterations.
+
 2. Play a trained policy:  
-```python legged_gym/scripts/play.py --task=anymal_c_flat```
+```python legged_gym/scripts/play.py --task=<your_task_here>```
     - By default, the loaded policy is the last model of the last run of the experiment folder.
     - Other runs/model iteration can be selected by setting `load_run` and `checkpoint` in the train config.
 
----
-
-#### 💾 Export Network
-Play exports the Actor network, saving it in `logs/{experiment_name}/exported/policies`:
-- Standard networks (MLP) are exported as `exported_policy.pt` or `exported_policy_lstm.pt` for ActorCriticRecurrent.
-- RNN networks are exported as `policy_lstm_1.pt`.
+2. Play a trained policy and control it with your Xbox controller in Isaac Gym:  
+```python legged_gym/scripts/control_and_play.py --task=<your_task_here>```
+    - You can edit the camera settings by directly editing ```control_and_play.py```
+    - Spawning more than one robot is still supported
 
 ---
 
-### Adding a new environment ###
-The base environment `legged_robot` implements a rough terrain locomotion task. The corresponding cfg does not specify a robot asset (URDF/ MJCF) and has no reward scales. 
-
-1. Add a new folder to `envs/` with `'<your_env>_config.py`, which inherit from an existing environment cfgs  
-2. If adding a new robot:
-    - Add the corresponding assets to `resources/`.
-    - In `cfg` set the asset path, define body names, default_joint_positions and PD gains. Specify the desired `train_cfg` and the name of the environment (python class).
-    - In `train_cfg` set `experiment_name` and `run_name`
-3. (If needed) implement your environment in <your_env>.py, inherit from an existing environment, overwrite the desired functions and/or add your reward functions.
-4. Register your env in `isaacgym_anymal/envs/__init__.py`.
-5. Modify/Tune other parameters in your `cfg`, `cfg_train` as needed. To remove a reward set its scale to zero. Do not modify parameters of other envs!
-
-
-### Troubleshooting ###
+### ⚠️ Troubleshooting ###
 1. If you get the following error: `ImportError: libpython3.8m.so.1.0: cannot open shared object file: No such file or directory`, do: `sudo apt install libpython3.8`. It is also possible that you need to do `export LD_LIBRARY_PATH=/path/to/libpython/directory` / `export LD_LIBRARY_PATH=/path/to/conda/envs/your_env/lib`(for conda user. Replace /path/to/ to the corresponding path.).
 
-### Known Issues ###
+---
+
+### ☢️ Known Issues ###
 1. The contact forces reported by `net_contact_force_tensor` are unreliable when simulating on GPU with a triangle mesh terrain. A workaround is to use force sensors, but the force are propagated through the sensors of consecutive bodies resulting in an undesirable behaviour. However, for a legged robot it is possible to add sensors to the feet/end effector only and get the expected results. When using the force sensors make sure to exclude gravity from the reported forces with `sensor_options.enable_forward_dynamics_forces`. Example:
 ```
     sensor_pose = gymapi.Transform()
