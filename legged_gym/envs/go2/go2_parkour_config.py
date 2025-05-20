@@ -175,7 +175,7 @@ class Go2ParkourCfg( LeggedRobotCfg ):
 
         max_foot_height = 0.08              # [m]
         percent_time_on_ground = 0.50       # [%]
-        max_contact_force = 70              # [N]
+        max_contact_force = 75.0            # [N]
 
         class scales( LeggedRobotCfg.rewards.scales ):
             # =========================
@@ -207,7 +207,6 @@ class Go2ParkourCfg( LeggedRobotCfg ):
             jump_zone_forward_vel = 1.75   # Jump & cmd mask
             jump_zone_upward_vel = 3.75    # Jump & cmd mask
             zero_cmd_dof_error = -1.0      # cmd mask
-            # feet_contact_forces = -0.01
             
 
 class Go2ParkourCfgPPO( LeggedRobotCfgPPO ):

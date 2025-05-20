@@ -499,7 +499,7 @@ class Go2Robot(LeggedRobot):
 
             #     # NOTE: .item() requires moving the tensor to CPU first
             #     for env_id in in_zone_env_ids.cpu().tolist():
-            #         print(f"[JUMP-DBG]  robot env {env_id:1d} inside jump zone ")
+            #         print(f"[{self.common_step_counter:06d} DEBUG] robot env {env_id:1d} inside jump zone")
             # ===================================================================================
 
         # CUR OBS    
