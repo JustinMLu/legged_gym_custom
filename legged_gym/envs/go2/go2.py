@@ -168,10 +168,13 @@ class Go2Robot(LeggedRobot):
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, 
                                                                                     device=self.device, 
                                                                                     requires_grad=False)
-        # Jump flags - not used in obs anymore
+        # Jump flags (vectorized)
         self.jump_flags = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
 
+        # USED TO TRIGGER LOGGING OF FAKE SCAN OBS
         self.runOnce = True
+        self.jumpFlagNeverEnabled = True
+        self.enableScanLogging = True
 
     def _init_buffers(self):
         """ Initializes the buffers used to store the simulation state and observational data.
@@ -480,27 +483,15 @@ class Go2Robot(LeggedRobot):
         # Construct IMU obs
         imu_obs = torch.stack((self.roll, self.pitch), dim=1)
 
-        # Deal with parkour jump zone
+        # Handle jump flags if parkour is enabled
         if self.cfg.terrain.parkour:
-
+            
+            # Code to trigger jump mask based on scandot outliers
             min_outlier_threshold = 8
             height_threshold = 0.1
-
             num_outliers = torch.sum(torch.abs(self.measured_heights) > height_threshold, dim=1)
             jump_zone_mask = (num_outliers >= min_outlier_threshold)
             self.jump_flags = jump_zone_mask.unsqueeze(1).float()
-
-
-            # # Get local robot and obstacle x coordinates
-            # robot_x = (self.root_states[:, 0] - self.env_origins[:, 0]).unsqueeze(1)
-            # obstacle_x = torch.tensor(self.cfg.terrain.obstacle_x_positions, device=self.device)
-
-            # # Trigger jump flag
-            # in_jump_zone = (robot_x >= (obstacle_x - 1.2)) & (robot_x <= obstacle_x + 0.2)
-            # jump_zone_mask = in_jump_zone.any(dim=1)
-            # jump_idx = torch.nonzero(jump_zone_mask, as_tuple=False).squeeze(1)
-            # self.jump_flags = jump_zone_mask.unsqueeze(1).float()
-
 
             # =================================== DEBUG PRINT ===================================
             # if torch.any(self.jump_flags):                       # at least one robot in-zone
@@ -546,10 +537,13 @@ class Go2Robot(LeggedRobot):
         # SCAN OBS
         self.scan_obs_buf = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.3 - self.measured_heights, -1, 1.)
 
-        # # LOGGING SCAN OBS FOR MUJOCO
-        # if self.jump_flags[0]:
+        # =========================== CODE TO SPOOF SCAN OBS ===========================
+        # # Leave this commented out during training and play
+        # if self.jump_flags[0] and self.enableScanLogging:
+        #     self.jumpFlagNeverEnabled = False
+
+        #     # Actual logging part
         #     with open('legged_gym/deploy/base/FAKE_SCAN_OBS.txt', 'a') as f:
-                
         #         if self.runOnce:
         #             phase_value = float(self.phase[0].cpu().numpy())
         #             f.write(f"[{phase_value}]\n\n")
@@ -557,6 +551,13 @@ class Go2Robot(LeggedRobot):
                 
         #         f.write(f"{self.scan_obs_buf[0].cpu().numpy()}\n\n")
         
+
+        #     # If jump flag is off, but was previously on, stop logging
+        #     if not self.jump_flags[0] and not self.jumpFlagNeverEnabled:
+        #         self.enableScanLogging = False
+        #         print("LOGGING COMPLETE - PLEASE EXIT THE PROGRAM AND CHECK THE FILE!")]
+        # ==============================================================================
+
         # CRITIC OBS
         self.critic_obs_buf = torch.cat((
             self.obs_buf.clone().detach(),

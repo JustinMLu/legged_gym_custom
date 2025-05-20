@@ -199,16 +199,6 @@ class Terrain:
         gap_lengths = [difficulty] * num_gaps 
         gap_heights = [-2.0] * num_gaps
 
-        # Box parkour terrain
-        box_x_start = 5.0
-        box_dx = 1.75
-        num_boxes = 16
-        box_lengths = [1.25] * num_boxes
-        box_heights = [0.1, 0.25, 0.45, 0.70, 
-                       0.45, 0.70, 1.0, 1.4, 
-                       0.8, 0.8, 0.40, 0.40, 
-                       0.80, 0.45, 0.80, 1.2]
-
         # Hurdle terrain
         hurdle_x_start = 4.0
         hurdle_dx = 1.99
@@ -233,21 +223,6 @@ class Terrain:
                                           y_positions=[0.0] * num_gaps,
                                           obstacle_heights=gap_heights,
                                           obstacle_lengths=gap_lengths,
-                                          half_valid_width=5.0,
-                                          border_width=0.50,
-                                          border_height=-2.0)
-
-        # Box terrain
-        elif choice < self.proportions[1]:
-            terrain_utils.parkour_terrain(terrain=terrain,
-                                          start_platform_length=3.,
-                                          start_platform_height=0.,
-                                          x_positions=list(np.arange(box_x_start,
-                                                                     box_x_start + num_boxes * box_dx,
-                                                                     box_dx)),
-                                          y_positions=[0.0] * num_boxes,
-                                          obstacle_heights=box_heights,
-                                          obstacle_lengths=box_lengths,
                                           half_valid_width=5.0,
                                           border_width=0.50,
                                           border_height=-2.0)
